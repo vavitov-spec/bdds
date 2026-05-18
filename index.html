@@ -138,6 +138,7 @@ select option{background:var(--card)}
       }
     });
   });
+</script>
 
 </head>
 <body>
@@ -814,10 +815,10 @@ function renderBudget() {
 
   return '<div class="ph">'+
     '<div class="pt">Бюджеты</div>'+
-    '<span class="btn btn-p" id="btn-create-budget" onclick="openCreateBudgetModal()" style="margin-left:auto">+ Создать бюджет</span>+'<span class="btn btn-o btn-sm" onclick="openEditBudgetModal()" style="margin-left:8px">✏️ Редактировать</span>'+
+    '<span class="btn btn-p" id="btn-create-budget" onclick="openCreateBudgetModal()" style="margin-left:auto">+ Создать бюджет</span>'+
   '</div>'+
   '<div class="fil">'+
-    '<label>Проект:</label><select id="bud-proj">'+projOpts+'</select>'+
+    'abel>Проект:</label><select id="bud-proj">'+projOpts+'</select>'+
     '<div style="display:flex;gap:4px;margin-left:16px">'+
     '<button id="bud-mode-month" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:'+(BUD_MODE==="month"?"var(--accent)":"var(--card2)")+';color:'+(BUD_MODE==="month"?"#fff":"var(--muted)")+'">По месяцам</button>'+
     '<button id="bud-mode-week" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:'+(BUD_MODE==="week"?"var(--accent)":"var(--card2)")+';color:'+(BUD_MODE==="week"?"#fff":"var(--muted)")+'">По неделям</button>'+
@@ -1177,6 +1178,7 @@ document.addEventListener('change', function(e) {
     bindPageEvents();
   }
 });
+</script>
 
 
 
@@ -1306,6 +1308,7 @@ document.addEventListener('change', function(e) {
     modal.style.display = 'flex';
   };
 })();
+</script>
 
 
 <script>
@@ -1513,97 +1516,7 @@ document.addEventListener('change', function(e) {
     setTimeout(attachFillBtn,100);
   };
 })();
+</script>
 
 </body>
-<script>
-window.openEditBudgetModal=function(){
-  var pr=getProj(F.proj);
-  if(!pr){alert('Выберите проект');return;}
-  if(!pr.budgetPlan)pr.budgetPlan={};
-  var months=pr.months||[];
-  if(!months.length){var y=new Date().getFullYear();for(var mo=0;mo<12;mo++)months.push(y+'-'+String(mo+1).padStart(2,'0'));pr.months=months;}
-  var SECS=[{id:'pos',lbl:'ПОС'},{id:'kr',lbl:'КР'},{id:'ar',lbl:'АР'},{id:'zos',lbl:'ЗОС'}];
-  var h='<div id="meb" style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center"><div style="background:#1a1d2e;border:1px solid #2e3250;border-radius:12px;width:95vw;max-width:1100px;max-height:90vh;overflow-y:auto"><div style="padding:18px 22px;border-bottom:1px solid #2e3250;display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700">Бюджет: '+pr.name+'</span><button onclick="document.getElementById('meb').remove()" style="background:none;border:none;color:#8892b0;font-size:28px;cursor:pointer">&times;</button></div><div style="padding:18px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="padding:6px 8px;border:1px solid #2e3250;text-align:left;min-width:120px">Статья</th><th style="border:1px solid #2e3250;padding:4px">Тип</th>'+months.map(function(m){var d=new Date(m+'-01');return'<th style="padding:4px;text-align:center;min-width:68px;border:1px solid #2e3250;color:#8892b0">'+d.toLocaleString('ru-RU',{month:'short',year:'2-digit'})+'</th>';}).join('')+'</tr></thead><tbody>';
-  SECS.forEach(function(sec){
-    if(!pr.budgetPlan[sec.id])pr.budgetPlan[sec.id]={in:{},out:{}};
-    var bp=pr.budgetPlan[sec.id];
-    h+='<tr style="background:#232640"><td colspan="'+(2+months.length)+'" style="padding:5px 8px;font-weight:700;color:#4f8ef7;border:1px solid #2e3250">'+sec.lbl+'</td></tr>';
-    ['in','out'].forEach(function(t){
-      var c=t=='in'?'#2ecc71':'#e74c3c',lb=t=='in'?'&#8593; Поступления':'&#8595; Выплаты';
-      h+='<tr><td style="padding:4px 8px;color:'+c+';border:1px solid #2e3250">'+lb+'</td><td style="border:1px solid #2e3250;text-align:center;font-size:10px;color:#8892b0">план</td>'+months.map(function(m,mi){var v=(bp[t]&&bp[t][mi])||'';return'<td style="padding:1px;border:1px solid #2e3250"><input type="number" min="0" step="1000" value="'+v+'" data-sec="'+sec.id+'" data-t="'+t+'" data-mi="'+mi+'" style="width:100%;padding:2px 3px;background:#0f1117;border:none;color:'+c+';text-align:right;font-size:11px"></td>';}).join('')+'</tr>';
-    });
-  });
-  h+='</tbody></table></div><div style="padding:14px 22px;border-top:1px solid #2e3250;display:flex;justify-content:flex-end;gap:10px"><button onclick="document.getElementById('meb').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #2e3250;background:transparent;color:#e8eaf6;cursor:pointer">Отмена</button> <button onclick="window.saveEB()" style="padding:8px 16px;border-radius:8px;border:none;background:#4f8ef7;color:#fff;cursor:pointer;font-weight:600">Сохранить</button></div></div></div>';
-  document.body.insertAdjacentHTML('beforeend',h);
-};
-window.saveEB=function(){
-  var pr=getProj(F.proj);if(!pr)return;
-  var m=document.getElementById('meb');if(!m)return;
-  if(!pr.budgetPlan)pr.budgetPlan={};
-  m.querySelectorAll('input[data-sec]').forEach(function(i){
-    var s=i.dataset.sec,t=i.dataset.t,mi=i.dataset.mi,v=parseFloat(i.value)||0;
-    if(!pr.budgetPlan[s])pr.budgetPlan[s]={in:{},out:{}};
-    if(!pr.budgetPlan[s][t])pr.budgetPlan[s][t]={};
-    if(v)pr.budgetPlan[s][t][mi]=v;else delete pr.budgetPlan[s][t][mi];
-  });
-  save();m.remove();render();
-};
-</script>
-<script>
-window.openEditBudgetModal = function() {
-  var pr = getProj(F.proj);
-  if (!pr) { alert('Выберите проект'); return; }
-  if (!pr.budgetPlan) pr.budgetPlan = {};
-  var months = pr.months || [];
-  if (!months.length) {
-    var y = new Date().getFullYear();
-    for (var mo = 0; mo < 12; mo++) months.push(y+'-'+String(mo+1).padStart(2,'0'));
-    pr.months = months;
-  }
-  var SECS = [{id:'pos',lbl:'ПОС'},{id:'kr',lbl:'КР'},{id:'ar',lbl:'АР'},{id:'zos',lbl:'ЗОС'}];
-  var h = '<div id="meb" style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center">'
-    +'<div style="background:#1a1d2e;border:1px solid #2e3250;border-radius:12px;width:95vw;max-width:1100px;max-height:90vh;overflow-y:auto">'
-    +'<div style="padding:18px 22px;border-bottom:1px solid #2e3250;display:flex;justify-content:space-between;align-items:center">'
-    +'<span style="font-size:15px;font-weight:700">Бюджет: '+pr.name+'</span>'
-    +'<button onclick="document.getElementById('meb').remove()" style="background:none;border:none;color:#8892b0;font-size:28px;cursor:pointer">&times;</button>'
-    +'</div><div style="padding:18px;overflow-x:auto">'
-    +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
-    +'<th style="padding:6px 8px;border:1px solid #2e3250;text-align:left;min-width:120px">Статья</th>'
-    +'<th style="border:1px solid #2e3250;padding:4px">Тип</th>'
-    +months.map(function(m){var d=new Date(m+'-01');return '<th style="padding:4px;text-align:center;min-width:68px;border:1px solid #2e3250;color:#8892b0">'+d.toLocaleString('ru-RU',{month:'short',year:'2-digit'})+'</th>';}).join('')
-    +'</tr></thead><tbody>';
-  SECS.forEach(function(sec) {
-    if (!pr.budgetPlan[sec.id]) pr.budgetPlan[sec.id] = {in:{},out:{}};
-    var bp = pr.budgetPlan[sec.id];
-    h += '<tr style="background:#232640"><td colspan="'+(2+months.length)+'" style="padding:5px 8px;font-weight:700;color:#4f8ef7;border:1px solid #2e3250">'+sec.lbl+'</td></tr>';
-    ['in','out'].forEach(function(t) {
-      var c = t==='in' ? '#2ecc71' : '#e74c3c';
-      var lb = t==='in' ? '&#8593; Поступления' : '&#8595; Выплаты';
-      h += '<tr><td style="padding:4px 8px;color:'+c+';border:1px solid #2e3250">'+lb+'</td>'
-        +'<td style="border:1px solid #2e3250;text-align:center;font-size:10px;color:#8892b0">план</td>'
-        +months.map(function(m,mi){var v=(bp[t]&&bp[t][mi])||'';return '<td style="padding:1px;border:1px solid #2e3250"><input type="number" min="0" step="1000" value="'+v+'" data-sec="'+sec.id+'" data-t="'+t+'" data-mi="'+mi+'" style="width:100%;padding:2px 3px;background:#0f1117;border:none;color:'+c+';text-align:right;font-size:11px"></td>';}).join('')
-        +'</tr>';
-    });
-  });
-  h += '</tbody></table></div>'
-    +'<div style="padding:14px 22px;border-top:1px solid #2e3250;display:flex;justify-content:flex-end;gap:10px">'
-    +'<button onclick="document.getElementById(\'meb\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #2e3250;background:transparent;color:#e8eaf6;cursor:pointer">Отмена</button> '
-    +'<button onclick="window.saveEB()" style="padding:8px 16px;border-radius:8px;border:none;background:#4f8ef7;color:#fff;cursor:pointer;font-weight:600">Сохранить</button>'
-    +'</div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', h);
-};
-window.saveEB = function() {
-  var pr = getProj(F.proj); if (!pr) return;
-  var m = document.getElementById('meb'); if (!m) return;
-  if (!pr.budgetPlan) pr.budgetPlan = {};
-  m.querySelectorAll('input[data-sec]').forEach(function(i) {
-    var s=i.dataset.sec, t=i.dataset.t, mi=i.dataset.mi, v=parseFloat(i.value)||0;
-    if (!pr.budgetPlan[s]) pr.budgetPlan[s]={in:{},out:{}};
-    if (!pr.budgetPlan[s][t]) pr.budgetPlan[s][t]={};
-    if (v) pr.budgetPlan[s][t][mi]=v; else delete pr.budgetPlan[s][t][mi];
-  });
-  save(); m.remove(); render();
-};
-</script>
 </html>
-
