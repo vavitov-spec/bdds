@@ -273,11 +273,7 @@ var CATS = [
 var COLORS = {'Прямые затраты':'#4f8ef7','Накладные расходы':'#a29bfe','Налоги':'#fdcb6e','Инвестиции':'#00b894','Поступления':'#2ecc71'};
 
 var DEMO = {
-  projects:[
-    {id:'p1',name:'ЖК "Северный"',       client:'ООО СтройГрупп',  start:'2026-01-01',end:'2026-12-31',contract:18500000,budget:14200000,status:'active'},
-    {id:'p2',name:'Офис на Садовой',      client:'ИП Петров А.В.',  start:'2026-03-01',end:'2026-08-31',contract:5200000, budget:3900000, status:'active'},
-    {id:'p3',name:'Фасад ТЦ "Ривьера"',  client:'ООО ТоргЦентр',   start:'2026-05-01',end:'2026-09-30',contract:9700000, budget:7400000, status:'planned'}
-  ],
+  projects:[],
   payments:[
     {id:'v1', type:'in', proj:'p1',cat:'in_adv',amount:3700000,date:'2026-01-15',cont:'ООО СтройГрупп',  desc:'Аванс 20%',          stat:'paid',    form:'Безналичный'},
     {id:'v2', type:'out',proj:'p1',cat:'mat',   amount:2100000,date:'2026-02-10',cont:'ООО МеталлПром',  desc:'Алюминиевый профиль', stat:'paid',    form:'Безналичный'},
@@ -294,15 +290,7 @@ var DEMO = {
     {id:'v13',type:'out',proj:'p2',cat:'admin', amount:45000,  date:'2026-05-15',cont:'Разное',          desc:'Командировки',        stat:'plan',    form:'Наличный'},
     {id:'v14',type:'out',proj:'p3',cat:'mat',   amount:1200000,date:'2026-06-10',cont:'ООО АлюмПро',     desc:'Фасадные материалы',  stat:'plan',    form:'Безналичный'}
   ],
-  budgetLines:[
-    {proj:'p1',cat:'mat',   plan:4500000},{proj:'p1',cat:'sub',  plan:3800000},
-    {proj:'p1',cat:'labor', plan:1200000},{proj:'p1',cat:'mech', plan:600000},
-    {proj:'p1',cat:'salary',plan:900000}, {proj:'p1',cat:'tax',  plan:400000},
-    {proj:'p2',cat:'mat',   plan:1400000},{proj:'p2',cat:'sub',  plan:1200000},
-    {proj:'p2',cat:'labor', plan:500000}, {proj:'p2',cat:'admin',plan:200000},
-    {proj:'p3',cat:'mat',   plan:2800000},{proj:'p3',cat:'sub',  plan:2500000},
-    {proj:'p3',cat:'labor', plan:900000}
-  ],
+  budgetLines:[],
   projectPlans: {}
 };
 
