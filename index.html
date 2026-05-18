@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>БДДС — ООО "Вектор"</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--card:#1a1d2e;--card2:#232640;--border:#2e3250;--accent:#4f8ef7;--green:#2ecc71;--red:#e74c3c;--yellow:#f1c40f;--text:#e8eaf6;--muted:#8892b0;--r:12px}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;overflow-y:auto;padding:24px}
+.logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.logo b{font-size:17px;color:var(--accent)}
+.logo small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.nav-s{padding:12px 0 4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.nav{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:var(--muted);font-size:13px;transition:background .15s;border-left:3px solid transparent;user-select:none}
+.nav:hover{background:var(--card2);color:var(--text)}
+.nav.on{background:var(--card2);color:var(--accent);border-left-color:var(--accent)}
+.sb-bot{margin-top:auto;padding:16px;border-top:1px solid var(--border)}
+.btn{display:inline-block;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:opacity .15s;user-select:none}
+.btn:hover{opacity:.85}
+.btn-p{background:var(--accent);color:#fff}
+.btn-o{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-w{display:block;width:100%;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;text-align:center;user-select:none}
+.btn-sm{padding:5px 10px;font-size:12px}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:10px}
+.pt{font-size:21px;font-weight:700}
+.pt span{color:var(--muted);font-size:13px;font-weight:400;margin-left:8px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.kc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.kl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kv{font-size:22px;font-weight:700}
+.ks{font-size:11px;color:var(--muted);margin-top:4px}
+.green{color:var(--green)}.red{color:var(--red)}.yellow{color:var(--yellow)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px}
+.ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.ct{font-size:14px;font-weight:600}
+.cb{padding:18px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--card2)}
+.tb{font-weight:600}.tm{color:var(--muted);font-size:12px}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.bg{background:rgba(46,204,113,.18);color:var(--green)}
+.bb{background:rgba(79,142,247,.15);color:var(--accent)}
+.by{background:rgba(241,196,15,.15);color:var(--yellow)}
+.bx{background:rgba(136,146,176,.12);color:var(--muted)}
+.pb{height:6px;background:var(--card2);border-radius:3px;overflow:hidden;margin-top:4px}
+.pf{height:100%;border-radius:3px}
+.tr-tot td{font-weight:700;background:var(--card2);color:var(--accent)}
+.diff-p{color:var(--green)}.diff-n{color:var(--red)}
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.mo.show{display:flex}
+.md{background:var(--card);border:1px solid var(--border);border-radius:var(--r);width:500px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.mh{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.mt{font-size:15px;font-weight:700}
+.mc{background:none;border:none;color:var(--muted);font-size:26px;cursor:pointer;line-height:1;padding:0 4px}
+.mb{padding:18px 22px}
+.mf{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.fg{margin-bottom:14px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+input,select,textarea{width:100%;padding:8px 11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:60px}
+select option{background:var(--card)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fil{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.fil select{width:auto;padding:6px 10px;font-size:12px}
+.fil label{margin:0;white-space:nowrap;font-size:12px}
+.pc{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px}
+.pcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color .2s}
+.pcard:hover{border-color:var(--accent)}
+.pn{font-size:14px;font-weight:700;margin-bottom:3px}
+.pm{font-size:12px;color:var(--muted);margin-bottom:12px}
+.ps{display:flex;gap:14px}
+.psl{font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.5px}
+.psv{font-size:15px;font-weight:700;margin-top:2px}
+.ib{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;color:var(--muted)}
+.ib:hover{color:var(--text)}
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-icon{font-size:44px;margin-bottom:10px}
+</style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBLuGGyrvUauEtNmjFDJ_xoQ1jUhKunKOE",
+    authDomain: "bdds-97b72.firebaseapp.com",
+    projectId: "bdds-97b72",
+    storageBucket: "bdds-97b72.firebasestorage.app",
+    messagingSenderId: "566296800317",
+    appId: "1:566296800317:web:0a895dcbd8fff14c7f8e54"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const DOC_REF = doc(db, "bdds", "main");
+
+  // Глобальная функция сохранения в Firestore
+  window.saveToFirebase = async function(data) {
+    try {
+      await setDoc(DOC_REF, { data: JSON.stringify(data) });
+      console.log("Сохранено в Firebase");
+    } catch(e) {
+      console.error("Ошибка сохранения Firebase:", e);
+    }
+  };
+
+  // Загружаем данные из Firestore при старте
+  window.addEventListener('load', async function() {
+    try {
+      const snap = await getDoc(DOC_REF);
+      if (snap.exists()) {
+        const saved = JSON.parse(snap.data().data);
+        // Применяем данные из Firebase
+        D = saved;
+        render();
+        console.log("Данные загружены из Firebase");
+      }
+    } catch(e) {
+      console.error("Ошибка загрузки Firebase:", e);
+    }
+
+    // Подписываемся на изменения в реальном времени
+    onSnapshot(DOC_REF, function(snap) {
+      if (snap.exists()) {
+        const saved = JSON.parse(snap.data().data);
+        D = saved;
+        render();
+      }
+    });
+  });
+</script>
+
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo"><b>📊 БДДС</b><small>ООО "Вектор"</small></div>
+    <div class="nav-s">Навигация</div>
+    <div class="nav on" id="nav-dashboard" data-page="dashboard"><span>📈</span>&nbsp;Дашборд</div>
+    
+    <div class="nav" id="nav-budget" data-page="budget"><span>📋</span>&nbsp;Бюджеты</div>
+    <div class="nav" id="nav-payments" data-page="payments"><span>💳</span>&nbsp;Платежи</div>
+    
+    <div class="nav" id="nav-calendar" data-page="calendar"><span>📅</span>&nbsp;Платёжный календарь</div>
+    <div class="sb-bot">
+      <div class="btn-w" id="btn-new-proj">+ Новый проект</div>
+    </div>
+  </div>
+  <div class="main" id="app"></div>
+</div>
+
+<!-- Modal: Проект -->
+<div class="mo" id="m-proj" style="align-items:flex-start;padding:20px;overflow-y:auto">
+  <div class="md" style="width:900px;max-width:98vw;max-height:95vh;overflow-y:auto">
+    <div class="mh">
+      <span class="mt" id="m-proj-title">Новый проект</span>
+      <span class="mc" id="close-proj">&times;</span>
+    </div>
+    <div class="mb">
+      <div class="fg"><label>Название проекта *</label><input id="f-pname" placeholder="ЖК Северный..."></div>
+      <div class="fr">
+        <div class="fg"><label>Дата начала *</label><input type="date" id="f-pstart"></div>
+        <div class="fg"><label>Дата окончания *</label><input type="date" id="f-pend"></div>
+      </div>
+      <div class="fg"><label>Заказчик</label><input id="f-pclient" placeholder="ООО Заказчик"></div>
+      <div class="fg"><label>Статус</label>
+        <select id="f-pstatus">
+          <option value="active">Активный</option>
+          <option value="planned">Плановый</option>
+          <option value="paused">Приостановлен</option>
+          <option value="done">Завершён</option>
+        </select>
+      </div>
+      <div id="proj-totals" style="display:none;margin:16px 0">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="kc"><div class="kl">Сумма договора</div><div class="kv green" id="pt-contract" style="font-size:15px">—</div></div>
+          <div class="kc"><div class="kl">Затраты</div><div class="kv red" id="pt-costs" style="font-size:15px">—</div></div>
+          <div class="kc"><div class="kl">Маржа</div><div class="kv yellow" id="pt-margin" style="font-size:15px">—</div></div>
+          <div class="kc"><div class="kl">Прибыль</div><div class="kv" id="pt-profit" style="font-size:15px">—</div></div>
+        </div>
+      </div>
+      <button id="btn-show-budget" style="width:100%;padding:10px;margin:8px 0;background:var(--card2);border:1px dashed var(--border);border-radius:8px;color:var(--accent);cursor:pointer;font-size:13px;font-weight:600">&#9660; Бюджет проекта</button>
+      <div id="proj-budget-wrap" style="display:none;margin-top:8px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead id="proj-budget-thead"></thead>
+          <tbody id="proj-budget-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-o" id="cancel-proj">Отмена</button>
+      <button class="btn btn-p" id="save-proj">Сохранить проект</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Платёж -->
+<div class="mo" id="m-pay">
+  <div class="md">
+    <div class="mh">
+      <span class="mt" id="m-pay-title">Новый платёж</span>
+      <span class="mc" id="close-pay">×</span>
+    </div>
+    <div class="mb">
+      <div class="fr">
+        <div class="fg"><label>Тип</label>
+          <select id="f-ptype">
+            <option value="out">Расход</option>
+            <option value="in">Поступление</option>
+          </select>
+        </div>
+        <div class="fg"><label>Проект *</label><select id="f-pprojid"></select></div>
+      </div>
+      <div class="fg"><label>Статья затрат *</label><select id="f-pcat"></select></div>
+      <div class="fr">
+        <div class="fg"><label>Сумма (₽) *</label><input type="number" id="f-pamount" placeholder="0"></div>
+        <div class="fg"><label>Дата *</label><input type="date" id="f-pdate"></div>
+      </div>
+      <div class="fg"><label>Контрагент</label><input id="f-pcont" placeholder="Поставщик..."></div>
+      <div class="fg"><label>Описание</label><textarea id="f-pdesc" placeholder="КС-2, счёт №..."></textarea></div>
+      <div class="fr">
+        <div class="fg"><label>Статус</label>
+          <select id="f-pstat">
+            <option value="plan">Плановый</option>
+            <option value="approved">Согласован</option>
+            <option value="paid">Оплачен</option>
+          </select>
+        </div>
+        <div class="fg"><label>Форма оплаты</label>
+          <select id="f-pform">
+            <option>Безналичный</option>
+            <option>Наличный</option>
+            <option>Аванс</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <span class="btn btn-o" id="cancel-pay">Отмена</span>
+      <span class="btn btn-p" id="save-pay">Сохранить</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── ДАННЫЕ ──────────────────────────────────────────────────────
+var CATS = [
+  {id:'mat',   name:'Материалы и конструкции',  grp:'Прямые затраты'},
+  {id:'sub',   name:'Субподрядные работы',       grp:'Прямые затраты'},
+  {id:'labor', name:'Оплата труда рабочих',      grp:'Прямые затраты'},
+  {id:'mech',  name:'Механизмы и спецтехника',   grp:'Прямые затраты'},
+  {id:'transp',name:'Транспортные расходы',       grp:'Прямые затраты'},
+  {id:'other', name:'Прочие прямые затраты',     grp:'Прямые затраты'},
+  {id:'salary',name:'Зарплата ИТР / офис',       grp:'Накладные расходы'},
+  {id:'rent',  name:'Аренда офиса / склада',     grp:'Накладные расходы'},
+  {id:'admin', name:'Административные расходы',  grp:'Накладные расходы'},
+  {id:'tax',   name:'Налоги и взносы',           grp:'Налоги'},
+  {id:'vat',   name:'НДС',                       grp:'Налоги'},
+  {id:'in_rev',name:'Выручка по договору',       grp:'Поступления'},
+  {id:'in_adv',name:'Авансы полученные',         grp:'Поступления'}
+];
+
+var COLORS = {'Прямые затраты':'#4f8ef7','Накладные расходы':'#a29bfe','Налоги':'#fdcb6e','Инвестиции':'#00b894','Поступления':'#2ecc71'};
+
+var DEMO = {
+  projects:[
+    {id:'p1',name:'ЖК "Северный"',       client:'ООО СтройГрупп',  start:'2026-01-01',end:'2026-12-31',contract:18500000,budget:14200000,status:'active'},
+    {id:'p2',name:'Офис на Садовой',      client:'ИП Петров А.В.',  start:'2026-03-01',end:'2026-08-31',contract:5200000, budget:3900000, status:'active'},
+    {id:'p3',name:'Фасад ТЦ "Ривьера"',  client:'ООО ТоргЦентр',   start:'2026-05-01',end:'2026-09-30',contract:9700000, budget:7400000, status:'planned'}
+  ],
+  payments:[
+    {id:'v1', type:'in', proj:'p1',cat:'in_adv',amount:3700000,date:'2026-01-15',cont:'ООО СтройГрупп',  desc:'Аванс 20%',          stat:'paid',    form:'Безналичный'},
+    {id:'v2', type:'out',proj:'p1',cat:'mat',   amount:2100000,date:'2026-02-10',cont:'ООО МеталлПром',  desc:'Алюминиевый профиль', stat:'paid',    form:'Безналичный'},
+    {id:'v3', type:'out',proj:'p1',cat:'sub',   amount:1800000,date:'2026-03-05',cont:'ООО ФасадМонтаж', desc:'КС-2 №1',             stat:'paid',    form:'Безналичный'},
+    {id:'v4', type:'out',proj:'p1',cat:'labor', amount:450000, date:'2026-03-31',cont:'Бригада Иванова', desc:'ЗП за март',          stat:'paid',    form:'Наличный'},
+    {id:'v5', type:'in', proj:'p1',cat:'in_rev',amount:4200000,date:'2026-04-20',cont:'ООО СтройГрупп',  desc:'КС-3 №1',             stat:'paid',    form:'Безналичный'},
+    {id:'v6', type:'out',proj:'p1',cat:'mat',   amount:950000, date:'2026-05-10',cont:'ООО СтеклоПак',   desc:'Стеклопакеты',        stat:'approved',form:'Безналичный'},
+    {id:'v7', type:'out',proj:'p1',cat:'mech',  amount:320000, date:'2026-06-01',cont:'ПАО СпецАренда',  desc:'Аренда крана',        stat:'plan',    form:'Безналичный'},
+    {id:'v8', type:'out',proj:'p1',cat:'salary',amount:280000, date:'2026-05-05',cont:'Сотрудники',      desc:'ЗП ИТР апрель',       stat:'paid',    form:'Безналичный'},
+    {id:'v9', type:'out',proj:'p1',cat:'tax',   amount:125000, date:'2026-05-25',cont:'ФНС',             desc:'Взносы апрель',       stat:'plan',    form:'Безналичный'},
+    {id:'v10',type:'in', proj:'p2',cat:'in_adv',amount:1560000,date:'2026-03-15',cont:'ИП Петров А.В.',  desc:'Аванс 30%',           stat:'paid',    form:'Безналичный'},
+    {id:'v11',type:'out',proj:'p2',cat:'mat',   amount:780000, date:'2026-04-05',cont:'ООО РемСтрой',    desc:'Отделочные материалы',stat:'paid',    form:'Безналичный'},
+    {id:'v12',type:'out',proj:'p2',cat:'sub',   amount:620000, date:'2026-04-25',cont:'ИП Сидоров',      desc:'Монтаж КС-2',         stat:'approved',form:'Безналичный'},
+    {id:'v13',type:'out',proj:'p2',cat:'admin', amount:45000,  date:'2026-05-15',cont:'Разное',          desc:'Командировки',        stat:'plan',    form:'Наличный'},
+    {id:'v14',type:'out',proj:'p3',cat:'mat',   amount:1200000,date:'2026-06-10',cont:'ООО АлюмПро',     desc:'Фасадные материалы',  stat:'plan',    form:'Безналичный'}
+  ],
+  budgetLines:[
+    {proj:'p1',cat:'mat',   plan:4500000},{proj:'p1',cat:'sub',  plan:3800000},
+    {proj:'p1',cat:'labor', plan:1200000},{proj:'p1',cat:'mech', plan:600000},
+    {proj:'p1',cat:'salary',plan:900000}, {proj:'p1',cat:'tax',  plan:400000},
+    {proj:'p2',cat:'mat',   plan:1400000},{proj:'p2',cat:'sub',  plan:1200000},
+    {proj:'p2',cat:'labor', plan:500000}, {proj:'p2',cat:'admin',plan:200000},
+    {proj:'p3',cat:'mat',   plan:2800000},{proj:'p3',cat:'sub',  plan:2500000},
+    {proj:'p3',cat:'labor', plan:900000}
+  ],
+  projectPlans: {}
+};
+
+// Сброс старых данных и загрузка демо
+var D;
+try {
+  var _saved = localStorage.getItem('bdds3');
+  if (_saved) {
+    D = JSON.parse(_saved);
+  } else {
+    D = JSON.parse(JSON.stringify(DEMO));
+  }
+} catch(e) { D = JSON.parse(JSON.stringify(DEMO)); }
+
+function save() {
+  try { localStorage.setItem('bdds3', JSON.stringify(D)); } catch(e) {}
+  if (typeof window.saveToFirebase === 'function') {
+    window.saveToFirebase(D);
+  }
+}
+
+// ── УТИЛИТЫ ─────────────────────────────────────────────────────
+function fmt(n) {
+  return new Intl.NumberFormat('ru-RU', {style:'currency', currency:'RUB', maximumFractionDigits:0}).format(n || 0);
+}
+function fdate(s) {
+  if (!s) return '—';
+  var a = s.split('-');
+  return a[2] + '.' + a[1] + '.' + a[0];
+}
+function uid() { return '_' + Math.random().toString(36).slice(2, 9); }
+function getCat(id) { return CATS.find(function(c) { return c.id === id; }) || {name: id, grp: 'Прочее'}; }
+function getProj(id) { return D.projects.find(function(p) { return p.id === id; }); }
+function sbadge(s) {
+  var m = {active:['bg','Активный'],planned:['bb','Планируется'],paused:['by','Приостановлен'],done:['bx','Завершён'],plan:['by','Плановый'],approved:['bb','Согласован'],paid:['bg','Оплачен']};
+  var x = m[s] || ['bx', s];
+  return '<span class="badge ' + x[0] + '">' + x[1] + '</span>';
+}
+function projTotals(pid) {
+  var pays = D.payments.filter(function(p) { return p.proj === pid; });
+  var inc = pays.filter(function(p) { return p.type === 'in'; }).reduce(function(s, p) { return s + p.amount; }, 0);
+  var exp = pays.filter(function(p) { return p.type === 'out'; }).reduce(function(s, p) { return s + p.amount; }, 0);
+  return {inc: inc, exp: exp, bal: inc - exp};
+}
+
+// ── СОСТОЯНИЕ ───────────────────────────────────────────────────
+var CAL_FILTER={};
+var PAGE = 'dashboard';
+var EDIT_PROJ = null, EDIT_PAY = null;
+var F = {proj: '', type: '', stat: ''};
+
+// ── НАВИГАЦИЯ ────────────────────────────────────────────────────
+function go(page) {
+  PAGE = page;
+  document.querySelectorAll('.nav').forEach(function(n) { n.classList.remove('on'); });
+  var nav = document.getElementById('nav-' + page);
+  if (nav) nav.classList.add('on');
+  render();
+}
+
+function render() {
+  var el = document.getElementById('app');
+  if (PAGE === 'dashboard') el.innerHTML = renderDash();
+  else if (PAGE === 'projects') el.innerHTML = renderProjects();
+  else if (PAGE === 'payments') el.innerHTML = renderPayments();
+  else if (PAGE === 'budget') el.innerHTML = renderBudget();
+  else if (PAGE === 'calendar') el.innerHTML = renderCalendar();
+  bindPageEvents();
+}
+
+// ── ДАШБОРД ──────────────────────────────────────────────────────
+function renderDash() {
+  var allInc = D.payments.filter(function(p){return p.type==='in';}).reduce(function(s,p){return s+p.amount;},0);
+  var allExp = D.payments.filter(function(p){return p.type==='out';}).reduce(function(s,p){return s+p.amount;},0);
+  var bal = allInc - allExp;
+  var planned = D.payments.filter(function(p){return p.stat==='plan'&&p.type==='out';}).reduce(function(s,p){return s+p.amount;},0);
+  var paidOut = D.payments.filter(function(p){return p.stat==='paid'&&p.type==='out';}).reduce(function(s,p){return s+p.amount;},0);
+  var totalBudget = D.projects.reduce(function(s,p){return s+(p.budget||0);},0);
+  var budPct = totalBudget ? ((paidOut/totalBudget)*100).toFixed(1) : 0;
+  var rows = D.projects.map(function(p) {
+    var t = projTotals(p.id);
+    var bp = p.budget ? Math.min(t.exp/p.budget*100,100).toFixed(0) : 0;
+    var barColor = bp > 90 ? 'var(--red)' : bp > 70 ? 'var(--yellow)' : 'var(--accent)';
+    return '<tr><td class="tb">'+p.name+'</td><td class="tm">'+(p.client||'—')+'</td><td>'+sbadge(p.status)+'</td>'+
+      '<td class="green">'+fmt(t.inc)+'</td><td class="red">'+fmt(t.exp)+'</td>'+
+      '<td style="color:'+(t.bal>=0?'var(--green)':'var(--red)')+'">'+fmt(t.bal)+'</td>'+
+      '<td><div style="display:flex;align-items:center;gap:6px">'+
+      '<span style="font-size:11px;width:32px">'+bp+'%</span>'+
+      '<div class="pb" style="flex:1;max-width:100px"><div class="pf" style="width:'+bp+'%;background:'+barColor+'"></div></div>'+
+      '</div></td></tr>';
+  }).join('');
+  return '<div class="ph"><div class="pt">Дашборд <span>Обзор компании</span></div>'+
+    '<span class="btn btn-p" data-action="open-pay">+ Платёж</span></div>'+
+    '<div class="kpi">'+
+    '<div class="kc"><div class="kl">Поступления (факт)</div><div class="kv green">'+fmt(allInc)+'</div><div class="ks">Все проекты</div></div>'+
+    '<div class="kc"><div class="kl">Расходы (факт)</div><div class="kv red">'+fmt(allExp)+'</div><div class="ks">Оплачено и согласовано</div></div>'+
+    '<div class="kc"><div class="kl">Баланс ДДС</div><div class="kv '+(bal>=0?'green':'red')+'">'+fmt(bal)+'</div><div class="ks">'+(bal>=0?'✅ Положительный':'⚠️ Кассовый разрыв')+'</div></div>'+
+    '<div class="kc"><div class="kl">Плановые выплаты</div><div class="kv yellow">'+fmt(planned)+'</div><div class="ks">Ожидают оплаты</div></div>'+
+    '<div class="kc"><div class="kl">Активных проектов</div><div class="kv">'+D.projects.filter(function(p){return p.status==='active';}).length+'</div><div class="ks">из '+D.projects.length+' всего</div></div>'+
+    '<div class="kc"><div class="kl">Исполнение бюджета</div><div class="kv '+(budPct>90?'red':budPct>70?'yellow':'')+'">'+budPct+'%</div><div class="ks">'+fmt(paidOut)+' из '+fmt(totalBudget)+'</div></div>'+
+    '</div>'+
+    '<div class="card"><div class="ch"><span class="ct">Сводка по проектам</span>'+
+    '<span class="btn btn-o btn-sm" data-action="go-projects">Все проекты →</span></div>'+
+    '<div class="cb" style="padding:0"><div class="tw"><table>'+
+    '<thead><tr><th>Проект</th><th>Заказчик</th><th>Статус</th><th>Поступления</th><th>Расходы</th><th>Баланс</th><th>Исп. бюджета</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div></div></div>'+
+    '<div class="pt" style="font-size:16px;font-weight:700;margin:24px 0 14px">Проекты</div>'+
+    (function(){
+      var cards = D.projects.map(function(p) {
+        var t = projTotals(p.id);
+        var bp = p.budget ? Math.min((t.exp/p.budget*100),100).toFixed(0) : 0;
+        var barColor = bp > 90 ? 'var(--red)' : bp > 70 ? 'var(--yellow)' : 'var(--accent)';
+        return '<div class="pcard" data-action="go-budget" data-pid="'+p.id+'" style="cursor:pointer">'+
+          '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:3px">'+
+            '<div class="pn">'+p.name+'</div>'+
+            sbadge(p.status)+
+          '</div>'+
+          '<div class="pm">'+p.client+'</div>'+
+          '<div class="ps">'+
+            '<div><div class="psl">Поступления</div><div class="psv green">'+fmt(t.inc)+'</div></div>'+
+            '<div><div class="psl">Расходы</div><div class="psv red">'+fmt(t.exp)+'</div></div>'+
+            '<div><div class="psl">Баланс</div><div class="psv" style="color:'+(t.bal>=0?'var(--green)':'var(--red)')+'">'+fmt(t.bal)+'</div></div>'+
+          '</div>'+
+          '<div style="margin-top:12px">'+
+            '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">'+
+              '<span>Бюджет: '+fmt(p.budget)+'</span><span>'+bp+'%</span>'+
+            '</div>'+
+            '<div class="pb"><div class="pf" style="width:'+bp+'%;background:'+barColor+'"></div></div>'+
+          '</div>'+
+          '<div style="margin-top:8px;font-size:11px;color:var(--muted)">'+fdate(p.start)+' — '+fdate(p.end)+'</div>'+
+        '</div>';
+      }).join('');
+      return '<div class="pc">'+cards+'</div>';
+    })();
+}
+
+// ── ПРОЕКТЫ ───────────────────────────────────────────────────────
+function renderProjects() {
+  var cards = D.projects.map(function(p) {
+    var t = projTotals(p.id);
+    var bp = p.budget ? Math.min(t.exp/p.budget*100,100).toFixed(0) : 0;
+    var barColor = bp > 90 ? 'var(--red)' : bp > 70 ? 'var(--yellow)' : 'var(--accent)';
+    return '<div class="pcard" data-action="go-budget" data-pid="'+p.id+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:3px">'+
+      '<div class="pn">'+p.name+'</div>'+
+      '<div style="display:flex;gap:5px">'+
+      '<span class="ib" data-action="edit-proj" data-pid="'+p.id+'" style="z-index:2">✏️</span>'+
+      '<span class="ib" data-action="del-proj" data-pid="'+p.id+'" style="z-index:2">🗑️</span>'+
+      '</div></div>'+
+      '<div class="pm">'+(p.client||'Заказчик не указан')+' · '+sbadge(p.status)+'</div>'+
+      '<div class="ps">'+
+      '<div><div class="psl">Выручка</div><div class="psv green">'+fmt(t.inc)+'</div></div>'+
+      '<div><div class="psl">Расходы</div><div class="psv red">'+fmt(t.exp)+'</div></div>'+
+      '<div><div class="psl">Баланс</div><div class="psv" style="color:'+(t.bal>=0?'var(--green)':'var(--red)')+'">'+fmt(t.bal)+'</div></div>'+
+      '</div>'+
+      '<div style="margin-top:12px">'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">'+
+      '<span>Бюджет: '+fmt(p.budget)+'</span><span>'+bp+'%</span></div>'+
+      '<div class="pb"><div class="pf" style="width:'+bp+'%;background:'+barColor+'"></div></div></div>'+
+      '<div style="margin-top:8px;font-size:11px;color:var(--muted)">'+fdate(p.start)+' — '+fdate(p.end)+'</div>'+
+      '</div>';
+  }).join('');
+  return '<div class="ph"><div class="pt">Проекты</div>'+
+    '<span class="btn btn-p" data-action="open-proj">+ Новый проект</span></div>'+
+    '<div class="pc">'+cards+'</div>';
+}
+
+// ── ПЛАТЕЖИ ───────────────────────────────────────────────────────
+function renderPayments() {
+  var pays = D.payments.filter(function(p) {
+    if (F.proj && p.proj !== F.proj) return false;
+    if (F.type && p.type !== F.type) return false;
+    if (F.stat && p.stat !== F.stat) return false;
+    return true;
+  }).sort(function(a,b){ return b.date.localeCompare(a.date); });
+
+  var projOpts = '<option value="">Все проекты</option>' +
+    D.projects.map(function(p){ return '<option value="'+p.id+'" '+(F.proj===p.id?'selected':'')+'>'+p.name+'</option>'; }).join('');
+
+  var rows = pays.length ? pays.map(function(p) {
+    var pr = getProj(p.proj);
+    var cat = getCat(p.cat);
+    var catColor = COLORS[cat.grp] || '#999';
+    return '<tr>'+
+      '<td class="tm">'+fdate(p.date)+'</td>'+
+      '<td class="tb">'+(pr?pr.name:'—')+'</td>'+
+      '<td><span style="color:'+catColor+'">'+cat.name+'</span></td>'+
+      '<td class="tm">'+(p.cont||'—')+'</td>'+
+      '<td>'+(p.type==='in'?'<span class="green">▲ Приход</span>':'<span class="red">▼ Расход</span>')+'</td>'+
+      '<td class="tb" style="color:'+(p.type==='in'?'var(--green)':'var(--red)')+'">'+fmt(p.amount)+'</td>'+
+      '<td>'+sbadge(p.stat)+'</td>'+
+      '<td><span class="ib" data-action="edit-pay" data-id="'+p.id+'">✏️</span> '+
+      '<span class="ib" data-action="del-pay" data-id="'+p.id+'">🗑️</span></td>'+
+      '</tr>';
+  }).join('') : '<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔍</div><p>Платежей не найдено</p></div></td></tr>';
+
+  var totIn = pays.filter(function(p){return p.type==='in';}).reduce(function(s,p){return s+p.amount;},0);
+  var totOut = pays.filter(function(p){return p.type==='out';}).reduce(function(s,p){return s+p.amount;},0);
+  var totRow = pays.length ? '<tr class="tr-tot"><td colspan="5">ИТОГО</td><td>'+fmt(totIn)+' / '+fmt(totOut)+'</td><td colspan="2">прих. / расх.</td></tr>' : '';
+
+  return '<div class="ph"><div class="pt">Платежи <span>'+pays.length+' записей</span></div>'+
+    '<span class="btn btn-p" data-action="open-pay">+ Платёж</span></div>'+
+    '<div class="fil">'+
+    '<label>Проект:</label><select id="fil-proj">'+projOpts+'</select>'+
+    '<label>Тип:</label><select id="fil-type"><option value="">Все</option>'+
+    '<option value="in" '+(F.type==='in'?'selected':'')+'>Поступления</option>'+
+    '<option value="out" '+(F.type==='out'?'selected':'')+'>Расходы</option></select>'+
+    '<label>Статус:</label><select id="fil-stat"><option value="">Все</option>'+
+    '<option value="plan" '+(F.stat==='plan'?'selected':'')+'>Плановые</option>'+
+    '<option value="approved" '+(F.stat==='approved'?'selected':'')+'>Согласованные</option>'+
+    '<option value="paid" '+(F.stat==='paid'?'selected':'')+'>Оплаченные</option></select>'+
+    '<span class="btn btn-o btn-sm" data-action="reset-fil">Сброс</span>'+
+    '</div>'+
+    '<div class="card"><div class="cb" style="padding:0"><div class="tw">'+
+    '<table><thead><tr><th>Дата</th><th>Проект</th><th>Статья</th><th>Контрагент</th><th>Тип</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+totRow+'</table></div></div></div>';
+}
+
+// ── БЮДЖЕТ ────────────────────────────────────────────────────────
+function getProjectPeriods(startStr, endStr) {
+  var start = startStr ? new Date(startStr) : new Date();
+  var end = endStr ? new Date(endStr) : new Date(start.getFullYear(), start.getMonth()+5, 1);
+  if (start > end) { var t = start; start = end; end = t; }
+  var cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  var periods = [];
+  while (cur <= end) {
+    periods.push({
+      key: cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'),
+      label: cur.toLocaleString('ru-RU',{month:'short',year:'2-digit'})
+    });
+    cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+  }
+  return periods;
+}
+
+function ensureProjectPlan(pid) {
+  if (!D.projectPlans) D.projectPlans = {};
+  if (!D.projectPlans[pid]) D.projectPlans[pid] = {};
+  return D.projectPlans[pid];
+}
+
+function getDefaultPlanSections() {
+  return [
+    {id:'income_main', name:'Поступления по договору', type:'in'},
+    {id:'income_adv', name:'Авансы', type:'in'},
+    {id:'mat', name:'Материалы и конструкции', type:'out'},
+    {id:'sub', name:'Субподрядные работы', type:'out'},
+    {id:'labor', name:'Оплата труда рабочих', type:'out'},
+    {id:'mech', name:'Механизмы и спецтехника', type:'out'},
+    {id:'transp', name:'Транспортные расходы', type:'out'},
+    {id:'other', name:'Прочие прямые затраты', type:'out'},
+    {id:'salary', name:'Зарплата ИТР / офис', type:'out'},
+    {id:'rent', name:'Аренда офиса / склада', type:'out'},
+    {id:'admin', name:'Административные расходы', type:'out'},
+    {id:'tax', name:'Налоги и взносы', type:'out'}
+  ];
+}
+
+function renderProjectBudgetPlanner(pid, startStr, endStr) {
+  var periods = getProjectPeriods(startStr, endStr);
+  var plan = ensureProjectPlan(pid);
+  var sections = getDefaultPlanSections();
+  var head = periods.map(function(p){ return '<th style="text-align:right;min-width:110px">'+p.label+'</th>'; }).join('');
+  var body = '';
+  var totalByPeriodIn = {}, totalByPeriodOut = {};
+  periods.forEach(function(p){ totalByPeriodIn[p.key]=0; totalByPeriodOut[p.key]=0; });
+  var grandIn = 0, grandOut = 0;
+
+  sections.forEach(function(sec){
+    var rowTotal = 0;
+    var cols = periods.map(function(p){
+      var v = (plan[sec.id] && plan[sec.id][p.key]) ? Number(plan[sec.id][p.key]) : 0;
+      rowTotal += v;
+      if (sec.type==='in') totalByPeriodIn[p.key]+=v; else totalByPeriodOut[p.key]+=v;
+      return '<td style="padding:6px 8px"><input type="number" min="0" step="1" value="'+(v||'')+'" class="proj-plan-input" data-sec="'+sec.id+'" data-period="'+p.key+'" style="width:100%;text-align:right"></td>';
+    }).join('');
+    if (sec.type==='in') grandIn += rowTotal; else grandOut += rowTotal;
+    body += '<tr>'+
+      '<td class="tb">'+sec.name+'</td>'+
+      '<td>'+(sec.type==='in'?'<span class="green">Поступления</span>':'<span class="red">Выплаты</span>')+'</td>'+
+      cols+
+      '<td class="tb" style="text-align:right;color:'+(sec.type==='in'?'var(--green)':'var(--red)')+'">'+fmt(rowTotal)+'</td>'+
+    '</tr>';
+  });
+
+  var footCols = periods.map(function(p){
+    return '<td style="text-align:right;font-size:12px">'+fmt(totalByPeriodIn[p.key])+' / '+fmt(totalByPeriodOut[p.key])+'</td>';
+  }).join('');
+
+  return '<div class="card" style="margin-bottom:0">'+
+    '<div class="ch"><span class="ct">Бюджет проекта — помесячный план</span></div>'+
+    '<div class="cb" style="padding:0"><div class="tw"><table>'+
+    '<thead><tr><th style="min-width:220px">Статья</th><th style="min-width:110px">Тип</th>'+head+'<th style="text-align:right;min-width:130px">Итого</th></tr></thead>'+
+    '<tbody>'+body+
+    '<tr class="tr-tot"><td colspan="2">ИТОГО ПО МЕСЯЦАМ</td>'+footCols+'<td style="text-align:right">'+fmt(grandIn)+' / '+fmt(grandOut)+'</td></tr>'+
+    '</tbody></table></div></div>'+
+    '<div class="cb" style="border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:12px">'+
+      '<div class="kc" style="margin:0"><div class="kl">Общие поступления</div><div class="kv green" style="font-size:18px">'+fmt(grandIn)+'</div></div>'+
+      '<div class="kc" style="margin:0"><div class="kl">Общие затраты</div><div class="kv red" style="font-size:18px">'+fmt(grandOut)+'</div></div>'+
+      '<div class="kc" style="margin:0"><div class="kl">Финрезультат</div><div class="kv" style="font-size:18px;color:'+((grandIn-grandOut)>=0?'var(--green)':'var(--red)')+'">'+fmt(grandIn-grandOut)+'</div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+function refreshProjectBudgetPlanner() {
+  var wrap = document.getElementById('proj-budget-wrap');
+  if (!wrap || wrap.style.display === 'none') return;
+  var pid = window.TMP_PROJECT_ID || EDIT_PROJ || '__new_project__';
+  wrap.innerHTML = renderProjectBudgetPlanner(pid, document.getElementById('f-pstart').value, document.getElementById('f-pend').value);
+}
+
+function renderBudget() {
+  if (!F.proj && D.projects.length) F.proj = D.projects[0].id;
+  if (!window.BUD_MODE) window.BUD_MODE = 'month';
+  var pid = F.proj;
+  var pr = getProj(pid);
+  if (!pr) return '<div class="empty"><div class="empty-icon">📋</div><p>Нет проектов</p></div>';
+
+  var SECTIONS = [
+    {id:'pos', name:'ПОС', label:'Проект организации строительства'},
+    {id:'kr',  name:'КР',  label:'Конструктивные решения'},
+    {id:'ar',  name:'АР',  label:'Архитектурные решения'},
+    {id:'zos', name:'ЗОС', label:'Заключение о соответствии'}
+  ];
+
+  var pstart = pr.start ? new Date(pr.start) : new Date();
+  var pend   = pr.end   ? new Date(pr.end)   : new Date(pstart.getFullYear(), pstart.getMonth()+6, 1);
+  var periods = [];
+
+  if (BUD_MODE === 'month') {
+    var cur = new Date(pstart.getFullYear(), pstart.getMonth(), 1);
+    while (cur <= pend) {
+      periods.push({
+        key: cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'),
+        label: cur.toLocaleString('ru-RU',{month:'short',year:'2-digit'})
+      });
+      cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+    }
+  } else {
+    var cur = new Date(pstart);
+    var day = cur.getDay();
+    cur.setDate(cur.getDate() - (day===0?6:day-1));
+    var wn = 1;
+    while (cur <= pend) {
+      var y=cur.getFullYear(),m=cur.getMonth(),d=cur.getDate();
+      periods.push({key:y+'-W'+String(wn).padStart(2,'0'), label:'Нед '+wn, from:new Date(cur), to:new Date(y,m,d+6)});
+      cur=new Date(y,m,d+7); wn++;
+    }
+  }
+
+  function inPeriod(p, periodKey) {
+    if (!p.date) return false;
+    if (BUD_MODE==='month') return p.date.startsWith(periodKey);
+    var per = periods.find(function(x){return x.key===periodKey;});
+    if (!per) return false;
+    var pd = new Date(p.date);
+    return pd >= per.from && pd <= per.to;
+  }
+
+  function factIn(secId, periodKey) {
+    return D.payments.filter(function(p){
+      return p.proj===pid && p.type==='in' && (p.stat==='paid'||p.stat==='approved') && inPeriod(p,periodKey);
+    }).reduce(function(s,p){return s+Number(p.amount);},0);
+  }
+
+  function factOut(secId, periodKey) {
+    return D.payments.filter(function(p){
+      return p.proj===pid && p.type==='out' && (p.stat==='paid'||p.stat==='approved') && inPeriod(p,periodKey);
+    }).reduce(function(s,p){return s+Number(p.amount);},0);
+  }
+
+  function planIn(secId, periodKey) {
+    return D.payments.filter(function(p){
+      return p.proj===pid && p.type==='in' && p.stat==='plan' && inPeriod(p,periodKey);
+    }).reduce(function(s,p){return s+Number(p.amount);},0);
+  }
+
+  function planOut(secId, periodKey) {
+    return D.payments.filter(function(p){
+      return p.proj===pid && p.type==='out' && p.stat==='plan' && inPeriod(p,periodKey);
+    }).reduce(function(s,p){return s+Number(p.amount);},0);
+  }
+
+  function getBudgetIn(secId) {
+    var l = D.budgetLines.find(function(x){return x.proj===pid && x.cat==='inrev';});
+    return l ? Number(l.plan)/SECTIONS.length : 0;
+  }
+
+  function getBudgetOut(secId) {
+    var total = D.budgetLines.filter(function(x){return x.proj===pid;})
+      .reduce(function(s,x){return s+Number(x.plan);},0);
+    return total/SECTIONS.length;
+  }
+
+  var projOpts = D.projects.map(function(p){
+    return '<option value="'+p.id+'" '+(pid===p.id?'selected':'')+'>'+p.name+'</option>';
+  }).join('');
+
+  // Заголовки периодов — каждый разбит на план/факт
+  var periodCols = periods.map(function(p){
+    return '<th colspan="2" style="text-align:center;min-width:120px;font-size:11px;border-left:1px solid var(--border)">'+p.label+'</th>';
+  }).join('');
+
+  var periodSubCols = periods.map(function(){
+    return '<th style="text-align:right;font-size:10px;color:var(--muted);min-width:60px;border-left:1px solid var(--border)">План</th>'+
+           '<th style="text-align:right;font-size:10px;color:var(--muted);min-width:60px">Факт</th>';
+  }).join('');
+
+  var tbody = '';
+  var totBudIn=0, totBudOut=0, totFactIn=0, totFactOut=0;
+
+  SECTIONS.forEach(function(sec) {
+    var budIn  = getBudgetIn(sec.id);
+    var budOut = getBudgetOut(sec.id);
+    var margin = budIn > 0 ? ((budIn - budOut) / budIn * 100).toFixed(1) : '—';
+    totBudIn+=budIn; totBudOut+=budOut;
+
+    var totalFactIn=0, totalFactOut=0;
+
+    // Строка-заголовок секции
+    tbody += '<tr style="background:var(--card2)">'+
+      '<td colspan="'+(4+periods.length*2)+'" style="font-weight:700;color:var(--accent);padding:8px 12px">'+
+        sec.name+' — '+sec.label+
+      '</td></tr>';
+
+    // Строка поступлений
+    var inCols = periods.map(function(p){
+      var pl = planIn(sec.id, p.key);
+      var fc = factIn(sec.id, p.key);
+      totalFactIn += fc;
+      return '<td style="text-align:right;color:var(--muted);font-size:12px;border-left:1px solid var(--border)">'+(pl?fmt(pl):'—')+'</td>'+
+             '<td style="text-align:right;color:var(--green);font-size:12px">'+(fc?fmt(fc):'—')+'</td>';
+    }).join('');
+    totFactIn += totalFactIn;
+
+    tbody += '<tr>'+
+      '<td style="padding-left:24px;color:var(--green)">&#9650; Поступления</td>'+
+      '<td style="text-align:right;color:var(--green)">'+fmt(budIn)+'</td>'+
+      '<td style="text-align:center;color:var(--green)">'+margin+(margin!=='—'?'%':'')+'</td>'+
+      '<td style="text-align:right;color:var(--green)">'+fmt(totalFactIn)+'</td>'+
+      inCols+
+    '</tr>';
+
+    // Строка выплат
+    var outCols = periods.map(function(p){
+      var pl = planOut(sec.id, p.key);
+      var fc = factOut(sec.id, p.key);
+      totalFactOut += fc;
+      return '<td style="text-align:right;color:var(--muted);font-size:12px;border-left:1px solid var(--border)">'+(pl?fmt(pl):'—')+'</td>'+
+             '<td style="text-align:right;color:var(--red);font-size:12px">'+(fc?fmt(fc):'—')+'</td>';
+    }).join('');
+    totFactOut += totalFactOut;
+
+    tbody += '<tr>'+
+      '<td style="padding-left:24px;color:var(--red)">&#9660; Выплаты</td>'+
+      '<td style="text-align:right;color:var(--red)">'+fmt(budOut)+'</td>'+
+      '<td></td>'+
+      '<td style="text-align:right;color:var(--red)">'+fmt(totalFactOut)+'</td>'+
+      outCols+
+    '</tr>';
+  });
+
+  var totMargin = totBudIn > 0 ? ((totBudIn-totBudOut)/totBudIn*100).toFixed(1)+'%' : '—';
+  tbody += '<tr class="tr-tot">'+
+    '<td>ИТОГО</td>'+
+    '<td style="text-align:right">'+fmt(totBudIn)+' / '+fmt(totBudOut)+'</td>'+
+    '<td style="text-align:center">'+totMargin+'</td>'+
+    '<td style="text-align:right">'+fmt(totFactIn)+' / '+fmt(totFactOut)+'</td>'+
+    periods.map(function(){return '<td style="border-left:1px solid var(--border)"></td><td></td>';}).join('')+
+  '</tr>';
+
+  return '<div class="ph">'+
+    '<div class="pt">Бюджеты</div>'+
+    '<span class="btn btn-p" id="btn-create-budget" onclick="openCreateBudgetModal()" style="margin-left:auto">+ Создать бюджет</span>'+
+  '</div>'+
+  '<div class="fil">'+
+    'abel>Проект:</label><select id="bud-proj">'+projOpts+'</select>'+
+    '<div style="display:flex;gap:4px;margin-left:16px">'+
+    '<button id="bud-mode-month" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:'+(BUD_MODE==="month"?"var(--accent)":"var(--card2)")+';color:'+(BUD_MODE==="month"?"#fff":"var(--muted)")+'">По месяцам</button>'+
+    '<button id="bud-mode-week" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;background:'+(BUD_MODE==="week"?"var(--accent)":"var(--card2)")+';color:'+(BUD_MODE==="week"?"#fff":"var(--muted)")+'">По неделям</button>'+
+    '</div>'+
+  '</div>'+
+  '<div class="card"><div class="cb" style="padding:0"><div class="tw"><table>'+
+  '<thead>'+
+    '<tr>'+
+      '<th rowspan="2" style="min-width:160px">Статья</th>'+
+      '<th rowspan="2" style="text-align:right;min-width:120px">Бюджет</th>'+
+      '<th rowspan="2" style="text-align:center;min-width:70px">Маржа</th>'+
+      '<th rowspan="2" style="text-align:right;min-width:100px">Итог факт</th>'+
+      periodCols+
+    '</tr>'+
+    '<tr>'+periodSubCols+'</tr>'+
+  '</thead>'+
+  '<tbody>'+tbody+'</tbody>'+
+  '</table></div></div></div>';
+}
+
+// ── КАЛЕНДАРЬ ─────────────────────────────────────────────────────
+function renderCalendar() {
+  var now = new Date(), yr = now.getFullYear(), mo = now.getMonth();
+  var dim = new Date(yr, mo+1, 0).getDate();
+  var fd  = new Date(yr, mo, 1).getDay();
+  var ms  = yr + '-' + String(mo+1).padStart(2,'0');
+  var mname = new Date(yr, mo).toLocaleString('ru-RU', {month:'long', year:'numeric'});
+
+  var activeIds = Object.keys(CAL_FILTER || {});
+  function projAllowed(pid) {
+    if (CAL_FILTER.hasOwnProperty(pid)) return CAL_FILTER[pid];
+    return true;
+  }
+
+  var byDay = {};
+  D.payments.forEach(function(p) {
+    if (!p.date || !p.date.startsWith(ms)) return;
+    if (!projAllowed(p.proj)) return;
+    var d = parseInt(p.date.split('-')[2], 10);
+    if (!byDay[d]) byDay[d] = [];
+    byDay[d].push(p);
+  });
+
+  var today = now.getDate();
+  var cells = '';
+  var off = fd === 0 ? 6 : fd - 1;
+  for (var i = 0; i < off; i++) cells += '<div></div>';
+  for (var d = 1; d <= dim; d++) {
+    var pl = byDay[d] || [];
+    var isT = d === today;
+    cells += '<div style="background:'+(isT?'rgba(79,142,247,.15)':'var(--card2)')+
+             ';border:1px solid '+(isT?'var(--accent)':'var(--border)')+
+             ';border-radius:8px;padding:5px 7px;min-height:58px">'+
+      '<div style="font-size:12px;font-weight:'+(isT?700:400)+';color:'+
+        (isT?'var(--accent)':'var(--muted)')+';margin-bottom:3px">'+d+'</div>'+
+      pl.slice(0,2).map(function(p){ return '<div style="font-size:10px;color:'+(p.type==='in'?'var(--green)':'var(--red)')+'">'+
+               (p.type==='in'?'▲':'▼')+' '+(p.amount/1000).toFixed(0)+'т</div>'; }).join('')+
+      (pl.length>2?'<div style="font-size:10px;color:var(--muted)">+'+(pl.length-2)+'</div>':'')+
+    '</div>';
+  }
+
+  var upcoming = D.payments.filter(function(p){
+      if (!p.date || p.date < now.toISOString().slice(0,10)) return false;
+      if (p.stat === 'paid') return false;
+      if (!projAllowed(p.proj)) return false;
+      return true;
+    })
+    .sort(function(a,b){ return a.date.localeCompare(b.date); })
+    .slice(0,10);
+
+  var ulist = upcoming.length ? upcoming.map(function(p) {
+    var pr  = getProj(p.proj), cat = getCat(p.cat);
+    return '<div style="padding:11px 16px;border-bottom:1px solid var(--border)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:start">'+
+        '<div><div style="font-size:12px;font-weight:600">'+cat.name+'</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+
+          (pr?pr.name:'—')+' · '+(p.cont||'—')+
+        '</div></div>'+
+        '<div style="text-align:right">'+
+          '<div style="font-weight:700;color:'+(p.type==='in'?'var(--green)':'var(--red)')+'">'+fmt(p.amount)+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">'+fdate(p.date)+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="margin-top:5px">'+sbadge(p.stat)+'</div></div>';
+  }).join('') : '<div class="empty" style="padding:30px"><div class="empty-icon">✅</div><p>Нет предстоящих платежей</p></div>';
+
+  var projToggles = D.projects.filter(function(p){return p.status!=="done";}).map(function(p){
+    var on = !CAL_FILTER.hasOwnProperty(p.id) || CAL_FILTER[p.id];
+    return '<label style="display:flex;align-items:center;gap:4px;font-size:12px;margin-bottom:6px;cursor:pointer">'+
+      '<input type="checkbox" class="cal-proj" data-pid="'+p.id+'" '+(on?'checked':'')+' style="width:14px;height:14px;margin:0;cursor:pointer"> '+p.name+
+    '</label>';
+  }).join('');
+
+  return '<div class="ph"><div class="pt">Платёжный календарь <span>'+mname+'</span></div></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 320px;gap:18px">'+
+      '<div class="card"><div class="cb">'+
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px">'+
+        ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(function(d){ return '<div style="text-align:center;font-size:11px;color:var(--muted);padding:3px">'+d+'</div>'; }).join('')+
+        '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">'+cells+'</div>'+
+        '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">'+
+          '<div style="margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Фильтр проектов</div>'+
+          projToggles+
+        '</div>'+
+      '</div></div>'+
+      '<div class="card"><div class="ch"><span class="ct">Ближайшие платежи</span></div>'+
+        '<div style="max-height:500px;overflow-y:auto">'+ulist+'</div>'+
+      '</div>'+
+    '</div>';
+}
+// ── МОДАЛКИ ───────────────────────────────────────────────────────
+function openProj(id) {
+  EDIT_PROJ = id || null;
+  TMP_BUDGET={};
+  var bw=document.getElementById('proj-budget-wrap');if(bw)bw.style.display='none';
+  var pt=document.getElementById('proj-totals');if(pt)pt.style.display='none';
+  document.getElementById('m-proj-title').textContent = id ? 'Редактировать проект' : 'Новый проект';
+  var p = id ? (getProj(id) || {}) : {};
+  document.getElementById('f-pname').value     = p.name || '';
+  document.getElementById('f-pstart').value    = p.start || '';
+  document.getElementById('f-pend').value      = p.end || '';
+  document.getElementById('f-pcontract').value = p.contract || '';
+  document.getElementById('f-pbudget').value   = p.budget || '';
+  document.getElementById('f-pclient').value   = p.client || '';
+  document.getElementById('f-pstatus').value   = p.status || 'active';
+  window.TMP_PROJECT_ID = id || '__new_project__';
+  var wrap = document.getElementById('proj-budget-wrap');
+  if (wrap) { wrap.style.display='none'; wrap.innerHTML=''; }
+  document.getElementById('m-proj').classList.add('show');
+}
+
+function openPay(id) {
+  EDIT_PAY = id || null;
+  document.getElementById('m-pay-title').textContent = id ? 'Редактировать платёж' : 'Новый платёж';
+  var ps = document.getElementById('f-pprojid');
+  ps.innerHTML = D.projects.map(function(p){ return '<option value="'+p.id+'">'+p.name+'</option>'; }).join('');
+  var cs = document.getElementById('f-pcat');
+  cs.innerHTML = CATS.map(function(c){ return '<option value="'+c.id+'">'+c.name+' ('+c.grp+')</option>'; }).join('');
+  if (id) {
+    var p = D.payments.find(function(x){ return x.id === id; });
+    if (p) {
+      document.getElementById('f-ptype').value   = p.type || 'out';
+      ps.value = p.proj; cs.value = p.cat;
+      document.getElementById('f-pamount').value = p.amount || '';
+      document.getElementById('f-pdate').value   = p.date || '';
+      document.getElementById('f-pcont').value   = p.cont || '';
+      document.getElementById('f-pdesc').value   = p.desc || '';
+      document.getElementById('f-pstat').value   = p.stat || 'plan';
+      document.getElementById('f-pform').value   = p.form || 'Безналичный';
+    }
+  } else {
+    document.getElementById('f-ptype').value   = 'out';
+    document.getElementById('f-pamount').value = '';
+    document.getElementById('f-pdate').value   = new Date().toISOString().slice(0,10);
+    document.getElementById('f-pcont').value   = '';
+    document.getElementById('f-pdesc').value   = '';
+    document.getElementById('f-pstat').value   = 'plan';
+  }
+  document.getElementById('m-pay').classList.add('show');
+}
+
+function closeProj() { document.getElementById('m-proj').classList.remove('show'); }
+function closePay()  { document.getElementById('m-pay').classList.remove('show'); }
+
+function saveProj() {
+  var name = document.getElementById('f-pname').value.trim();
+  var start = document.getElementById('f-pstart').value;
+  var end = document.getElementById('f-pend').value;
+  if (!name) { alert('Укажите название проекта'); return; }
+  if (!start || !end) { alert('Укажите сроки начала и окончания проекта'); return; }
+  var data = {
+    name: name,
+    client:   document.getElementById('f-pclient').value.trim(),
+    start:    start,
+    end:      end,
+    contract: 0,
+    budget:   0,
+    status:   document.getElementById('f-pstatus').value
+  };
+  var pid;
+  if (EDIT_PROJ) {
+    var p = getProj(EDIT_PROJ);
+    if (p) Object.assign(p, data);
+    pid = EDIT_PROJ;
+  } else {
+    data.id = uid();
+    D.projects.push(data);
+    pid = data.id;
+  }
+
+  if (!D.projectPlans) D.projectPlans = {};
+  var tmpId = window.TMP_PROJECT_ID || '__new_project__';
+  if (D.projectPlans[tmpId] && tmpId !== pid) {
+    D.projectPlans[pid] = JSON.parse(JSON.stringify(D.projectPlans[tmpId]));
+    delete D.projectPlans[tmpId];
+  }
+
+  var plan = ensureProjectPlan(pid);
+  var sections = getDefaultPlanSections();
+  var periods = getProjectPeriods(start, end);
+  var totalIn = 0, totalOut = 0;
+  sections.forEach(function(sec){
+    periods.forEach(function(per){
+      var v = (plan[sec.id] && plan[sec.id][per.key]) ? Number(plan[sec.id][per.key]) : 0;
+      if (sec.type==='in') totalIn += v; else totalOut += v;
+    });
+  });
+
+  var project = getProj(pid);
+  if (project) {
+    project.contract = totalIn;
+    project.budget = totalOut;
+  }
+
+  D.budgetLines = D.budgetLines.filter(function(x){ return x.proj !== pid; });
+  sections.filter(function(sec){ return sec.type==='out'; }).forEach(function(sec){
+    var secTotal = 0;
+    periods.forEach(function(per){ secTotal += (plan[sec.id] && plan[sec.id][per.key]) ? Number(plan[sec.id][per.key]) : 0; });
+    if (secTotal > 0) D.budgetLines.push({proj: pid, cat: sec.id, plan: secTotal});
+  });
+  if (totalIn > 0) D.budgetLines.push({proj: pid, cat: 'inrev', plan: totalIn});
+
+  save(); closeProj(); render();
+}
+
+function savePay() {
+  var amount = +document.getElementById('f-pamount').value;
+  var date   = document.getElementById('f-pdate').value;
+  if (!amount || !date) { alert('Укажите сумму и дату'); return; }
+  var data = {
+    type:   document.getElementById('f-ptype').value,
+    proj:   document.getElementById('f-pprojid').value,
+    cat:    document.getElementById('f-pcat').value,
+    amount: amount, date: date,
+    cont:   document.getElementById('f-pcont').value.trim(),
+    desc:   document.getElementById('f-pdesc').value.trim(),
+    stat:   document.getElementById('f-pstat').value,
+    form:   document.getElementById('f-pform').value
+  };
+  if (EDIT_PAY) {
+    var p = D.payments.find(function(x){ return x.id === EDIT_PAY; });
+    if (p) Object.assign(p, data);
+  } else {
+    data.id = uid();
+    D.payments.push(data);
+  }
+  save(); closePay(); render();
+}
+
+// ── ПРИВЯЗКА СОБЫТИЙ ─────────────────────────────────────────────
+function bindPageEvents() {
+  // Фильтры платежей
+  var fp = document.getElementById('fil-proj');
+  if (fp) fp.addEventListener('change', function(){ F.proj = this.value; render(); });
+  var ft = document.getElementById('fil-type');
+  if (ft) ft.addEventListener('change', function(){ F.type = this.value; render(); });
+  var fs = document.getElementById('fil-stat');
+  if (fs) fs.addEventListener('change', function(){ F.stat = this.value; render(); });
+  // Фильтр бюджета
+  var bp = document.getElementById('bud-proj');
+  if (bp) bp.addEventListener('change', function(){ F.proj = this.value; render(); });
+  var bmM = document.getElementById('bud-mode-month');
+  if (bmM) bmM.addEventListener('click', function(){ window.BUD_MODE='month'; render(); });
+  var bmW = document.getElementById('bud-mode-week');
+  if (bmW) bmW.addEventListener('click', function(){ window.BUD_MODE='week'; render(); });
+  var bm = document.getElementById('bud-mode');
+  if (bm) bm.addEventListener('change', function(){ window.BUD_MODE = this.value; render(); });
+}
+
+// ── ГЛОБАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ─────────────────────────────────
+document.addEventListener('click', function(e) {
+  var el = e.target;
+  // Ищем ближайший элемент с data-action
+  while (el && el !== document) {
+    var action = el.getAttribute('data-action');
+    if (action) {
+      e.preventDefault();
+      e.stopPropagation();
+      var pid = el.getAttribute('data-pid');
+      var id  = el.getAttribute('data-id');
+      if (action === 'go-dashboard') go('dashboard');
+      else if (action === 'go-projects') go('projects');
+      else if (action === 'go-payments') go('payments');
+      else if (action === 'go-budget')   { if(pid) F.proj = pid; go('budget'); }
+      else if (action === 'go-calendar') go('calendar');
+      else if (action === 'open-proj')   openProj(null);
+      else if (action === 'open-pay')    openPay(null);
+      else if (action === 'edit-proj')   { if(pid) openProj(pid); }
+      else if (action === 'edit-pay')    { if(id)  openPay(id); }
+      else if (action === 'del-proj') {
+        if (pid && confirm('Удалить проект и все его платежи?')) {
+          D.projects    = D.projects.filter(function(p){ return p.id!==pid; });
+          D.payments    = D.payments.filter(function(p){ return p.proj!==pid; });
+          D.budgetLines = D.budgetLines.filter(function(b){ return b.proj!==pid; });
+          save(); render();
+        }
+      }
+      else if (action === 'del-pay') {
+        if (id && confirm('Удалить платёж?')) {
+          D.payments = D.payments.filter(function(p){ return p.id!==id; });
+          save(); render();
+        }
+      }
+      else if (action === 'reset-fil') { F = {proj:'',type:'',stat:''}; render(); }
+      else if (action === 'save-proj') saveProj();
+      else if (action === 'save-pay')  savePay();
+      else if (action === 'close-proj') closeProj();
+      else if (action === 'close-pay')  closePay();
+      return;
+    }
+    el = el.parentElement;
+  }
+});
+
+// Навигация через data-page
+document.querySelectorAll('.nav').forEach(function(nav) {
+  nav.addEventListener('click', function() {
+    var page = this.getAttribute('data-page');
+    if (page) go(page);
+  });
+});
+
+// Кнопка "+ Новый проект" в сайдбаре
+document.getElementById('btn-new-proj').addEventListener('click', function() { openProj(null); });
+
+// Кнопки модалок
+document.getElementById('close-proj').addEventListener('click', closeProj);
+document.getElementById('cancel-proj').addEventListener('click', closeProj);
+document.getElementById('save-proj').addEventListener('click', saveProj);
+document.getElementById('btn-show-budget').addEventListener('click', function(){
+  var wrap = document.getElementById('proj-budget-wrap');
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    buildProjBudgetTable();
+    this.textContent = '▲ Бюджет проекта';
+  } else {
+    wrap.style.display = 'none';
+    this.textContent = '▼ Бюджет проекта';
+  }
+});
+document.getElementById('close-pay').addEventListener('click', closePay);
+document.getElementById('cancel-pay').addEventListener('click', closePay);
+document.getElementById('save-pay').addEventListener('click', savePay);
+
+// Закрытие модалок по клику на фон
+document.getElementById('m-proj').addEventListener('click', function(e){ if(e.target===this) closeProj(); });
+document.getElementById('m-pay').addEventListener('click',  function(e){ if(e.target===this) closePay(); });
+
+// ── СТАРТ ────────────────────────────────────────────────────────
+render();
+
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.classList && e.target.classList.contains('cal-proj')) {
+    var pid = e.target.getAttribute('data-pid');
+    CAL_FILTER[pid] = e.target.checked;
+    var app = document.getElementById('app');
+    app.innerHTML = renderCalendar();
+    bindPageEvents();
+  }
+});
+</script>
+
+
+
+
+<script>
+(function(){
+  // Создаём модальное окно через JS
+  var modal = document.createElement('div');
+  modal.id = 'modal-create-budget';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;';
+
+  modal.innerHTML = [
+    '<div style="background:var(--card,#fff);border-radius:14px;padding:32px 28px;min-width:360px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.18);position:relative;">',
+      '<div style="font-size:17px;font-weight:700;margin-bottom:20px;color:var(--text,#111)">Создать бюджет</div>',
+
+      // Название
+      '<div style="margin-bottom:16px">',
+        '<div style="font-size:13px;font-weight:600;color:var(--muted,#888);display:block;margin-bottom:6px">Название проекта</div>',
+        '<input id="cb-name" type="text" placeholder="Введите название..." style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border,#ddd);font-size:14px;background:var(--card2,#f7f7f7);color:var(--text,#111);box-sizing:border-box;">',
+      '</div>',
+
+      // Дата начала
+      '<div style="margin-bottom:16px">',
+        '<div style="font-size:13px;font-weight:600;color:var(--muted,#888);margin-bottom:6px">Дата начала</div>',
+        '<div id="cb-start-display" style="padding:9px 12px;border-radius:8px;border:1px solid var(--border,#ddd);font-size:14px;background:var(--card2,#f7f7f7);color:var(--muted,#aaa);cursor:pointer;user-select:none;">Выбрать месяц...</div>',
+        '<div id="cb-picker-start" style="display:none;margin-top:6px;border:1px solid var(--border,#ddd);border-radius:10px;background:var(--card,#fff);padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.10);">',
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">',
+            '<button id="cb-start-prev" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--accent,#4f8ef7);">&#8592;</button>',
+            '<span id="cb-start-year" style="font-weight:700;font-size:15px;color:var(--text,#111)"></span>',
+            '<button id="cb-start-next" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--accent,#4f8ef7);">&#8594;</button>',
+          '</div>',
+          '<div id="cb-start-months" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;"></div>',
+        '</div>',
+      '</div>',
+
+      // Дата окончания
+      '<div style="margin-bottom:24px">',
+        '<div style="font-size:13px;font-weight:600;color:var(--muted,#888);margin-bottom:6px">Дата окончания</div>',
+        '<div id="cb-end-display" style="padding:9px 12px;border-radius:8px;border:1px solid var(--border,#ddd);font-size:14px;background:var(--card2,#f7f7f7);color:var(--muted,#aaa);cursor:pointer;user-select:none;">Выбрать месяц...</div>',
+        '<div id="cb-picker-end" style="display:none;margin-top:6px;border:1px solid var(--border,#ddd);border-radius:10px;background:var(--card,#fff);padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.10);">',
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">',
+            '<button id="cb-end-prev" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--accent,#4f8ef7);">&#8592;</button>',
+            '<span id="cb-end-year" style="font-weight:700;font-size:15px;color:var(--text,#111)"></span>',
+            '<button id="cb-end-next" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--accent,#4f8ef7);">&#8594;</button>',
+          '</div>',
+          '<div id="cb-end-months" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;"></div>',
+        '</div>',
+      '</div>',
+
+      // Кнопки
+      '<div style="display:flex;gap:10px;justify-content:flex-end;">',
+        '<button id="cb-cancel" style="padding:9px 22px;border-radius:8px;border:1px solid var(--border,#ddd);background:var(--card2,#f7f7f7);color:var(--muted,#888);font-size:14px;font-weight:600;cursor:pointer;">Отмена</button>',
+        '<button id="cb-fill-budget" style="padding:9px 22px;border-radius:8px;border:1px solid var(--accent,#4f8ef7);background:#f0f4ff;color:var(--accent,#4f8ef7);font-size:14px;font-weight:600;cursor:pointer;">Заполнить бюджет проекта</button>',
+        '<button id="cb-save" style="padding:9px 22px;border-radius:8px;border:none;background:var(--accent,#4f8ef7);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Создать</button>',
+      '</div>',
+    '</div>'
+  ].join('');
+
+  document.body.appendChild(modal);
+
+  var MONTHS = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  var MONTHS_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  var state = {
+    start: { year: new Date().getFullYear(), month: null },
+    end:   { year: new Date().getFullYear(), month: null }
+  };
+
+  function renderPicker(type) {
+    document.getElementById('cb-'+type+'-year').textContent = state[type].year;
+    var grid = document.getElementById('cb-'+type+'-months');
+    grid.innerHTML = '';
+    MONTHS.forEach(function(m, i) {
+      var btn = document.createElement('button');
+      btn.textContent = m;
+      var sel = state[type].month === i;
+      btn.style.cssText = 'padding:7px 4px;border-radius:7px;border:1px solid '+(sel?'var(--accent,#4f8ef7)':'var(--border,#ddd)')+';background:'+(sel?'var(--accent,#4f8ef7)':'var(--card2,#f7f7f7)')+';color:'+(sel?'#fff':'var(--text,#111)')+';font-size:13px;font-weight:600;cursor:pointer;';
+      btn.addEventListener('click', function() {
+        state[type].month = i;
+        var disp = document.getElementById('cb-'+type+'-display');
+        disp.textContent = MONTHS_FULL[i] + ' ' + state[type].year;
+        disp.style.color = 'var(--text,#111)';
+        document.getElementById('cb-picker-'+type).style.display = 'none';
+        renderPicker(type);
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  function togglePicker(type) {
+    var other = type === 'start' ? 'end' : 'start';
+    document.getElementById('cb-picker-'+other).style.display = 'none';
+    var p = document.getElementById('cb-picker-'+type);
+    if (p.style.display === 'none') { p.style.display = 'block'; renderPicker(type); }
+    else p.style.display = 'none';
+  }
+
+  document.getElementById('cb-start-display').addEventListener('click', function(){ togglePicker('start'); });
+  document.getElementById('cb-end-display').addEventListener('click',   function(){ togglePicker('end'); });
+  document.getElementById('cb-start-prev').addEventListener('click', function(){ state.start.year--; renderPicker('start'); });
+  document.getElementById('cb-start-next').addEventListener('click', function(){ state.start.year++; renderPicker('start'); });
+  document.getElementById('cb-end-prev').addEventListener('click',   function(){ state.end.year--;   renderPicker('end'); });
+  document.getElementById('cb-end-next').addEventListener('click',   function(){ state.end.year++;   renderPicker('end'); });
+
+  document.getElementById('cb-cancel').addEventListener('click', function(){ modal.style.display = 'none'; });
+  modal.addEventListener('click', function(e){ if(e.target === modal) modal.style.display = 'none'; });
+
+  document.getElementById('cb-save').addEventListener('click', function(){
+    var name = document.getElementById('cb-name').value.trim();
+    if (!name) { alert('Введите название проекта'); return; }
+    if (state.start.month === null) { alert('Выберите дату начала'); return; }
+    if (state.end.month === null)   { alert('Выберите дату окончания'); return; }
+    alert('Бюджет создан!\nПроект: '+name+'\nНачало: '+MONTHS_FULL[state.start.month]+' '+state.start.year+'\nОкончание: '+MONTHS_FULL[state.end.month]+' '+state.end.year);
+    modal.style.display = 'none';
+  });
+
+  window._cbPickerState = state;
+  window.openCreateBudgetModal = function() {
+    state.start = { year: new Date().getFullYear(), month: null };
+    state.end   = { year: new Date().getFullYear(), month: null };
+    document.getElementById('cb-name').value = '';
+    var sd = document.getElementById('cb-start-display');
+    var ed = document.getElementById('cb-end-display');
+    sd.textContent = 'Выбрать месяц...'; sd.style.color = 'var(--muted,#aaa)';
+    ed.textContent = 'Выбрать месяц...'; ed.style.color = 'var(--muted,#aaa)';
+    document.getElementById('cb-picker-start').style.display = 'none';
+    document.getElementById('cb-picker-end').style.display   = 'none';
+    modal.style.display = 'flex';
+  };
+})();
+</script>
+
+
+<script>
+(function(){
+  var MONTHS_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  var MONTHS_FULL  = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  var SECTIONS = [{id:'pos',name:'ПОС'},{id:'kr',name:'КР'},{id:'ar',name:'АР'}];
+
+  function getMonths(sy,sm,ey,em){
+    var res=[],y=sy,m=sm;
+    while(y<ey||(y===ey&&m<=em)){res.push({year:y,month:m});m++;if(m>11){m=0;y++;}}
+    return res;
+  }
+
+  function fmt(n){return n===0?'0':n.toLocaleString('ru-RU');}
+
+  function recalc(colCount){
+    var colT=new Array(colCount).fill(0);
+    var totNet=0;
+    SECTIONS.forEach(function(sec){
+      var secIn=0,secOut=0;
+      document.querySelectorAll('#modal-budget-table input[data-sec="'+sec.id+'"][data-type="in"]').forEach(function(inp,mi){
+        var v=parseFloat(inp.value)||0; secIn+=v; colT[mi]+=v;
+      });
+      document.querySelectorAll('#modal-budget-table input[data-sec="'+sec.id+'"][data-type="out"]').forEach(function(inp,mi){
+        var v=parseFloat(inp.value)||0; secOut+=v; colT[mi]-=v;
+      });
+      var ei=document.getElementById('sum-in-'+sec.id);
+      var eo=document.getElementById('sum-out-'+sec.id);
+      if(ei)ei.textContent=fmt(secIn);
+      if(eo)eo.textContent=fmt(secOut);
+      totNet+=(secIn-secOut);
+    });
+    for(var i=0;ilCount;i++){
+      var el=document.getElementById('col-total-'+i);
+      if(el){el.textContent=fmt(colT[i]);el.style.color=colT[i]>=0?'#1a7a3a':'#8b0000';}
+    }
+    var st=document.getElementById('sum-total');
+    if(st){st.textContent=fmt(totNet);st.style.color=totNet>=0?'#1a7a3a':'#8b0000';}
+  }
+
+    window.openBudgetTable=function(projName,sy,sm,ey,em){
+    var months=getMonths(sy,sm,ey,em);
+    var nc=months.length;
+    var MS=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+    var SECS=[{id:'pos',name:'ПОС'},{id:'kr',name:'КР'},{id:'ar',name:'АР'}];
+    var hS='background:#1e3a5f;color:#b8d4f8;border:1px solid #2d5080;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:10px 8px;';
+    var th='<thead><tr>';
+    th+='<th style="'+hS+'min-width:70px;position:sticky;left:0;z-index:2;text-align:center;">Статья</th>';
+    th+='<th style="'+hS+'min-width:110px;text-align:left;">Тип</th>';
+    th+='<th style="'+hS+'min-width:95px;text-align:right;">Стоимость<br>по проекту</th>';
+    months.forEach(function(m){th+='<th style="'+hS+'min-width:85px;text-align:center;">'+MS[m.month]+' '+m.year+'</th>';});
+    th+='</tr></thead>';
+    var tb='<tbody>';
+    SECS.forEach(function(sec,si){
+      var tl=si>0?'border-top:3px solid #3a6090;':'';
+      tb+='<tr>';
+      tb+='<td rowspan="2" style="'+tl+'border:1px solid #2a4a70;padding:8px;font-size:15px;font-weight:800;color:#c0d8f5;background:#162a45;position:sticky;left:0;z-index:1;text-align:center;vertical-align:middle;letter-spacing:1px;">'+sec.name+'</td>';
+      tb+='<td style="'+tl+'border:1px solid #1e4a2a;padding:6px 8px;font-size:12px;font-weight:700;color:#3ecf74;background:#0a1f12;white-space:nowrap;">&#9650; Поступления</td>';
+      tb+='<td id="sum-in-'+sec.id+'" style="'+tl+'border:1px solid #1e4a2a;padding:6px 8px;font-size:13px;font-weight:700;color:#3ecf74;text-align:right;background:#0a1f12;">0</td>';
+      months.forEach(function(m,mi){tb+='<td style="'+tl+'border:1px solid #1a3d22;background:#0a1f12;padding:3px 5px;"><input type="number" data-sec="'+sec.id+'" data-type="in" data-mi="'+mi+'" placeholder="0" style="width:74px;border:none;background:transparent;font-size:13px;color:#3ecf74;font-weight:600;text-align:right;outline:none;padding:2px 3px;box-sizing:border-box;"></td>';});
+      tb+='</tr><tr>';
+      tb+='<td style="border:1px solid #4a1e1e;padding:6px 8px;font-size:12px;font-weight:700;color:#e05555;background:#1f0a0a;white-space:nowrap;">&#9660; Выплаты</td>';
+      tb+='<td id="sum-out-'+sec.id+'" style="border:1px solid #4a1e1e;padding:6px 8px;font-size:13px;font-weight:700;color:#e05555;text-align:right;background:#1f0a0a;">0</td>';
+      months.forEach(function(m,mi){tb+='<td style="border:1px solid #3d1a1a;background:#1f0a0a;padding:3px 5px;"><input type="number" data-sec="'+sec.id+'" data-type="out" data-mi="'+mi+'" placeholder="0" style="width:74px;border:none;background:transparent;font-size:13px;color:#e05555;font-weight:600;text-align:right;outline:none;padding:2px 3px;box-sizing:border-box;"></td>';});
+      tb+='</tr>';
+    });
+    var iB='border:1px solid #3a6090;border-top:3px solid #4a80c0;';
+    tb+='<tr>';
+    tb+='<td rowspan="2" style="'+iB+'padding:8px;font-size:13px;font-weight:800;color:#b8d4f8;background:#0e1f38;position:sticky;left:0;z-index:1;text-align:center;vertical-align:middle;letter-spacing:1px;">ИТОГО</td>';
+    tb+='<td style="'+iB+'padding:6px 8px;font-size:12px;font-weight:700;color:#3ecf74;background:#0a1a2e;white-space:nowrap;">&#9650; Поступления</td>';
+    tb+='<td id="total-sum-in" style="'+iB+'padding:6px 8px;font-size:13px;font-weight:700;color:#3ecf74;text-align:right;background:#0a1a2e;">0</td>';
+    months.forEach(function(m,mi){tb+='<td id="total-col-in-'+mi+'" style="'+iB+'padding:6px 8px;font-size:13px;font-weight:700;color:#3ecf74;text-align:right;background:#0a1a2e;">0</td>';});
+    tb+='</tr><tr>';
+    tb+='<td style="'+iB+'padding:6px 8px;font-size:12px;font-weight:700;color:#e05555;background:#1a0e0e;white-space:nowrap;">&#9660; Выплаты</td>';
+    tb+='<td id="total-sum-out" style="'+iB+'padding:6px 8px;font-size:13px;font-weight:700;color:#e05555;text-align:right;background:#1a0e0e;">0</td>';
+    months.forEach(function(m,mi){tb+='<td id="total-col-out-'+mi+'" style="'+iB+'padding:6px 8px;font-size:13px;font-weight:700;color:#e05555;text-align:right;background:#1a0e0e;">0</td>';});
+    tb+='</tr>';
+    var cB='border:1px solid #5a8ad0;border-top:3px solid #6aa0f0;'; var cBg='#0a1628;';
+    tb+='<tr>';
+    tb+='<td colspan="2" style="'+cB+'padding:9px 10px;font-size:13px;font-weight:800;color:#90c0ff;background:#0a1628;position:sticky;left:0;z-index:1;letter-spacing:.5px;">&#9654; ЧИСТЫЙ ПОТОК</td>';
+    tb+='<td id="cf-total" style="'+cB+'padding:9px 8px;font-size:13px;font-weight:800;text-align:right;background:#0a1628;color:#3ecf74;">0</td>';
+    months.forEach(function(m,mi){tb+='<td id="cf-col-'+mi+'" style="'+cB+'padding:9px 8px;font-size:13px;font-weight:800;text-align:right;background:#0a1628;color:#3ecf74;">0</td>';});
+    tb+='</tr></tbody>';
+    var wrap=document.getElementById('modal-budget-table');
+    if(!wrap){wrap=document.createElement('div');wrap.id='modal-budget-table';document.body.appendChild(wrap);}
+    wrap.style.cssText='display:flex;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.65);align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 10px;box-sizing:border-box;';
+    wrap.innerHTML='<div style="background:#0d1b2e;border-radius:14px;padding:28px 24px;width:100%;max-width:1200px;box-shadow:0 8px 40px rgba(0,0,0,0.5);box-sizing:border-box;border:1px solid #2d5080;">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">'
+      +'<div style="font-size:17px;font-weight:700;color:#b8d4f8;">Бюджет проекта: '+projName+'</div>'
+      +'<button id="btn-close-bt" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6090c0;">&#10005;</button>'
+      +'</div>'
+      +'<div style="overflow-x:auto;border-radius:8px;">'
+      +'<table style="border-collapse:collapse;width:100%;">'+th+tb+'</table>'
+      +'</div>'
+      +'<div style="margin-top:16px;display:flex;justify-content:flex-end;">'
+      +'<button id="btn-save-bt" style="padding:9px 24px;border-radius:8px;border:none;background:#3a70c0;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Сохранить</button>'
+      +'</div></div>';
+    function recalc(){
+      var cI=new Array(nc).fill(0),cO=new Array(nc).fill(0),tI=0,tO=0;
+      SECS.forEach(function(sec){
+        var si=0,so=0;
+        wrap.querySelectorAll('input[data-sec="'+sec.id+'"][data-type="in"]').forEach(function(inp,mi){var v=parseFloat(inp.value)||0;si+=v;cI[mi]+=v;});
+        wrap.querySelectorAll('input[data-sec="'+sec.id+'"][data-type="out"]').forEach(function(inp,mi){var v=parseFloat(inp.value)||0;so+=v;cO[mi]+=v;});
+        tI+=si;tO+=so;
+        var ei=document.getElementById('sum-in-'+sec.id);if(ei)ei.textContent=fmt(si);
+        var eo=document.getElementById('sum-out-'+sec.id);if(eo)eo.textContent=fmt(so);
+      });
+      var tsi=document.getElementById('total-sum-in');if(tsi)tsi.textContent=fmt(tI);
+      var tso=document.getElementById('total-sum-out');if(tso)tso.textContent=fmt(tO);
+      for(var i=0;i<nc;i++){
+        var ei=document.getElementById('total-col-in-'+i);if(ei)ei.textContent=fmt(cI[i]);
+        var eo=document.getElementById('total-col-out-'+i);if(eo)eo.textContent=fmt(cO[i]);
+        var cf=cI[i]-cO[i];
+        var cfe=document.getElementById('cf-col-'+i);if(cfe){cfe.textContent=fmt(cf);cfe.style.color=cf>=0?'#3ecf74':'#e05555';}
+      }
+      var cfn=tI-tO;var cft=document.getElementById('cf-total');if(cft){cft.textContent=fmt(cfn);cft.style.color=cfn>=0?'#3ecf74':'#e05555';}
+    }
+    wrap.querySelectorAll('input[type="number"]').forEach(function(inp){inp.addEventListener('input',recalc);});
+    document.getElementById('btn-close-bt').addEventListener('click',function(){wrap.style.display='none';});
+    document.getElementById('btn-save-bt').addEventListener('click',function(){
+      // Собираем данные из таблицы
+      var SECS2=[{id:'pos',name:'ПОС'},{id:'kr',name:'КР'},{id:'ar',name:'АР'}];
+      var budgetData={};
+      var totalBudget=0;
+      SECS2.forEach(function(sec){
+        budgetData[sec.id]={in:{},out:{}};
+        wrap.querySelectorAll('input[data-sec="'+sec.id+'"][data-type="in"]').forEach(function(inp){
+          var mi=inp.getAttribute('data-mi');
+          var v=parseFloat(inp.value)||0;
+          budgetData[sec.id].in[mi]=v;
+          totalBudget+=v;
+        });
+        wrap.querySelectorAll('input[data-sec="'+sec.id+'"][data-type="out"]').forEach(function(inp){
+          var mi=inp.getAttribute('data-mi');
+          var v=parseFloat(inp.value)||0;
+          budgetData[sec.id].out[mi]=v;
+        });
+      });
+
+      // Генерируем новый id проекта
+      var newId='p'+(D.projects.length+1)+'_'+Date.now();
+
+      // Форматируем дату начала и окончания
+      function pad(n){return n<10?'0'+n:String(n);}
+      var startStr=sy+'-'+pad(sm+1)+'-01';
+      var lastDay=new Date(ey,em+1,0).getDate();
+      var endStr=ey+'-'+pad(em+1)+'-'+pad(lastDay);
+
+      // Считаем суммарный бюджет (сумма всех поступлений)
+      var totalIn=0;
+      SECS2.forEach(function(sec){
+        Object.values(budgetData[sec.id].in).forEach(function(v){totalIn+=v;});
+      });
+
+      // Создаём проект
+      var newProj={
+        id: newId,
+        name: projName,
+        client: '',
+        start: startStr,
+        end: endStr,
+        contract: 0,
+        budget: totalIn,
+        status: 'planned',
+        budgetPlan: budgetData,
+        months: months.map(function(m){return m.year+'-'+pad(m.month+1);})
+      };
+
+      D.projects.push(newProj);
+      save();
+      render();
+
+      wrap.style.display='none';
+      document.getElementById('modal-create-budget').style.display='none';
+      alert('Проект "'+projName+'" успешно создан!');
+    });
+    wrap.addEventListener('click',function(e){if(e.target===wrap)wrap.style.display='none';});
+  };
+
+  // Вешаем обработчик на кнопку "Заполнить бюджет проекта"
+  function attachFillBtn(){
+    var btn=document.getElementById('cb-fill-budget');
+    if(!btn)return;
+    btn.addEventListener('click',function(){
+      var name=document.getElementById('cb-name').value.trim()||'Без названия';
+      // Берём даты из pickerState если он доступен
+      var ss=window._cbPickerState?window._cbPickerState.start:{year:new Date().getFullYear(),month:0};
+      var es=window._cbPickerState?window._cbPickerState.end:{year:new Date().getFullYear(),month:11};
+      if(ss.month===null)ss.month=0;
+      if(es.month===null)es.month=11;
+      openBudgetTable(name,ss.year,ss.month,es.year,es.month);
+    });
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){setTimeout(attachFillBtn,500);});
+  } else {
+    setTimeout(attachFillBtn,500);
+  }
+  // Также вешаем при открытии модалки
+  var _orig=window.openCreateBudgetModal;
+  window.openCreateBudgetModal=function(){
+    if(_orig)_orig();
+    setTimeout(attachFillBtn,100);
+  };
+})();
+</script>
+
+</body>
+</html>
