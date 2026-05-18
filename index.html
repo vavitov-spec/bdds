@@ -633,13 +633,14 @@ function renderBudget() {
   var periods = [];
 
   if (BUD_MODE === 'month') {
-    var cur = new Date(pstart.getFullYear(), pstart.getMonth(), 1);
-    while (cur <= pend) {
+    // Показываем все 12 месяцев текущего года
+    var curYear = new Date().getFullYear();
+    for (var mo = 0; mo < 12; mo++) {
+      var d = new Date(curYear, mo, 1);
       periods.push({
-        key: cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'),
-        label: cur.toLocaleString('ru-RU',{month:'short',year:'2-digit'})
+        key: curYear+'-'+String(mo+1).padStart(2,'0'),
+        label: d.toLocaleString('ru-RU',{month:'short',year:'2-digit'})
       });
-      cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
     }
   } else {
     var cur = new Date(pstart);
@@ -674,27 +675,37 @@ function renderBudget() {
     }).reduce(function(s,p){return s+Number(p.amount);},0);
   }
 
+  // Берём плановые данные из budgetPlan проекта по ключу YYYY-MM
   function planIn(secId, periodKey) {
-    return D.payments.filter(function(p){
-      return p.proj===pid && p.type==='in' && p.stat==='plan' && inPeriod(p,periodKey);
-    }).reduce(function(s,p){return s+Number(p.amount);},0);
+    if (!pr.budgetPlan || !pr.budgetPlan[secId]) return 0;
+    var bp = pr.budgetPlan[secId].in || {};
+    // pr.months содержит массив ['2026-01','2026-02',...] — находим индекс по ключу
+    var months = pr.months || [];
+    var mi = months.indexOf(periodKey);
+    if (mi === -1) return 0;
+    return Number(bp[String(mi)]) || 0;
   }
 
   function planOut(secId, periodKey) {
-    return D.payments.filter(function(p){
-      return p.proj===pid && p.type==='out' && p.stat==='plan' && inPeriod(p,periodKey);
-    }).reduce(function(s,p){return s+Number(p.amount);},0);
+    if (!pr.budgetPlan || !pr.budgetPlan[secId]) return 0;
+    var bp = pr.budgetPlan[secId].out || {};
+    var months = pr.months || [];
+    var mi = months.indexOf(periodKey);
+    if (mi === -1) return 0;
+    return Number(bp[String(mi)]) || 0;
   }
 
+  // Суммарный бюджет из budgetPlan (все месяцы все статьи)
   function getBudgetIn(secId) {
-    var l = D.budgetLines.find(function(x){return x.proj===pid && x.cat==='inrev';});
-    return l ? Number(l.plan)/SECTIONS.length : 0;
+    if (!pr.budgetPlan || !pr.budgetPlan[secId]) return 0;
+    var bp = pr.budgetPlan[secId].in || {};
+    return Object.values(bp).reduce(function(s,v){return s+Number(v);}, 0);
   }
 
   function getBudgetOut(secId) {
-    var total = D.budgetLines.filter(function(x){return x.proj===pid;})
-      .reduce(function(s,x){return s+Number(x.plan);},0);
-    return total/SECTIONS.length;
+    if (!pr.budgetPlan || !pr.budgetPlan[secId]) return 0;
+    var bp = pr.budgetPlan[secId].out || {};
+    return Object.values(bp).reduce(function(s,v){return s+Number(v);}, 0);
   }
 
   var projOpts = D.projects.map(function(p){
