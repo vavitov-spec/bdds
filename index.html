@@ -724,6 +724,7 @@ function renderBudget() {
 
   var tbody = '';
   var totBudIn=0, totBudOut=0, totFactIn=0, totFactOut=0;
+  var totPeriodPlanIn=[], totPeriodPlanOut=[], totPeriodFactIn=[], totPeriodFactOut=[];
 
   SECTIONS.forEach(function(sec) {
     var budIn  = getBudgetIn(sec.id);
@@ -740,10 +741,12 @@ function renderBudget() {
       '</td></tr>';
 
     // Строка поступлений
-    var inCols = periods.map(function(p){
+    var inCols = periods.map(function(p, pi){
       var pl = planIn(sec.id, p.key);
       var fc = factIn(sec.id, p.key);
       totalFactIn += fc;
+      totPeriodPlanIn[pi] = (totPeriodPlanIn[pi]||0) + pl;
+      totPeriodFactIn[pi] = (totPeriodFactIn[pi]||0) + fc;
       return '<td style="text-align:right;color:var(--muted);font-size:12px;border-left:1px solid var(--border)">'+(pl?fmt(pl):'—')+'</td>'+
              '<td style="text-align:right;color:var(--green);font-size:12px">'+(fc?fmt(fc):'—')+'</td>';
     }).join('');
@@ -758,10 +761,12 @@ function renderBudget() {
     '</tr>';
 
     // Строка выплат
-    var outCols = periods.map(function(p){
+    var outCols = periods.map(function(p, pi){
       var pl = planOut(sec.id, p.key);
       var fc = factOut(sec.id, p.key);
       totalFactOut += fc;
+      totPeriodPlanOut[pi] = (totPeriodPlanOut[pi]||0) + pl;
+      totPeriodFactOut[pi] = (totPeriodFactOut[pi]||0) + fc;
       return '<td style="text-align:right;color:var(--muted);font-size:12px;border-left:1px solid var(--border)">'+(pl?fmt(pl):'—')+'</td>'+
              '<td style="text-align:right;color:var(--red);font-size:12px">'+(fc?fmt(fc):'—')+'</td>';
     }).join('');
@@ -777,12 +782,47 @@ function renderBudget() {
   });
 
   var totMargin = totBudIn > 0 ? ((totBudIn-totBudOut)/totBudIn*100).toFixed(1)+'%' : '—';
-  tbody += '<tr class="tr-tot">'+
-    '<td>ИТОГО</td>'+
-    '<td style="text-align:right">'+fmt(totBudIn)+' / '+fmt(totBudOut)+'</td>'+
-    '<td style="text-align:center">'+totMargin+'</td>'+
-    '<td style="text-align:right">'+fmt(totFactIn)+' / '+fmt(totFactOut)+'</td>'+
-    periods.map(function(){return '<td style="border-left:1px solid var(--border)"></td><td></td>';}).join('')+
+
+  // ИТОГО — Поступления
+  tbody += '<tr style="background:var(--card2);font-weight:700;border-top:2px solid var(--border)">'+
+    '<td style="color:var(--green);padding-left:8px">&#9650; ИТОГО поступления</td>'+
+    '<td style="text-align:right;color:var(--green)">'+fmt(totBudIn)+'</td>'+
+    '<td style="text-align:center;color:var(--green)">'+totMargin+'</td>'+
+    '<td style="text-align:right;color:var(--green)">'+fmt(totFactIn)+'</td>'+
+    periods.map(function(p,pi){
+      var pl=totPeriodPlanIn[pi]||0, fc=totPeriodFactIn[pi]||0;
+      return '<td style="text-align:right;color:var(--green);font-weight:700;border-left:1px solid var(--border)">'+(pl?fmt(pl):'—')+'</td>'+
+             '<td style="text-align:right;color:var(--green);font-weight:700">'+(fc?fmt(fc):'—')+'</td>';
+    }).join('')+
+  '</tr>';
+
+  // ИТОГО — Выплаты
+  tbody += '<tr style="background:var(--card2);font-weight:700">'+
+    '<td style="color:var(--red);padding-left:8px">&#9660; ИТОГО выплаты</td>'+
+    '<td style="text-align:right;color:var(--red)">'+fmt(totBudOut)+'</td>'+
+    '<td></td>'+
+    '<td style="text-align:right;color:var(--red)">'+fmt(totFactOut)+'</td>'+
+    periods.map(function(p,pi){
+      var pl=totPeriodPlanOut[pi]||0, fc=totPeriodFactOut[pi]||0;
+      return '<td style="text-align:right;color:var(--red);font-weight:700;border-left:1px solid var(--border)">'+(pl?fmt(pl):'—')+'</td>'+
+             '<td style="text-align:right;color:var(--red);font-weight:700">'+(fc?fmt(fc):'—')+'</td>';
+    }).join('')+
+  '</tr>';
+
+  // САЛЬДО
+  var saldoBud = totBudIn - totBudOut;
+  var saldoFact = totFactIn - totFactOut;
+  tbody += '<tr style="background:#0a1628;font-weight:800;border-top:2px solid #4a80c0">'+
+    '<td style="color:#90c0ff;padding-left:8px;letter-spacing:.5px">&#9654; САЛЬДО</td>'+
+    '<td style="text-align:right;color:'+(saldoBud>=0?'#3ecf74':'#e05555')+';font-weight:800">'+fmt(saldoBud)+'</td>'+
+    '<td></td>'+
+    '<td style="text-align:right;color:'+(saldoFact>=0?'#3ecf74':'#e05555')+';font-weight:800">'+fmt(saldoFact)+'</td>'+
+    periods.map(function(p,pi){
+      var planS=(totPeriodPlanIn[pi]||0)-(totPeriodPlanOut[pi]||0);
+      var factS=(totPeriodFactIn[pi]||0)-(totPeriodFactOut[pi]||0);
+      return '<td style="text-align:right;color:'+(planS>=0?'#3ecf74':'#e05555')+';font-weight:800;border-left:1px solid #2d5080">'+fmt(planS)+'</td>'+
+             '<td style="text-align:right;color:'+(factS>=0?'#3ecf74':'#e05555')+';font-weight:800">'+fmt(factS)+'</td>';
+    }).join('')+
   '</tr>';
 
   return '<div class="ph">'+
