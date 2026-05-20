@@ -84,6 +84,7 @@ select option{background:var(--card)}
 .ib:hover{color:var(--text)}
 .empty{text-align:center;padding:50px 20px;color:var(--muted)}
 .empty-icon{font-size:44px;margin-bottom:10px}
+  .f-type-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.f-type-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:var(--card2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;transition:background .15s,border-color .15s,color .15s;user-select:none}.f-type-btn:has(input:checked){background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}.f-type-btn input[type=radio]{display:none}
 </style>
 
 <!-- Firebase SDK -->
@@ -172,6 +173,7 @@ select option{background:var(--card)}
         <div class="fg"><label>Дата начала *</label><input type="date" id="f-pstart"></div>
         <div class="fg"><label>Дата окончания *</label><input type="date" id="f-pend"></div>
       </div>
+              <div class="fg"><label>Тип проекта *</label><div class="f-type-group"><label class="f-type-btn"><input type="radio" name="f-ptype" value="design"> Проектирование</label><label class="f-type-btn"><input type="radio" name="f-ptype" value="smr"> СМР</label><label class="f-type-btn"><input type="radio" name="f-ptype" value="supply"> Поставка</label></div></div>
       <div class="fg"><label>Заказчик</label><input id="f-pclient" placeholder="ООО Заказчик"></div>
       <div class="fg"><label>Статус</label>
         <select id="f-pstatus">
@@ -947,6 +949,7 @@ function openProj(id) {
   var wrap = document.getElementById('proj-budget-wrap');
   if (wrap) { wrap.style.display='none'; wrap.innerHTML=''; }
   document.getElementById('m-proj').classList.add('show');
+        document.querySelectorAll('input[name="f-ptype"]').forEach(r=>{r.checked=(r.value===(p.type||''));});
 }
 
 function openPay(id) {
@@ -995,7 +998,8 @@ function saveProj() {
     end:      end,
     contract: 0,
     budget:   0,
-    status:   document.getElementById('f-pstatus').value
+    status:   document.getElementById('f-pstatus').value,
+      type:    (document.querySelector('input[name="f-ptype"]:checked')||{value:''}).value
   };
   var pid;
   if (EDIT_PROJ) {
