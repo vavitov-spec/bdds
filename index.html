@@ -84,7 +84,7 @@ select option{background:var(--card)}
 .ib:hover{color:var(--text)}
 .empty{text-align:center;padding:50px 20px;color:var(--muted)}
 .empty-icon{font-size:44px;margin-bottom:10px}
-  .f-type-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.f-type-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:var(--card2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;transition:background .15s,border-color .15s,color .15s;user-select:none}.f-type-btn:has(input:checked){background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}.f-type-btn input[type=radio]{display:none}
+  
 </style>
 
 <!-- Firebase SDK -->
@@ -157,51 +157,6 @@ select option{background:var(--card)}
   <div class="main" id="app"></div>
 </div>
 
-<!-- Modal: Проект -->
-<div class="mo" id="m-proj" style="align-items:flex-start;padding:20px;overflow-y:auto">
-  <div class="md" style="width:900px;max-width:98vw;max-height:95vh;overflow-y:auto">
-    <div class="mh">
-      <span class="mt" id="m-proj-title">Новый проект</span>
-      <span class="mc" id="close-proj">&times;</span>
-    </div>
-    <div class="mb">
-      <div class="fg"><label>Название проекта *</label><input id="f-pname" placeholder="ЖК Северный..."></div>
-      <div class="fr">
-        <div class="fg"><label>Дата начала *</label><input type="date" id="f-pstart"></div>
-        <div class="fg"><label>Дата окончания *</label><input type="date" id="f-pend"></div>
-      </div>
-              <div class="fg"><label>Тип проекта *</label><div class="f-type-group"><label class="f-type-btn"><input type="radio" name="f-ptype" value="design"> Проектирование</label><label class="f-type-btn"><input type="radio" name="f-ptype" value="smr"> СМР</label><label class="f-type-btn"><input type="radio" name="f-ptype" value="supply"> Поставка</label></div></div>
-      <div class="fg"><label>Заказчик</label><input id="f-pclient" placeholder="ООО Заказчик"></div>
-      <div class="fg"><label>Статус</label>
-        <select id="f-pstatus">
-          <option value="active">Активный</option>
-          <option value="planned">Плановый</option>
-          <option value="paused">Приостановлен</option>
-          <option value="done">Завершён</option>
-        </select>
-      </div>
-      <div id="proj-totals" style="display:none;margin:16px 0">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-          <div class="kc"><div class="kl">Сумма договора</div><div class="kv green" id="pt-contract" style="font-size:15px">—</div></div>
-          <div class="kc"><div class="kl">Затраты</div><div class="kv red" id="pt-costs" style="font-size:15px">—</div></div>
-          <div class="kc"><div class="kl">Маржа</div><div class="kv yellow" id="pt-margin" style="font-size:15px">—</div></div>
-          <div class="kc"><div class="kl">Прибыль</div><div class="kv" id="pt-profit" style="font-size:15px">—</div></div>
-        </div>
-      </div>
-      <button id="btn-show-budget" style="width:100%;padding:10px;margin:8px 0;background:var(--card2);border:1px dashed var(--border);border-radius:8px;color:var(--accent);cursor:pointer;font-size:13px;font-weight:600">&#9660; Бюджет проекта</button>
-      <div id="proj-budget-wrap" style="display:none;margin-top:8px;overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead id="proj-budget-thead"></thead>
-          <tbody id="proj-budget-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn btn-o" id="cancel-proj">Отмена</button>
-      <button class="btn btn-p" id="save-proj">Сохранить проект</button>
-    </div>
-  </div>
-</div>
 
 <!-- Modal: Платёж -->
 <div class="mo" id="m-pay">
@@ -928,26 +883,6 @@ function renderCalendar() {
     '</div>';
 }
 // ── МОДАЛКИ ───────────────────────────────────────────────────────
-function openProj(id) {
-  EDIT_PROJ = id || null;
-  TMP_BUDGET={};
-  var bw=document.getElementById('proj-budget-wrap');if(bw)bw.style.display='none';
-  var pt=document.getElementById('proj-totals');if(pt)pt.style.display='none';
-  document.getElementById('m-proj-title').textContent = id ? 'Редактировать проект' : 'Новый проект';
-  var p = id ? (getProj(id) || {}) : {};
-  document.getElementById('f-pname').value     = p.name || '';
-  document.getElementById('f-pstart').value    = p.start || '';
-  document.getElementById('f-pend').value      = p.end || '';
-  document.getElementById('f-pcontract').value = p.contract || '';
-  document.getElementById('f-pbudget').value   = p.budget || '';
-  document.getElementById('f-pclient').value   = p.client || '';
-  document.getElementById('f-pstatus').value   = p.status || 'active';
-  window.TMP_PROJECT_ID = id || '__new_project__';
-  var wrap = document.getElementById('proj-budget-wrap');
-  if (wrap) { wrap.style.display='none'; wrap.innerHTML=''; }
-  document.getElementById('m-proj').classList.add('show');
-        document.querySelectorAll('input[name="f-ptype"]').forEach(r=>{r.checked=(r.value===(p.type||''));});
-}
 
 function openPay(id) {
   EDIT_PAY = id || null;
@@ -982,67 +917,6 @@ function openPay(id) {
 function closeProj() { document.getElementById('m-proj').classList.remove('show'); }
 function closePay()  { document.getElementById('m-pay').classList.remove('show'); }
 
-function saveProj() {
-  var name = document.getElementById('f-pname').value.trim();
-  var start = document.getElementById('f-pstart').value;
-  var end = document.getElementById('f-pend').value;
-  if (!name) { alert('Укажите название проекта'); return; }
-  if (!start || !end) { alert('Укажите сроки начала и окончания проекта'); return; }
-  var data = {
-    name: name,
-    client:   document.getElementById('f-pclient').value.trim(),
-    start:    start,
-    end:      end,
-    contract: 0,
-    budget:   0,
-    status:   document.getElementById('f-pstatus').value,
-      type:    (document.querySelector('input[name="f-ptype"]:checked')||{value:''}).value
-  };
-  var pid;
-  if (EDIT_PROJ) {
-    var p = getProj(EDIT_PROJ);
-    if (p) Object.assign(p, data);
-    pid = EDIT_PROJ;
-  } else {
-    data.id = uid();
-    D.projects.push(data);
-    pid = data.id;
-  }
-
-  if (!D.projectPlans) D.projectPlans = {};
-  var tmpId = window.TMP_PROJECT_ID || '__new_project__';
-  if (D.projectPlans[tmpId] && tmpId !== pid) {
-    D.projectPlans[pid] = JSON.parse(JSON.stringify(D.projectPlans[tmpId]));
-    delete D.projectPlans[tmpId];
-  }
-
-  var plan = ensureProjectPlan(pid);
-  var sections = getDefaultPlanSections();
-  var periods = getProjectPeriods(start, end);
-  var totalIn = 0, totalOut = 0;
-  sections.forEach(function(sec){
-    periods.forEach(function(per){
-      var v = (plan[sec.id] && plan[sec.id][per.key]) ? Number(plan[sec.id][per.key]) : 0;
-      if (sec.type==='in') totalIn += v; else totalOut += v;
-    });
-  });
-
-  var project = getProj(pid);
-  if (project) {
-    project.contract = totalIn;
-    project.budget = totalOut;
-  }
-
-  D.budgetLines = D.budgetLines.filter(function(x){ return x.proj !== pid; });
-  sections.filter(function(sec){ return sec.type==='out'; }).forEach(function(sec){
-    var secTotal = 0;
-    periods.forEach(function(per){ secTotal += (plan[sec.id] && plan[sec.id][per.key]) ? Number(plan[sec.id][per.key]) : 0; });
-    if (secTotal > 0) D.budgetLines.push({proj: pid, cat: sec.id, plan: secTotal});
-  });
-  if (totalIn > 0) D.budgetLines.push({proj: pid, cat: 'inrev', plan: totalIn});
-
-  save(); closeProj(); render();
-}
 
 function savePay() {
   var amount = +document.getElementById('f-pamount').value;
