@@ -646,11 +646,19 @@ function sumLines(lines, field) {
 // const STORAGE_KEY = 'bdds_data';
 // function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({projects,budgets,currentProject})); }
 
-let projects, budgets, currentProject;
+let projects = [], budgets = {}, currentProject = 0;
+
+// Заглушка — Firebase перезапишет window.saveData после инициализации
+window.saveData = function() {};
 
 let projectsOpen = true;
 let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
 let selectedType = null;
+
+const MONTHS_COUNT = 12;
+const DEC_COUNT    = 36;
+const MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
 function fmt(n) { return Math.round(n).toLocaleString('ru-RU'); }
 function netColor(v) { return v >= 0 ? '#0a6e4e' : '#a33020'; }
