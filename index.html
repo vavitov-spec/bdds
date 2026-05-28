@@ -434,6 +434,88 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 </div>
 
 <script>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBluGGyrvUauEtNmjFDJ_xoQ1jUhKunKOE",
+  authDomain: "bdds-97b72.firebaseapp.com",
+  projectId: "bdds-97b72",
+  storageBucket: "bdds-97b72.firebasestorage.app",
+  messagingSenderId: "566296800317",
+  appId: "1:566296800317:web:0a895dcbd8fff14c7f8e54",
+  measurementId: "G-SB3X30GXHS"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const auth = getAuth(app);
+
+let firebaseUid = null;
+let dataLoaded  = false;
+
+// ── Load from Firestore (async, called once at startup) ─────────────────────
+async function loadData() {
+  await signInAnonymously(auth);
+  return new Promise(resolve => {
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { resolve(false); return; }
+      firebaseUid = user.uid;
+      const ref  = doc(db, 'bdds', firebaseUid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const d = snap.data();
+        if (d.projects && d.budgets) {
+          projects       = d.projects;
+          budgets        = d.budgets;
+          currentProject = d.currentProject || 0;
+          migrateData();
+          resolve(true);
+          return;
+        }
+      }
+      resolve(false);
+    });
+  });
+}
+
+// ── Save to Firestore (fire-and-forget, no await needed) ───────────────────
+function saveData() {
+  if (!firebaseUid) return;
+  const ref = doc(db, 'bdds', firebaseUid);
+  setDoc(ref, { projects, budgets, currentProject }).catch(console.error);
+}
+
+// ── Helper: run migrations on loaded data ──────────────────────────────────
+function migrateData() {
+  Object.values(budgets).forEach(b => {
+    (b.articles || []).forEach(a => {
+      if (a.in !== undefined) {
+        a.inLines  = [{ name: 'Поступление 1', plan: a.in,     fact: a.factIn  || Array(MONTHS_COUNT).fill(0) }];
+        a.outLines = [{ name: 'Выплата 1',     plan: a.out,    fact: a.factOut || Array(MONTHS_COUNT).fill(0) }];
+        delete a.in; delete a.out; delete a.factIn; delete a.factOut;
+      }
+      if (a.inDirect === undefined) a.inDirect = true;
+      if (a.outDirect === undefined) a.outDirect = true;
+      if (a.inOpen  === undefined) a.inOpen  = true;
+      if (a.outOpen === undefined) a.outOpen = true;
+      if (!Array.isArray(a.inDplan)  || a.inDplan.length  !== DEC_COUNT) a.inDplan  = Array(DEC_COUNT).fill(0);
+      if (!Array.isArray(a.inDfact)  || a.inDfact.length  !== DEC_COUNT) a.inDfact  = Array(DEC_COUNT).fill(0);
+      if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
+      if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
+      if (!a.inDeleted) a.inDeleted = false;
+      (a.inLines  || []).forEach(l => ensureDec(l));
+      (a.outLines || []).forEach(l => ensureDec(l));
+    });
+  });
+}
+
+function ensureDec(arr) {
+  if (!Array.isArray(arr.dplan) || arr.dplan.length !== DEC_COUNT) arr.dplan = Array(DEC_COUNT).fill(0);
+  if (!Array.isArray(arr.dfact) || arr.dfact.length !== DEC_COUNT) arr.dfact = Array(DEC_COUNT).fill(0);
+}
+
 const MONTHS_COUNT = 12;
 const DEC_COUNT = 36; // 12 months × 3 decades per month
 // decade index: m*3+0 = 1-10, m*3+1 = 11-20, m*3+2 = 21-end
@@ -516,95 +598,29 @@ function sumLines(lines, field) {
   return res;
 }
 
-const STORAGE_KEY = 'bdds_data';
-
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ projects, budgets, currentProject }));
-}
-
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const d = JSON.parse(raw);
-    if (!d.projects || !d.budgets) return false;
-    projects = d.projects;
-    budgets = d.budgets;
-    currentProject = d.currentProject || 0;
-    // Migrate old format → new format
-    Object.values(budgets).forEach(b => {
-      (b.articles || []).forEach(a => {
-        // Very old format: flat in/out arrays
-        if (a.in !== undefined) {
-          a.inLines  = [{ name: 'Поступление 1', plan: a.in,     fact: a.factIn  || Array(MONTHS_COUNT).fill(0) }];
-          a.outLines = [{ name: 'Выплата 1',     plan: a.out,    fact: a.factOut || Array(MONTHS_COUNT).fill(0) }];
-          delete a.in; delete a.out; delete a.factIn; delete a.factOut;
-        }
-        // v2.4 format: had inLines[] with ≥1 entry, no inDirect
-        if (a.inDirect === undefined) {
-          if (a.inLines && a.inLines.length === 1 && sumLines(a.inLines,'plan').every(v=>!v) && sumLines(a.inLines,'fact').every(v=>!v)) {
-            // Single empty line → collapse to direct
-            a.inPlan  = Array(MONTHS_COUNT).fill(0);
-            a.inFact  = Array(MONTHS_COUNT).fill(0);
-            a.inLines = [];
-            a.inDirect = true;
-          } else if (a.inLines && a.inLines.length >= 1) {
-            // Has real data in lines → keep lines mode
-            a.inPlan  = Array(MONTHS_COUNT).fill(0);
-            a.inFact  = Array(MONTHS_COUNT).fill(0);
-            a.inDirect = false;
-          } else {
-            a.inPlan   = Array(MONTHS_COUNT).fill(0);
-            a.inFact   = Array(MONTHS_COUNT).fill(0);
-            a.inLines  = a.inLines || [];
-            a.inDirect = true;
-          }
-        }
-        if (a.outDirect === undefined) {
-          if (a.outLines && a.outLines.length === 1 && sumLines(a.outLines,'plan').every(v=>!v) && sumLines(a.outLines,'fact').every(v=>!v)) {
-            a.outPlan  = Array(MONTHS_COUNT).fill(0);
-            a.outFact  = Array(MONTHS_COUNT).fill(0);
-            a.outLines = [];
-            a.outDirect = true;
-          } else if (a.outLines && a.outLines.length >= 1) {
-            a.outPlan  = Array(MONTHS_COUNT).fill(0);
-            a.outFact  = Array(MONTHS_COUNT).fill(0);
-            a.outDirect = false;
-          } else {
-            a.outPlan   = Array(MONTHS_COUNT).fill(0);
-            a.outFact   = Array(MONTHS_COUNT).fill(0);
-            a.outLines  = a.outLines || [];
-            a.outDirect = true;
-          }
-        }
-        if (a.inOpen  === undefined) a.inOpen  = true;
-        if (a.outOpen === undefined) a.outOpen = true;
-        if (!Array.isArray(a.inDplan)  || a.inDplan.length  !== DEC_COUNT) a.inDplan  = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.inDfact)  || a.inDfact.length  !== DEC_COUNT) a.inDfact  = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
-        (a.inLines ||[]).forEach(l => { if (!Array.isArray(l.dplan)||l.dplan.length!==DEC_COUNT) l.dplan=Array(DEC_COUNT).fill(0); if (!Array.isArray(l.dfact)||l.dfact.length!==DEC_COUNT) l.dfact=Array(DEC_COUNT).fill(0); });
-        (a.outLines||[]).forEach(l => { if (!Array.isArray(l.dplan)||l.dplan.length!==DEC_COUNT) l.dplan=Array(DEC_COUNT).fill(0); if (!Array.isArray(l.dfact)||l.dfact.length!==DEC_COUNT) l.dfact=Array(DEC_COUNT).fill(0); });
-      });
-    });
-    return true;
-  } catch(e) { return false; }
-}
+// old localStorage version — kept for reference
+// const STORAGE_KEY = 'bdds_data';
+// function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({projects,budgets,currentProject})); }
 
 let projects, budgets, currentProject;
 
-if (!loadData()) {
-  // Default data on first launch
-  projects = [
-    { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
-    { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
-  ];
-  currentProject = 0;
-  budgets = {
-    0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
-    1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
-  };
-}
+(function initApp() {
+  loadData().then(loaded => {
+    if (!loaded) {
+      projects = [
+        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
+        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+      ];
+      currentProject = 0;
+      budgets = {
+        0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
+        1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
+      };
+    }
+    renderSidebarProjects();
+    showPage('dashboard');
+  });
+})();
 
 let projectsOpen = true;
 let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
