@@ -434,95 +434,124 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 </div>
 
 <script>
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+(function() {
+  // Firebase SDK via CDN (имя переменной firebaseApp чтобы не конфликтовать с другими переменными)
+  var firebaseScript = document.createElement('script');
+  firebaseScript.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+  firebaseScript.onload = initFirebase;
+  document.head.appendChild(firebaseScript);
+})();
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBluGGyrvUauEtNmjFDJ_xoQ1jUhKunKOE",
-  authDomain: "bdds-97b72.firebaseapp.com",
-  projectId: "bdds-97b72",
-  storageBucket: "bdds-97b72.firebasestorage.app",
-  messagingSenderId: "566296800317",
-  appId: "1:566296800317:web:0a895dcbd8fff14c7f8e54",
-  measurementId: "G-SB3X30GXHS"
-};
+function initFirebase() {
+  var db    = firebase.firestore();
+  var auth  = firebase.auth();
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-const auth = getAuth(app);
+  // ── App constants (available only after Firebase init) ───────────────────
+  var MONTHS_COUNT = 12;
+  var DEC_COUNT    = 36;
+  var MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  var MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
-let firebaseUid = null;
-let dataLoaded  = false;
+  function ensureDec(arr) {
+    if (!Array.isArray(arr.dplan) || arr.dplan.length !== DEC_COUNT) arr.dplan = Array(DEC_COUNT).fill(0);
+    if (!Array.isArray(arr.dfact) || arr.dfact.length !== DEC_COUNT) arr.dfact = Array(DEC_COUNT).fill(0);
+  }
 
-// ── Load from Firestore (async, called once at startup) ─────────────────────
-async function loadData() {
-  await signInAnonymously(auth);
-  return new Promise(resolve => {
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) { resolve(false); return; }
-      firebaseUid = user.uid;
-      const ref  = doc(db, 'bdds', firebaseUid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const d = snap.data();
-        if (d.projects && d.budgets) {
-          projects       = d.projects;
-          budgets        = d.budgets;
-          currentProject = d.currentProject || 0;
-          migrateData();
-          resolve(true);
-          return;
+  function newLine(name) {
+    return {
+      name: name || '',
+      plan: Array(MONTHS_COUNT).fill(0), fact: Array(MONTHS_COUNT).fill(0),
+      dplan: Array(DEC_COUNT).fill(0),   dfact: Array(DEC_COUNT).fill(0)
+    };
+  }
+  function newArticle(name) {
+    return {
+      name: name || 'Новая статья',
+      inDirect: true,  outDirect: true,
+      inOpen:   true,  outOpen:   true,
+      inPlan:   Array(MONTHS_COUNT).fill(0), inFact:   Array(MONTHS_COUNT).fill(0),
+      outPlan:  Array(MONTHS_COUNT).fill(0), outFact:  Array(MONTHS_COUNT).fill(0),
+      inDplan:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
+      outDplan: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
+      inLines:  [],
+      outLines: []
+    };
+  }
+
+  // ── Load from Firestore ─────────────────────────────────────────────────
+  window.loadData = function() {
+    return new Promise(function(resolve) {
+      auth.signInAnonymously().catch(function(e) { console.error('Auth error:', e); resolve(false); });
+      auth.onAuthStateChanged(function(user) {
+        if (!user) return;
+        window.firebaseUid = user.uid;
+        db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
+          if (snap.exists) {
+            var d = snap.data();
+            if (d.projects && d.budgets) {
+              projects       = d.projects;
+              budgets        = d.budgets;
+              currentProject = d.currentProject || 0;
+              window.migrateData();
+              resolve(true);
+              return;
+            }
+          }
+          resolve(false);
+        });
+      });
+    });
+  };
+
+  // ── Save to Firestore (fire-and-forget) ─────────────────────────────────
+  window.saveData = function() {
+    if (!window.firebaseUid) return;
+    db.doc('bdds/' + window.firebaseUid).set(
+      { projects: projects, budgets: budgets, currentProject: currentProject }
+    ).catch(function(e) { console.error('Save error:', e); });
+  };
+
+  // ── Migrate data ────────────────────────────────────────────────────────
+  window.migrateData = function() {
+    Object.values(budgets).forEach(function(b) {
+      (b.articles || []).forEach(function(a) {
+        if (a.in !== undefined) {
+          a.inLines  = [{ name: 'Поступление 1', plan: a.in,     fact: a.factIn  || Array(MONTHS_COUNT).fill(0) }];
+          a.outLines = [{ name: 'Выплата 1',     plan: a.out,    fact: a.factOut || Array(MONTHS_COUNT).fill(0) }];
+          delete a.in; delete a.out; delete a.factIn; delete a.factOut;
         }
-      }
-      resolve(false);
+        if (a.inDirect === undefined) a.inDirect = true;
+        if (a.outDirect === undefined) a.outDirect = true;
+        if (a.inOpen  === undefined) a.inOpen  = true;
+        if (a.outOpen === undefined) a.outOpen = true;
+        if (!Array.isArray(a.inDplan)  || a.inDplan.length  !== DEC_COUNT) a.inDplan  = Array(DEC_COUNT).fill(0);
+        if (!Array.isArray(a.inDfact)  || a.inDfact.length  !== DEC_COUNT) a.inDfact  = Array(DEC_COUNT).fill(0);
+        if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
+        if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
+        if (!a.inDeleted) a.inDeleted = false;
+        (a.inLines  || []).forEach(function(l) { ensureDec(l); });
+        (a.outLines || []).forEach(function(l) { ensureDec(l); });
+      });
     });
+  };
+
+  // ── App start (after Firebase is ready) ─────────────────────────────────
+  window.loadData().then(function(loaded) {
+    if (!loaded) {
+      projects = [
+        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
+        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+      ];
+      currentProject = 0;
+      budgets = {
+        0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
+        1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
+      };
+    }
+    window.renderSidebarProjects();
+    window.showPage('dashboard');
   });
 }
-
-// ── Save to Firestore (fire-and-forget, no await needed) ───────────────────
-function saveData() {
-  if (!firebaseUid) return;
-  const ref = doc(db, 'bdds', firebaseUid);
-  setDoc(ref, { projects, budgets, currentProject }).catch(console.error);
-}
-
-// ── Helper: run migrations on loaded data ──────────────────────────────────
-function migrateData() {
-  Object.values(budgets).forEach(b => {
-    (b.articles || []).forEach(a => {
-      if (a.in !== undefined) {
-        a.inLines  = [{ name: 'Поступление 1', plan: a.in,     fact: a.factIn  || Array(MONTHS_COUNT).fill(0) }];
-        a.outLines = [{ name: 'Выплата 1',     plan: a.out,    fact: a.factOut || Array(MONTHS_COUNT).fill(0) }];
-        delete a.in; delete a.out; delete a.factIn; delete a.factOut;
-      }
-      if (a.inDirect === undefined) a.inDirect = true;
-      if (a.outDirect === undefined) a.outDirect = true;
-      if (a.inOpen  === undefined) a.inOpen  = true;
-      if (a.outOpen === undefined) a.outOpen = true;
-      if (!Array.isArray(a.inDplan)  || a.inDplan.length  !== DEC_COUNT) a.inDplan  = Array(DEC_COUNT).fill(0);
-      if (!Array.isArray(a.inDfact)  || a.inDfact.length  !== DEC_COUNT) a.inDfact  = Array(DEC_COUNT).fill(0);
-      if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
-      if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
-      if (!a.inDeleted) a.inDeleted = false;
-      (a.inLines  || []).forEach(l => ensureDec(l));
-      (a.outLines || []).forEach(l => ensureDec(l));
-    });
-  });
-}
-
-function ensureDec(arr) {
-  if (!Array.isArray(arr.dplan) || arr.dplan.length !== DEC_COUNT) arr.dplan = Array(DEC_COUNT).fill(0);
-  if (!Array.isArray(arr.dfact) || arr.dfact.length !== DEC_COUNT) arr.dfact = Array(DEC_COUNT).fill(0);
-}
-
-const MONTHS_COUNT = 12;
-const DEC_COUNT = 36; // 12 months × 3 decades per month
-// decade index: m*3+0 = 1-10, m*3+1 = 11-20, m*3+2 = 21-end
-const MONTH_NAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-const MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-
-// Data model
 // article.inDirect  — true: данные вбиваются прямо в строку (plan/fact), подстрок нет
 // article.outDirect — то же для выплат
 // article.inPlan[12] / article.inFact[12]   — прямые данные поступлений
@@ -603,24 +632,6 @@ function sumLines(lines, field) {
 // function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({projects,budgets,currentProject})); }
 
 let projects, budgets, currentProject;
-
-(function initApp() {
-  loadData().then(loaded => {
-    if (!loaded) {
-      projects = [
-        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
-        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
-      ];
-      currentProject = 0;
-      budgets = {
-        0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
-        1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
-      };
-    }
-    renderSidebarProjects();
-    showPage('dashboard');
-  });
-})();
 
 let projectsOpen = true;
 let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
