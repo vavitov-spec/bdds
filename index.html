@@ -435,11 +435,21 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 
 <script>
 (function() {
-  // Firebase SDK via CDN (имя переменной firebaseApp чтобы не конфликтовать с другими переменными)
-  var firebaseScript = document.createElement('script');
-  firebaseScript.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
-  firebaseScript.onload = initFirebase;
-  document.head.appendChild(firebaseScript);
+  var VER = '10.12.0';
+  var scripts = [
+    'https://www.gstatic.com/firebasejs/' + VER + '/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/' + VER + '/firebase-auth-compat.js',
+    'https://www.gstatic.com/firebasejs/' + VER + '/firebase-firestore-compat.js'
+  ];
+  function loadNext(i) {
+    if (i >= scripts.length) { initFirebase(); return; }
+    var s = document.createElement('script');
+    s.src = scripts[i];
+    s.onload = function() { loadNext(i + 1); };
+    s.onerror = function() { console.error('Failed to load Firebase script:', scripts[i]); loadNext(i + 1); };
+    document.head.appendChild(s);
+  }
+  loadNext(0);
 })();
 
 function initFirebase() {
