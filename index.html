@@ -1,0 +1,2715 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>БДДС — Планирование бюджета</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a18;font-size:14px;display:flex;flex-direction:column;height:100vh}
+.layout{display:flex;flex:1;overflow:hidden}
+.header{background:#fff;border-bottom:1px solid #e5e5e0;padding:0 24px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.header h1{font-size:16px;font-weight:500}
+.sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e0;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:#555;font-size:14px;user-select:none}
+.nav-item:hover{background:#f8f8f5}
+.nav-item.active{background:#f0f0ec;color:#1a1a18;font-weight:500}
+.nav-item .icon{font-size:16px;flex-shrink:0}
+.nav-item .label{flex:1}
+.nav-toggle{font-size:11px;color:#aaa;transition:transform .2s;display:inline-block}
+.nav-toggle.open{transform:rotate(90deg)}
+.nav-sub-item{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 42px;cursor:pointer;color:#666;font-size:13px}
+.nav-sub-item:hover{background:#f0f0ec;color:#1a1a18}
+.nav-sub-item.active{color:#1a1a18;font-weight:500}
+.nav-sub-item .dot{width:6px;height:6px;border-radius:50%;background:#ccc;flex-shrink:0}
+.nav-sub-item.active .dot{background:#1a1a18}
+.nav-add-project{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 42px;cursor:pointer;color:#888;font-size:13px;border-top:1px solid #f0f0ec}
+.nav-add-project:hover{color:#1a1a18;background:#f0f0ec}
+.main{flex:1;overflow-y:auto;padding:24px}
+.page{display:none}
+.page.active{display:block}
+.add-btn{font-size:13px;padding:6px 14px;cursor:pointer;border-radius:7px;background:#fff;border:1px solid #d5d5d0;color:#555;font-family:inherit}
+.add-btn:hover{background:#f5f5f3}
+.delete-btn{font-size:11px;padding:2px 7px;cursor:pointer;border-radius:5px;background:none;border:none;color:#bbb;font-family:inherit}
+.delete-btn:hover{color:#c0392b;background:#fdf0f0}
+.edit-btn{font-size:11px;padding:2px 7px;cursor:pointer;border-radius:5px;background:none;border:none;color:#666;font-family:inherit}
+.edit-btn:hover{color:#1a1a18;background:#f0f0ec}
+.section{background:#fff;border:1px solid #e5e5e0;border-radius:10px;padding:20px;margin-bottom:16px}
+.table-wrap{overflow-x:auto;margin-bottom:12px}
+table{border-collapse:separate;border-spacing:0;font-size:13px;white-space:nowrap;table-layout:fixed}
+th{text-align:right;font-weight:500;color:#888;padding:4px 6px;border-bottom:2px solid #e5e5e0;white-space:nowrap;font-size:12px}
+th.left{text-align:left}
+th.month-group{text-align:center;border-left:2px solid #d8d8d0}
+td{text-align:right;padding:2px 4px;border-bottom:1px solid #f0f0ec}
+td.left{text-align:left}
+td.cell-plan{border-left:2px solid #d8d8d0}
+td.month-plan-head{border-left:2px solid #d8d8d0}
+
+/* ── STICKY FROZEN COLUMNS ── */
+.sticky-name,
+td.sticky-name {
+  position:sticky; left:0; z-index:3;
+  background:#fff;
+  min-width:200px; max-width:200px;
+  border-right:2px solid #d8d8d0;
+}
+.sticky-tot-p,
+td.sticky-tot-p {
+  position:sticky; left:200px; z-index:3;
+  background:#eaf4ff;
+  min-width:88px; width:88px;
+  border-right:1px solid #c5d8ee;
+  text-align:right;
+}
+.sticky-tot-f,
+td.sticky-tot-f {
+  position:sticky; left:288px; z-index:3;
+  background:#eaf8f2;
+  min-width:88px; width:88px;
+  border-right:2px solid #b0d8c0;
+  text-align:right;
+}
+
+/* Sticky header bumps z-index so it stays above body sticky cells */
+thead th.sticky-name{ z-index:5; background:#fafaf8; }
+thead th.sticky-tot-p{ z-index:5; background:#daeeff; }
+thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; }
+thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
+
+/* Row-specific overrides for sticky cols */
+tr.article-header td.sticky-name { background:#f7f7f4; }
+tr.article-header td.sticky-tot-p { background:#e2eefa; }
+tr.article-header td.sticky-tot-f { background:#dcf2ea; }
+tr.sub-in td.sticky-name { background:#f6fcfa; }
+tr.sub-in td.sticky-tot-p { background:#e8f4ff; }
+tr.sub-in td.sticky-tot-f { background:#e4f8f0; }
+tr.sub-out td.sticky-name { background:#fdf8f6; }
+tr.sub-out td.sticky-tot-p { background:#f2eeff; }
+tr.sub-out td.sticky-tot-f { background:#fef2ec; }
+tr.total-row td.sticky-name { background:#fafaf8; }
+tr.total-row td.sticky-tot-p { background:#daeeff; }
+tr.total-row td.sticky-tot-f { background:#d6f2e6; }
+
+/* plan/fact cell tint */
+td.cell-plan { background:#f5f9ff; }
+td.cell-fact { background:#fff8f6; border-right:1px solid #f0e8e4; }
+
+/* Article header row */
+tr.article-header td{background:#f7f7f4;border-top:2px solid #e5e5e0;font-weight:600;font-size:13px;color:#1a1a18}
+tr.article-header:first-child td{border-top:none}
+
+/* Sub rows */
+tr.sub-in td{background:#f6fcfa}
+tr.sub-out td{background:#fdf8f6}
+td.sub-label{padding-left:32px;color:#666;font-size:12px;font-style:normal}
+.sub-type-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:500;margin-right:4px;vertical-align:middle}
+.tag-in{background:#d4f0e8;color:#0a6e4e}
+.tag-out{background:#fde8e4;color:#a33020}
+
+/* Sublines */
+tr.subline-in td{background:#f0faf6}
+tr.subline-out td{background:#fef5f2}
+tr.subline-in td.sticky-name,tr.subline-out td.sticky-name{border-right:2px solid #d8d8d0}
+tr.subline-in td.sticky-tot-p{background:#e8f4ff}
+tr.subline-in td.sticky-tot-f{background:#e0f5eb}
+tr.subline-out td.sticky-tot-p{background:#f2eeff}
+tr.subline-out td.sticky-tot-f{background:#fef2ec}
+td.subline-label{padding-left:52px;color:#555;font-size:12px}
+.subline-name-input{border:none;background:none;font-size:12px;width:120px;color:#555;font-family:inherit;padding:2px 0}
+.subline-name-input:focus{outline:none;border-bottom:1px solid #ccc}
+tr.add-subline-row td{background:transparent;border-bottom:none}
+.add-subline-btn{font-size:11px;padding:3px 10px;cursor:pointer;border-radius:5px;background:none;border:1px dashed #ccc;color:#999;font-family:inherit;margin-left:52px}
+.add-subline-btn:hover{border-color:#888;color:#555;background:#fafaf8}
+.toggle-btn{background:none;border:none;cursor:pointer;font-size:10px;color:#aaa;padding:0 4px;line-height:1;vertical-align:middle;transition:transform .15s;display:inline-block}
+.toggle-btn.open{transform:rotate(90deg)}
+.drag-handle{display:inline-block;cursor:grab;color:#ccc;font-size:13px;padding:0 5px 0 0;line-height:1;vertical-align:middle;user-select:none}
+.drag-handle:hover{color:#888}
+.drag-handle:active{cursor:grabbing}
+tr.drag-over-top td{box-shadow:inset 0 2px 0 #4a90d9}
+tr.drag-over-bottom td{box-shadow:inset 0 -2px 0 #4a90d9}
+tr.dragging-article td{opacity:0.35}
+.delete-subline-btn{font-size:10px;padding:1px 5px;cursor:pointer;border-radius:4px;background:none;border:none;color:#ccc;font-family:inherit}
+.delete-subline-btn:hover{color:#c0392b;background:#fdf0f0}
+
+/* Total rows */
+tr.total-row td{font-weight:600;border-top:2px solid #d8d8d0;background:#fafaf8;color:#555}
+tr.net-row td{
+  font-weight:600;
+  background:#fafaf8;
+  color:#555;
+  font-size:13px;
+  border-top:2px solid #d8d8d0;
+}
+tr.net-row td.left { color:#555; font-size:13px; font-weight:600; text-transform:none; letter-spacing:normal; }
+tr.net-row td.sticky-name { background:#fafaf8; color:#555; }
+tr.net-row td.sticky-tot-p { background:#eaf4ff; border-top:2px solid #d8d8d0; color:#1a5fa3; }
+tr.net-row td.sticky-tot-f { background:#e4f8f0; border-top:2px solid #d8d8d0; color:#0a6e4e; }
+tr.net-row td.cell-plan { background:#f5f9ff; border-top:2px solid #d8d8d0; }
+tr.net-row td.cell-fact { background:#f5fdf9; border-top:2px solid #d8d8d0; }
+
+/* Накопительный поток */
+tr.cumul-row td {
+  font-weight:600;
+  background:#f5f0ff;
+  color:#3d1a8a;
+  padding-top:6px;
+  padding-bottom:6px;
+  font-size:12px;
+  border-top:1px solid #ddd8f5;
+}
+tr.cumul-row td.sticky-name { background:#ede8ff; color:#3d1a8a; font-size:12px; text-transform:uppercase; letter-spacing:0.02em; font-weight:700; }
+tr.cumul-row td.sticky-tot-p { background:#e0d8ff; border-top:1px solid #ddd8f5; color:#3d1a8a; }
+tr.cumul-row td.sticky-tot-f { background:#d8f0e8; border-top:1px solid #ddd8f5; color:#0a4e30; }
+tr.cumul-row td.cell-plan { background:#f5f0ff; border-top:1px solid #ddd8f5; }
+tr.cumul-row td.cell-fact { background:#eef8f4; border-top:1px solid #ddd8f5; }
+
+.month-input{width:90px;text-align:right;font-size:13px;padding:2px 5px;border:1px solid #e0e0d8;border-radius:5px;background:transparent;color:#1a1a18;font-family:inherit}
+.month-input:focus{outline:none;border-color:#999;background:#fff}
+.row-name-input{border:none;background:none;font-size:13px;width:140px;color:#1a1a18;font-family:inherit;padding:2px 0;font-weight:600}
+.row-name-input:focus{outline:none;border-bottom:1px solid #ccc}
+.total-cell{min-width:72px;font-weight:600}
+.positive{color:#0a6e4e}
+.negative{color:#a33020}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;color:#aaa;gap:12px}
+.empty-state .big{font-size:40px}
+.empty-state p{font-size:15px}
+
+/* MODAL OVERLAY */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-overlay.hidden{display:none}
+.modal{background:#fff;border-radius:14px;padding:28px 28px 24px;width:460px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.modal h2{font-size:17px;font-weight:500;margin-bottom:20px}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+.field input[type="text"]{width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18}
+.field input[type="text"]:focus{outline:none;border-color:#999}
+
+/* MONTH PICKER */
+.month-picker-wrap{position:relative}
+.month-picker-btn{width:100%;text-align:left;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;font-family:inherit;font-size:14px;color:#1a1a18;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.month-picker-btn:hover{border-color:#aaa}
+.month-picker-btn .placeholder{color:#bbb}
+.month-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid #ddd;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.1);z-index:200;padding:12px}
+.month-dropdown.hidden{display:none}
+.year-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.year-nav button{background:none;border:none;cursor:pointer;font-size:16px;padding:4px 8px;color:#555;border-radius:5px}
+.year-nav button:hover{background:#f0f0ec}
+.year-nav span{font-size:14px;font-weight:500}
+.months-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.month-cell{padding:7px 4px;text-align:center;font-size:13px;border-radius:6px;cursor:pointer;color:#444;border:1px solid transparent}
+.month-cell:hover{background:#f0f0ec}
+.month-cell.selected{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.month-cell.disabled{color:#ccc;cursor:default;pointer-events:none}
+
+/* TYPE BUTTONS */
+.type-btns{display:flex;gap:10px;flex-wrap:wrap}
+.type-btn{padding:8px 20px;border-radius:8px;border:1px solid #ddd;background:#fff;font-family:inherit;font-size:14px;color:#555;cursor:pointer;transition:all .15s}
+.type-btn:hover{border-color:#aaa;background:#f8f8f5}
+.type-btn.active{border-color:#1a1a18;background:#1a1a18;color:#fff;font-weight:500}
+
+/* MODAL FOOTER */
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;border-top:1px solid #f0f0ec;padding-top:18px}
+.btn-cancel{padding:8px 18px;border-radius:8px;border:1px solid #ddd;background:#fff;font-family:inherit;font-size:14px;color:#555;cursor:pointer}
+.btn-cancel:hover{background:#f5f5f3}
+.btn-create{padding:8px 22px;border-radius:8px;border:none;background:#1a1a18;font-family:inherit;font-size:14px;color:#fff;cursor:pointer;font-weight:500}
+.btn-create:hover{background:#333}
+
+/* PROJECT BADGE */
+.proj-type-badge{font-size:11px;padding:2px 7px;border-radius:5px;background:#f0f0ec;color:#666;margin-left:6px;font-weight:400}
+
+/* VIEW TOGGLE */
+.view-btn{font-size:12px;font-weight:500;padding:4px 14px;border:none;border-radius:6px;background:transparent;color:#888;cursor:pointer;font-family:inherit;transition:all .15s}
+.view-btn.active{background:#fff;color:#1a1a18;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.view-btn:hover:not(.active){color:#555}
+
+/* Hide plan or fact columns */
+table.hide-plan th.month-plan-head,
+table.hide-plan td.cell-plan,
+table.hide-plan th.sticky-tot-p,
+table.hide-plan td.sticky-tot-p,
+table.hide-plan th.decade-sub-head.month-plan-head,
+table.hide-plan td.cell-dplan { display:none }
+
+table.hide-fact th.month-fact-head,
+table.hide-fact td.cell-fact,
+table.hide-fact th.sticky-tot-f,
+table.hide-fact td.sticky-tot-f,
+table.hide-fact th.decade-sub-head.month-fact-head,
+table.hide-fact td.cell-dfact { display:none }
+
+/* DASHBOARD TABLE */
+#dashboard-table { width:100%; }
+#dashboard-table th { text-align:right; font-weight:500; color:#888; padding:5px 8px; border-bottom:2px solid #e5e5e0; font-size:12px; white-space:nowrap; }
+#dashboard-table th.left { text-align:left; }
+#dashboard-table th.dash-cur-month { background:#fffbe6; color:#7a6000; }
+#dashboard-table td { text-align:right; padding:3px 8px; border-bottom:1px solid #f0f0ec; font-size:13px; white-space:nowrap; }
+#dashboard-table td.left { text-align:left; }
+#dashboard-table td.dash-zero { color:#ccc; }
+#dashboard-table td.dash-pos { color:#0a6e4e; }
+#dashboard-table td.dash-neg { color:#a33020; }
+#dashboard-table td.dash-cur-month { background:#fffbe6; }
+#dashboard-table td.dash-out-range { background:#f9f9f7; color:#ccc; }
+/* sticky project name col */
+#dashboard-table th.dash-sticky,
+#dashboard-table td.dash-sticky {
+  position:sticky; left:0; z-index:3;
+  background:#fff; width:210px; min-width:210px; max-width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border-right:2px solid #d8d8d0; text-align:left;
+}
+#dashboard-table thead th.dash-sticky { background:#fafaf8; z-index:5; }
+#dashboard-table thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
+/* Dashboard decade cells */
+#dashboard-table th.dash-dec-group { font-size:11px; font-weight:600; color:#555; background:#f0f0ec; text-align:center; white-space:nowrap; padding:4px 2px; border-right:2px solid #c0c0d0; }
+#dashboard-table th.dash-dec-group.dash-cur-month { background:#fff4cc; color:#7a6000; border-right-color:#e8c800; }
+#dashboard-table th.dash-dec-head { font-size:10px; font-weight:500; color:#6677aa; background:#f0f2ff; white-space:nowrap; padding:3px 4px; border-right:2px solid #c8c8e0; }
+#dashboard-table th.dash-dec-head:nth-child(3n+2) { border-right:1px solid #d8d8e8; }
+#dashboard-table th.dash-dec-head.dash-cur-month { background:#fff8e0; color:#7a6000; }
+#dashboard-table th.dash-dec-head:last-of-type { border-right:none !important; }
+#dashboard-table td.dash-dec-cell { font-size:13px; white-space:nowrap; padding:3px 8px; border-bottom:1px solid #f0f0ec; border-right:1px solid #e8e8f0; }
+#dashboard-table td.dash-dec-cell:nth-child(3n+4) { border-right:2px solid #b8b8d0; }
+#dashboard-table tr:last-child td.dash-dec-cell { border-bottom:none; }
+#dashboard-table td.dash-dec-cell.dash-zero { color:#ccc; }
+#dashboard-table td.dash-dec-cell.dash-pos { color:#0a6e4e; }
+#dashboard-table td.dash-dec-cell.dash-neg { color:#a33020; }
+#dashboard-table td.dash-dec-cell.dash-out-range { background:#f9f9f7; color:#ccc; }
+#dashboard-table td.dash-dec-cell.dash-cur-month { background:#fffbe6; }
+#dashboard-table tr.dash-total td.dash-dec-cell { font-weight:600; background:#f8f8f6; border-top:2px solid #c0c0d0; }
+#dashboard-table tr.dash-cumul td.dash-dec-cell { background:#f5f0ff; color:#3d1a8a; font-weight:600; border-top:1px solid #ddd8f5; }
+/* total rows */
+#dashboard-table tr.dash-total td { font-weight:600; background:#fafaf8; border-top:2px solid #d8d8d0; color:#555; }
+#dashboard-table tr.dash-total td.dash-sticky { background:#fafaf8; }
+#dashboard-table tr.dash-cumul td { font-weight:600; background:#f5f0ff; color:#3d1a8a; border-top:1px solid #ddd8f5; font-size:12px; }
+#dashboard-table tr.dash-cumul td.dash-sticky { background:#ede8ff; color:#3d1a8a; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; font-size:12px; }
+/* project type badge reuse */
+#dashboard-table .proj-badge { font-size:10px; padding:1px 6px; border-radius:4px; background:#f0f0ec; color:#888; margin-left:6px; font-weight:400; }
+
+/* ── DECADE VIEW ── */
+.decade-group { font-size:10px !important; font-weight:500 !important; color:#4a5a99 !important; background:#eef0ff !important; text-align:center; white-space:nowrap; padding:3px 4px !important; }
+.decade-sub-head { font-size:9px !important; background:#f2f4ff !important; color:#6677aa !important; text-align:center; white-space:nowrap; padding:2px 2px !important; }
+.cell-dplan input, .cell-dfact input { width:80px !important; font-size:12px !important; flex-shrink:0; box-sizing:border-box; }
+.cell-dplan { background:#f8f9ff; padding:2px 1px !important; min-width:82px; }
+.cell-dfact { background:#fffaf5; padding:2px 1px !important; min-width:82px; }
+td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-align:right; padding:2px 5px !important; border-left:2px solid #ddd; }
+
+/* toast */
+.toast-warn {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+  background:#2a2a2a; color:#fff; padding:11px 22px; border-radius:10px;
+  font-size:13px; z-index:9999; box-shadow:0 4px 20px rgba(0,0,0,.3);
+  animation: toastIn .18s ease;
+}
+@keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+/* ── MOBILE & RESPONSIVE ── */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  color: #1a1a18;
+}
+
+@media (max-width: 768px) {
+  body { height: 100vh; }
+  .layout { flex-direction: column; }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 280px;
+    height: 100vh;
+    background: #fff;
+    border-right: 1px solid #e5e5e0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 999;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.3);
+    z-index: 998;
+  }
+  .sidebar-overlay.open {
+    display: block;
+  }
+  .hamburger-btn {
+    display: block;
+  }
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .page { display: none; }
+  .page.active { display: block; }
+  
+  .modal {
+    width: 95vw;
+    max-width: 450px;
+    padding: 24px;
+  }
+  
+  .field input[type="text"],
+  .field input[type="email"],
+  .field input[type="password"] {
+    font-size: 16px;
+  }
+  
+  table {
+    font-size: 12px;
+  }
+  
+  .table-wrap {
+    overflow-x: auto;
+  }
+  
+  th, td {
+    padding: 2px 3px;
+  }
+  
+  .month-input {
+    width: 70px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 13px;
+  }
+  
+  .main {
+    padding: 12px;
+  }
+  
+  .modal {
+    width: 95vw;
+    padding: 20px 16px;
+  }
+  
+  .modal h2 {
+    font-size: 16px;
+  }
+  
+  .section {
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+  
+  .field {
+    margin-bottom: 14px;
+  }
+  
+  .field label {
+    font-size: 11px;
+  }
+  
+  .field input {
+    font-size: 16px !important;
+    padding: 10px 12px !important;
+  }
+  
+  .add-btn, .btn-cancel, .btn-create {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .btn-create {
+    flex: 1;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .btn-cancel, .btn-create {
+    width: 100%;
+  }
+  
+  table {
+    font-size: 11px;
+  }
+  
+  th, td {
+    padding: 2px 2px;
+  }
+  
+  .sticky-name,
+  td.sticky-name {
+    min-width: 140px;
+    max-width: 140px;
+  }
+  
+  #login-page {
+    padding: 16px;
+  }
+  
+  #login-page > div {
+    width: 100%;
+    max-width: 100%;
+    padding: 24px 16px;
+  }
+  
+  #login-page h1 {
+    font-size: 20px;
+  }
+}
+
+/* Login page responsive */
+@media (max-width: 768px) {
+  #login-page > div {
+    width: 100%;
+    max-width: none;
+    border-radius: 12px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="login-page" style="display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f3">
+  <div style="background:#fff;border-radius:14px;padding:40px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,.12)">
+    <div style="font-size:24px;font-weight:600;margin-bottom:8px;text-align:center">БДДС</div>
+    <div style="font-size:13px;color:#aaa;margin-bottom:32px;text-align:center">Планирование бюджета</div>
+
+    <div class="field" style="margin-bottom:16px">
+      <label style="display:block;font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Email</label>
+      <input type="email" id="login-email" placeholder="your@email.com" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
+    </div>
+
+    <div class="field" style="margin-bottom:24px">
+      <label style="display:block;font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Пароль</label>
+      <input type="password" id="login-password" placeholder="••••••••" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
+    </div>
+
+    <button onclick="handleLogin()" style="width:100%;padding:10px;border:none;background:#1a1a18;color:#fff;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:12px">Войти</button>
+    <button onclick="handleRegister()" style="width:100%;padding:10px;border:1px solid #ddd;background:#fff;color:#1a1a18;border-radius:8px;font-family:inherit;font-size:14px;cursor:pointer">Зарегистрироваться</button>
+
+    <div id="login-error" style="margin-top:16px;padding:10px;border-radius:8px;background:#fdf0f0;color:#a33020;font-size:13px;display:none"></div>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<div class="layout" style="display:none" id="main-layout">
+  <div class="sidebar">
+    <div class="nav-item" id="nav-dashboard" onclick="showPage('dashboard')">
+      <span class="icon">📊</span><span class="label">Дашборд</span>
+    </div>
+    <div class="nav-item active" id="nav-projects" onclick="toggleProjectsMenu()">
+      <span class="icon">📁</span><span class="label">Проекты</span>
+      <span class="nav-toggle open" id="projects-toggle">▶</span>
+    </div>
+    <div id="projects-submenu">
+      <div id="nav-projects-list"></div>
+      <div class="nav-add-project" onclick="openAddModal()">
+        <span style="font-size:15px;line-height:1">+</span>
+        <span>Добавить проект</span>
+      </div>
+    </div>
+    <div class="nav-item" id="nav-payments" onclick="showPage('payments')">
+      <span class="icon">💳</span><span class="label">Платежи</span>
+    </div>
+    <div style="flex:1"></div>
+    <div class="nav-item" onclick="handleLogout()" style="border-top:1px solid #e5e5e0">
+      <span class="icon">🚪</span><span class="label">Выход</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:0 4px">
+      <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Меню">☰</button>
+    </div>
+    <div class="page" id="page-dashboard">
+      <div style="display:flex;align-items:flex-end;gap:40px;margin-bottom:20px">
+        <div><div style="font-size:20px;font-weight:500;margin-bottom:4px">Дашборд</div><div style="font-size:13px;color:#aaa" id="dashboard-year-label"></div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Детализация:</span>
+          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+            <button id="dash-btn-month" class="view-btn active" onclick="toggleDashDecadeView('month')">Месяц</button>
+            <button id="dash-btn-decade" class="view-btn" onclick="toggleDashDecadeView('decade')">10 дней</button>
+          </div>
+        </div>
+      </div>
+      <div class="section"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам — план</div><div class="table-wrap"><table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table></div></div><div class="section" style="margin-top:0"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Накопительный денежный поток — план</div><canvas id="cumul-chart" style="width:100%;display:block"></canvas></div>
+    </div>
+
+    <div class="page" id="page-project">
+      <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px">
+        <div id="project-page-title" style="font-size:20px;font-weight:500"></div>
+        <div id="project-page-meta" style="font-size:13px;color:#aaa"></div>
+        <button id="project-edit-btn" onclick="openEditModal()" title="Редактировать проект" style="background:none;border:1px solid #e0e0d8;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.color='#555';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.color='#aaa';this.style.background='none'">✏️</button>
+      </div>
+      <div class="section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
+          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+            <button id="view-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
+            <button id="view-btn-fact" class="view-btn active" onclick="toggleView('fact')">Факт</button>
+          </div>
+          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:4px">Детализация:</span>
+          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+            <button id="view-btn-month" class="view-btn active" onclick="toggleDecadeView('month')">Месяц</button>
+            <button id="view-btn-decade" class="view-btn" onclick="toggleDecadeView('decade')">10 дней</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="main-table">
+            <thead id="main-thead"></thead>
+            <tbody id="articles-body"></tbody>
+          </table>
+        </div>
+        <button class="add-btn" onclick="addArticle()">+ Добавить статью</button>
+      </div>
+    </div>
+
+    <div class="page" id="page-payments">
+      <div class="empty-state"><div class="big">💳</div><p>Платежи — раздел в разработке</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT PROJECT MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="modal-title">Новый проект</h2>
+
+    <div class="field">
+      <label>Название проекта</label>
+      <input type="text" id="modal-name" placeholder="Введите название...">
+    </div>
+
+    <div class="field">
+      <label>Дата начала</label>
+      <div class="month-picker-wrap" id="wrap-start">
+        <button class="month-picker-btn" onclick="togglePicker('start')">
+          <span id="start-label" class="placeholder">Выберите месяц</span>
+          <span style="color:#bbb;font-size:12px">▼</span>
+        </button>
+        <div class="month-dropdown hidden" id="picker-start">
+          <div class="year-nav">
+            <button onclick="changeYear('start',-1)">&#8249;</button>
+            <span id="year-start-label">2025</span>
+            <button onclick="changeYear('start',1)">&#8250;</button>
+          </div>
+          <div class="months-grid" id="grid-start"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Дата окончания</label>
+      <div class="month-picker-wrap" id="wrap-end">
+        <button class="month-picker-btn" onclick="togglePicker('end')">
+          <span id="end-label" class="placeholder">Выберите месяц</span>
+          <span style="color:#bbb;font-size:12px">▼</span>
+        </button>
+        <div class="month-dropdown hidden" id="picker-end">
+          <div class="year-nav">
+            <button onclick="changeYear('end',-1)">&#8249;</button>
+            <span id="year-end-label">2025</span>
+            <button onclick="changeYear('end',1)">&#8250;</button>
+          </div>
+          <div class="months-grid" id="grid-end"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Тип проекта</label>
+      <div class="type-btns">
+        <button class="type-btn" onclick="selectType('ПИР')" id="type-ПИР">ПИР</button>
+        <button class="type-btn" onclick="selectType('СМР')" id="type-СМР">СМР</button>
+        <button class="type-btn" onclick="selectType('Поставка')" id="type-Поставка">Поставка</button>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-create" id="btn-create" onclick="confirmProjectModal()">Создать проект</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var VER = '10.12.0';
+  var scripts = [
+    'https://www.gstatic.com/firebasejs/' + VER + '/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/' + VER + '/firebase-auth-compat.js',
+    'https://www.gstatic.com/firebasejs/' + VER + '/firebase-firestore-compat.js'
+  ];
+  function loadNext(i) {
+    if (i >= scripts.length) { initFirebase(); return; }
+    var s = document.createElement('script');
+    s.src = scripts[i];
+    s.onload = function() { loadNext(i + 1); };
+    s.onerror = function() { console.error('Failed to load Firebase script:', scripts[i]); loadNext(i + 1); };
+    document.head.appendChild(s);
+  }
+  loadNext(0);
+})();
+
+function initFirebase() {
+  try { firebase.app().delete().catch(function(){}); } catch(e) {}
+  firebase.initializeApp({
+    apiKey: "AIzaSyDXkHVg3ucKGiG6QF3SFxds7MuTJ95Wx60",
+    authDomain: "bdds-1.firebaseapp.com",
+    projectId: "bdds-1",
+    storageBucket: "bdds-1.firebasestorage.app",
+    messagingSenderId: "94953276486",
+    appId: "1:94953276486:web:6c2df15276b2ea13cd7647"
+  });
+  startApp();
+
+  function startApp() {
+    window.db    = firebase.firestore();
+    window.auth  = firebase.auth();
+
+  // ── App constants (available only after Firebase init) ───────────────────
+  var MONTHS_COUNT = 12;
+  var DEC_COUNT    = 36;
+  var MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  var MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+  function ensureDec(arr) {
+    if (!Array.isArray(arr.dplan) || arr.dplan.length !== DEC_COUNT) arr.dplan = Array(DEC_COUNT).fill(0);
+    if (!Array.isArray(arr.dfact) || arr.dfact.length !== DEC_COUNT) arr.dfact = Array(DEC_COUNT).fill(0);
+  }
+
+  function newLine(name) {
+    return {
+      name: name || '',
+      plan: Array(MONTHS_COUNT).fill(0), fact: Array(MONTHS_COUNT).fill(0),
+      dplan: Array(DEC_COUNT).fill(0),   dfact: Array(DEC_COUNT).fill(0)
+    };
+  }
+  function newArticle(name) {
+    return {
+      name: name || 'Новая статья',
+      inDirect: true,  outDirect: true,
+      inOpen:   true,  outOpen:   true,
+      inPlan:   Array(MONTHS_COUNT).fill(0), inFact:   Array(MONTHS_COUNT).fill(0),
+      outPlan:  Array(MONTHS_COUNT).fill(0), outFact:  Array(MONTHS_COUNT).fill(0),
+      inDplan:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
+      outDplan: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
+      inLines:  [],
+      outLines: []
+    };
+  }
+
+  // ── Load from Firestore ─────────────────────────────────────────────────
+  window.loadData = function() {
+    return new Promise(function(resolve) {
+      window.auth.onAuthStateChanged(function(user) {
+        if (!user) { resolve(false); return; }
+        window.firebaseUid = user.uid;
+        window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
+          if (snap.exists) {
+            var d = snap.data();
+            if (d.projects && d.budgets) {
+              projects       = d.projects;
+              budgets        = d.budgets;
+              currentProject = d.currentProject || 0;
+              window.migrateData();
+              resolve(true);
+              return;
+            }
+          }
+          resolve(false);
+        });
+      });
+    });
+  };
+
+  // ── Save to Firestore (fire-and-forget) ─────────────────────────────────
+  window.saveData = function() {
+    if (!window.firebaseUid) return;
+    window.db.doc('bdds/' + window.firebaseUid).set(
+      { projects: projects, budgets: budgets, currentProject: currentProject }
+    ).catch(function(e) { console.error('Save error:', e); });
+  };
+
+  // ── Migrate data ────────────────────────────────────────────────────────
+  window.migrateData = function() {
+    Object.values(budgets).forEach(function(b) {
+      (b.articles || []).forEach(function(a) {
+        if (a.in !== undefined) {
+          a.inLines  = [{ name: 'Поступление 1', plan: a.in,     fact: a.factIn  || Array(MONTHS_COUNT).fill(0) }];
+          a.outLines = [{ name: 'Выплата 1',     plan: a.out,    fact: a.factOut || Array(MONTHS_COUNT).fill(0) }];
+          delete a.in; delete a.out; delete a.factIn; delete a.factOut;
+        }
+        if (a.inDirect === undefined) a.inDirect = true;
+        if (a.outDirect === undefined) a.outDirect = true;
+        if (a.inOpen  === undefined) a.inOpen  = true;
+        if (a.outOpen === undefined) a.outOpen = true;
+        if (!Array.isArray(a.inDplan)  || a.inDplan.length  !== DEC_COUNT) a.inDplan  = Array(DEC_COUNT).fill(0);
+        if (!Array.isArray(a.inDfact)  || a.inDfact.length  !== DEC_COUNT) a.inDfact  = Array(DEC_COUNT).fill(0);
+        if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
+        if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
+        if (!a.inDeleted) a.inDeleted = false;
+        (a.inLines  || []).forEach(function(l) { ensureDec(l); });
+        (a.outLines || []).forEach(function(l) { ensureDec(l); });
+      });
+    });
+  };
+
+  // ── App start (after Firebase is ready) ─────────────────────────────────
+  window.loadData().then(function(loaded) {
+    if (!loaded && window.firebaseUid) {
+      // User is logged in but has no data yet, create defaults
+      projects = [
+        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
+        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+      ];
+      currentProject = 0;
+      budgets = {
+        0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
+        1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
+      };
+      window.saveData();
+    }
+    if (window.firebaseUid) {
+      // User is logged in, show app
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('main-layout').style.display = '';
+      window.renderSidebarProjects();
+      window.showPage('dashboard');
+    } else {
+      // User not logged in, show login page
+      document.getElementById('login-page').style.display = 'flex';
+      document.getElementById('main-layout').style.display = 'none';
+    }
+  });
+  } // end startApp()
+}
+// article.inDirect  — true: данные вбиваются прямо в строку (plan/fact), подстрок нет
+// article.outDirect — то же для выплат
+// article.inPlan[12] / article.inFact[12]   — прямые данные поступлений
+// article.outPlan[12] / article.outFact[12] — прямые данные выплат
+// article.inLines[]  — подстроки поступлений (только когда inDirect=false)
+// article.outLines[] — подстроки выплат     (только когда outDirect=false)
+// article.inOpen / article.outOpen — раскрыто ли (актуально только в режиме подстрок)
+function newLine(name) {
+  return {
+    name: name || '',
+    plan: Array(MONTHS_COUNT).fill(0), fact: Array(MONTHS_COUNT).fill(0),
+    dplan: Array(DEC_COUNT).fill(0),   dfact: Array(DEC_COUNT).fill(0)
+  };
+}
+function newArticle(name) {
+  return {
+    name: name || 'Новая статья',
+    inDirect: true,  outDirect: true,
+    inOpen:   true,  outOpen:   true,
+    inPlan:   Array(MONTHS_COUNT).fill(0), inFact:   Array(MONTHS_COUNT).fill(0),
+    outPlan:  Array(MONTHS_COUNT).fill(0), outFact:  Array(MONTHS_COUNT).fill(0),
+    inDplan:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
+    outDplan: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
+    inLines:  [],
+    outLines: []
+  };
+}
+// Helpers for decade arrays
+function ensureDec(arr) { return Array.isArray(arr) && arr.length === DEC_COUNT ? arr : Array(DEC_COUNT).fill(0); }
+// Sum three decades of month m from a [36] array → monthly value
+function decSum(arr36, m) { return (arr36[m*3]||0)+(arr36[m*3+1]||0)+(arr36[m*3+2]||0); }
+// Does month m have data in decade 1 or 2?
+function hasExtraDecData(arr36, m) { return (arr36[m*3+1]||0)!==0 || (arr36[m*3+2]||0)!==0; }
+// Build monthly [12] array from direct decade [36], summing the three decades
+function decToMonthly(arr36) {
+  return Array.from({length:MONTHS_COUNT}, (_,m) => decSum(arr36, m));
+}
+// sectionSum36: like sectionSum but returns [36] for decade arrays
+function sectionSum36(art, section, field) {
+  // field = 'dplan' or 'dfact'; section = 'in' or 'out'
+  const CAP = field.charAt(0).toUpperCase() + field.slice(1); // 'Dplan' or 'Dfact'
+  if (art[section + 'Direct']) {
+    return ensureDec(art[section + CAP]); // e.g. art.inDplan, art.outDfact
+  }
+  const res = Array(DEC_COUNT).fill(0);
+  (art[section + 'Lines'] || []).forEach(l => {
+    const a = ensureDec(l[field]);
+    a.forEach((v,i) => res[i] += v||0);
+  });
+  return res;
+}
+// Вернуть суммарный массив [12] для секции (direct или lines)
+// field = 'plan' или 'fact' (строчные)
+function sectionSum(art, section, field) {
+  if (art[section + 'Direct']) {
+    const key = section + field.charAt(0).toUpperCase() + field.slice(1);
+    const arr = art[key];
+    return Array.isArray(arr) ? arr.slice() : Array(MONTHS_COUNT).fill(0);
+  }
+  return sumLines(art[section + 'Lines'], field);
+}
+// sectionSumEffective: если включён режим декад — возвращает суммы из декадных массивов
+function sectionSumEff(art, section, field) {
+  if (!viewDecade) return sectionSum(art, section, field);
+  // decade field mapping: plan→dplan, fact→dfact
+  const df = field === 'plan' ? 'dplan' : 'dfact';
+  return decToMonthly(sectionSum36(art, section, df));
+}
+// Суммировать подстроки в массив по 12 месяцам
+function sumLines(lines, field) {
+  const res = Array(MONTHS_COUNT).fill(0);
+  lines.forEach(l => l[field].forEach((v,i) => res[i] += v || 0));
+  return res;
+}
+
+// old localStorage version — kept for reference
+// const STORAGE_KEY = 'bdds_data';
+// function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({projects,budgets,currentProject})); }
+
+let projects = [], budgets = {}, currentProject = 0;
+
+// Заглушка — Firebase перезапишет window.saveData после инициализации
+window.saveData = function() {};
+
+let projectsOpen = true;
+let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
+let selectedType = null;
+
+const MONTHS_COUNT = 12;
+const DEC_COUNT    = 36;
+const MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+function fmt(n) { return Math.round(n).toLocaleString('ru-RU'); }
+function netColor(v) { return v >= 0 ? '#0a6e4e' : '#a33020'; }
+function sumArr(a) { return a.reduce((s,v) => s+v, 0); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function getBudget() {
+  if (!budgets[currentProject]) budgets[currentProject] = { articles: [newArticle('Новая статья')] };
+  return budgets[currentProject];
+}
+
+/* ---- SIDEBAR ---- */
+function renderSidebarProjects() {
+  document.getElementById('nav-projects-list').innerHTML = projects.map((p,i) => `
+    <div class="nav-sub-item${i===currentProject?' active':''}" onclick="selectProject(${i})">
+      <span class="dot"></span>
+      <span style="flex:1">${esc(p.name)}</span>
+      ${p.type ? `<span class="proj-type-badge">${p.type}</span>` : ''}
+      <button class="delete-btn" onclick="event.stopPropagation();deleteProject(${i})">✕</button>
+    </div>`).join('');
+  document.getElementById('projects-submenu').style.display = projectsOpen ? '' : 'none';
+  document.getElementById('projects-toggle').classList.toggle('open', projectsOpen);
+}
+
+/* Mobile sidebar toggle */
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (sidebar) {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+  }
+}
+
+function closeSidebarIfOpen() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (sidebar && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+}
+
+function toggleProjectsMenu() {
+  const onProject = document.getElementById('page-project').classList.contains('active');
+  if (!onProject) {
+    showPage('project');
+    projectsOpen = true;
+  } else {
+    projectsOpen = !projectsOpen;
+  }
+  document.getElementById('nav-projects').classList.add('active');
+  renderSidebarProjects();
+}
+
+function selectProject(i) { currentProject = i; showPage('project'); }
+
+function deleteProject(i) {
+  if (projects.length <= 1) { alert('Должен быть хотя бы один проект.'); return; }
+  if (!confirm(`Удалить проект «${projects[i].name}»? Все данные будут потеряны.`)) return;
+  projects.splice(i, 1);
+  const newB = {}; let ni = 0;
+  Object.keys(budgets).sort((a,b)=>+a-+b).forEach(k => { if (+k !== i) { newB[ni] = budgets[k]; ni++; } });
+  budgets = newB;
+  if (currentProject >= projects.length) currentProject = projects.length - 1;
+  saveData();
+  renderSidebarProjects(); renderBudget();
+}
+
+/* ---- PAGES ---- */
+/* ---- DASHBOARD ---- */
+function computeProjectNet12(pi) {
+  // Returns array[12] of net plan for calendar months 0-11 for project pi
+  const b = budgets[pi];
+  if (!b || !b.articles) return Array(12).fill(0);
+  const net12 = Array(12).fill(0);
+  b.articles.forEach(a => {
+    // Check if decade data has any non-zero values
+    const ip36 = sectionSum36(a, 'in',  'dplan');
+    const op36 = sectionSum36(a, 'out', 'dplan');
+    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
+    if (hasDecData) {
+      // Use decade data
+      for (let d = 0; d < DEC_COUNT; d++) {
+        net12[Math.floor(d / 3)] += (ip36[d]||0) - (op36[d]||0);
+      }
+    } else {
+      // Fall back to monthly plan data
+      const ip = sectionSum(a, 'in',  'plan');
+      const op = sectionSum(a, 'out', 'plan');
+      for (let m = 0; m < MONTHS_COUNT; m++) {
+        net12[m] += (ip[m]||0) - (op[m]||0);
+      }
+    }
+  });
+  // Zero out months outside project range (absolute year-month keys)
+  const p = projects[pi];
+  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
+    const startKey = p.start.y * 12 + p.start.m;
+    const endKey   = p.end.y   * 12 + p.end.m;
+    for (let m = 0; m < 12; m++) {
+      const y = new Date().getFullYear();
+      const mKey = y * 12 + m;
+      if (mKey < startKey || mKey > endKey) net12[m] = null;
+    }
+  }
+  return net12;
+}
+
+function computeProjectNetDec36(pi) {
+  // Returns array[36] of net plan per decade for project pi
+  const b = budgets[pi];
+  if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
+  const net36 = Array(DEC_COUNT).fill(0);
+  b.articles.forEach(a => {
+    const ip36 = sectionSum36(a, 'in',  'dplan');
+    const op36 = sectionSum36(a, 'out', 'dplan');
+    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
+    if (hasDecData) {
+      for (let i = 0; i < DEC_COUNT; i++) {
+        net36[i] += (ip36[i]||0) - (op36[i]||0);
+      }
+    } else {
+      // Fall back to monthly plan data, spread evenly across 3 decades
+      const ip = sectionSum(a, 'in',  'plan');
+      const op = sectionSum(a, 'out', 'plan');
+      for (let m = 0; m < MONTHS_COUNT; m++) {
+        const net = (ip[m]||0) - (op[m]||0);
+        for (let d = 0; d < 3; d++) net36[m*3+d] += net / 3;
+      }
+    }
+  });
+  // Zero out decades outside project range (absolute year-month keys)
+  const p = projects[pi];
+  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
+    const startKey = p.start.y * 12 + p.start.m;
+    const endKey   = p.end.y   * 12 + p.end.m;
+    for (let d = 0; d < DEC_COUNT; d++) {
+      const m = Math.floor(d / 3);
+      const y = new Date().getFullYear();
+      const mKey = y * 12 + m;
+      if (mKey < startKey || mKey > endKey) net36[d] = 0;
+    }
+  }
+  return net36;
+}
+
+function renderDashboard() {
+  const curY = new Date().getFullYear();
+  const curM = new Date().getMonth();
+  const DEC_LABELS = ['1–10','11–20','21–31'];
+  document.getElementById('dashboard-year-label').textContent = curY + ' год';
+
+  const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+
+  // Build header
+  let thead = '<tr>';
+  thead += '<th class="dash-sticky">Проект</th>';
+
+  if (viewDashDecade) {
+    // Show 9 decades: starting from current decade of current month
+    const startDecIdx = curM * 3; // first decade of current month
+    const SHOWN_DEC = 9;
+    const startMonth = curM;
+    const endMonth = Math.min(curM + 2, 11); // up to 2 more months = 9 decades max
+
+    // Month group header: 3 decades per month, label centered via colspan
+    for (let m = startMonth; m <= endMonth; m++) {
+      const isCurM = (m === curM);
+      thead += `<th class="dash-dec-group${isCurM?' dash-cur-month':''}" colspan="3">${MNAMES[m]}</th>`;
+    }
+    thead += '</tr><tr><th class="dash-sticky"></th>';
+    const today = new Date().getDate();
+    const curDecIdx = today <= 10 ? 0 : today <= 20 ? 1 : 2;
+    const curDecGlobal = curM * 3 + curDecIdx;
+    for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
+      const isCurDec = (d === curDecGlobal);
+      thead += `<th class="dash-dec-head${isCurDec?' dash-cur-month':''}" style="text-align:center">${DEC_LABELS[d % 3]}</th>`;
+    }
+  } else {
+    for (let m = 0; m < 12; m++) {
+      thead += `<th${m === curM ? ' class="dash-cur-month"' : ''}>${MNAMES[m]}</th>`;
+    }
+  }
+  thead += '</tr>';
+  document.getElementById('dashboard-thead').innerHTML = thead;
+
+  const fmtD = (v) => v === null ? '' : (v === 0 ? '—' : (Math.round(v / 1000)).toLocaleString('ru-RU'));
+  const cellClass = (v, outRange, isCurM) => {
+    const cls = [];
+    if (outRange) { cls.push('dash-out-range'); }
+    else if (v === null || v === 0) { cls.push('dash-zero'); }
+    else if (v > 0) { cls.push('dash-pos'); }
+    else { cls.push('dash-neg'); }
+    if (isCurM) cls.push('dash-cur-month');
+    return cls.join(' ');
+  };
+
+  let tbody = '';
+
+  if (viewDashDecade) {
+    // Show 9 decades starting from current month
+    const startDecIdx = curM * 3;
+    const SHOWN_DEC = 9;
+    const today = new Date().getDate();
+    const curDecIdx = today <= 10 ? 0 : today <= 20 ? 1 : 2;
+    const curDecGlobal = curM * 3 + curDecIdx;
+
+    const projectNets36 = projects.map((p, pi) => computeProjectNetDec36(pi));
+
+    // Company totals per decade (decades outside project range = 0)
+    const companyNet36 = Array(DEC_COUNT).fill(0);
+    projectNets36.forEach((net36, pi) => {
+      for (let d = 0; d < DEC_COUNT; d++) {
+        companyNet36[d] += net36[d] || 0;
+      }
+    });
+
+    // Cumulative over the full year (dec 0..35)
+    const fullCumul = [];
+    let run = 0;
+    for (let d = 0; d < DEC_COUNT; d++) {
+      run += companyNet36[d] || 0;
+      fullCumul[d] = run;
+    }
+    // Value that was accumulated BEFORE the first shown decade (dec 0 = Jan 1-10)
+    const cumulBeforeStart = startDecIdx > 0 ? (fullCumul[startDecIdx - 1] || 0) : 0;
+    // For 9 shown decades: start from cumulBeforeStart, add each shown decade
+    const cumul9 = [];
+    let runShown = cumulBeforeStart;
+    for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
+      runShown += companyNet36[d] || 0;
+      cumul9.push(runShown);
+    }
+
+    projects.forEach((p, pi) => {
+      const net36 = projectNets36[pi];
+      tbody += '<tr>';
+      const badge = p.type ? `<span class="proj-badge">${p.type}</span>` : '';
+      tbody += `<td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
+        const v = net36[d] || 0;
+        const isCurDec = (d === curDecGlobal);
+        const colorCls = v === 0 ? 'dash-zero' : (v > 0 ? 'dash-pos' : 'dash-neg');
+        tbody += `<td class="dash-dec-cell ${colorCls}${isCurDec?' dash-cur-month':''}">${fmtD(v)}</td>`;
+      }
+      tbody += '</tr>';
+    });
+
+    // Company total row
+    tbody += '<tr class="dash-total">';
+    tbody += '<td class="dash-sticky left">Денежный поток компании</td>';
+    for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
+      const v = companyNet36[d] || 0;
+      const isCurDec = (d === curDecGlobal);
+      const color = v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
+      tbody += `<td class="dash-dec-cell${isCurDec?' dash-cur-month':''}" style="color:${color}">${fmtD(v)}</td>`;
+    }
+    tbody += '</tr>';
+
+    // Cumulative row
+    tbody += '<tr class="dash-cumul">';
+    tbody += '<td class="dash-sticky left">Накопительно</td>';
+    for (let d = 0; d < SHOWN_DEC; d++) {
+      const v = cumul9[d] || 0;
+      const isCurDec = (d === curDecIdx);
+      const color = v > 0 ? '#3d1a8a' : v < 0 ? '#a33020' : '#999';
+      tbody += `<td class="dash-dec-cell${isCurDec?' dash-cur-month':''}" style="color:${color}">${fmtD(v)}</td>`;
+    }
+    tbody += '</tr>';
+    
+    document.getElementById('dashboard-body').innerHTML = tbody;
+    // Build sliced cumul36 for chart (9 values)
+    const cumul36Slice = cumul9.slice(0, SHOWN_DEC);
+    requestAnimationFrame(() => renderCumulChartDec(cumul36Slice, SHOWN_DEC));
+  } else {
+    // Month view
+    const projectNets12 = projects.map((p, pi) => computeProjectNet12(pi));
+
+    const companyNet = Array(12).fill(0);
+    projectNets12.forEach(net12 => {
+      for (let m = 0; m < 12; m++) {
+        companyNet[m] += net12[m] || 0;
+      }
+    });
+
+    const cumul = [];
+    let run = 0;
+    for (let m = 0; m < 12; m++) {
+      run += companyNet[m];
+      cumul.push(run);
+    }
+
+    projects.forEach((p, pi) => {
+      const net12 = projectNets12[pi];
+      tbody += '<tr>';
+      const badge = p.type ? `<span class="proj-badge">${p.type}</span>` : '';
+      tbody += `<td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      for (let m = 0; m < 12; m++) {
+        const v = net12[m];
+        const outRange = v === null;
+        tbody += `<td class="${cellClass(v, outRange, m === curM)}">${outRange ? '' : fmtD(v)}</td>`;
+      }
+      tbody += '</tr>';
+    });
+
+    tbody += '<tr class="dash-total">';
+    tbody += '<td class="dash-sticky left">Денежный поток компании</td>';
+    for (let m = 0; m < 12; m++) {
+      const v = companyNet[m];
+      const color = v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
+      tbody += `<td class="${m === curM ? 'dash-cur-month' : ''}" style="color:${color}">${fmtD(v)}</td>`;
+    }
+    tbody += '</tr>';
+
+    tbody += '<tr class="dash-cumul">';
+    tbody += '<td class="dash-sticky left">Накопительно</td>';
+    for (let m = 0; m < 12; m++) {
+      const v = cumul[m];
+      const color = v > 0 ? '#3d1a8a' : v < 0 ? '#a33020' : '#999';
+      tbody += `<td class="${m === curM ? 'dash-cur-month' : ''}" style="color:${color}">${fmtD(v)}</td>`;
+    }
+    tbody += '</tr>';
+
+    document.getElementById('dashboard-body').innerHTML = tbody;
+    requestAnimationFrame(() => renderCumulChart(cumul, curM));
+  }
+}
+
+
+/* ---- CUMULATIVE CHART ---- */
+function renderCumulChart(cumul, curM) {
+  const canvas = document.getElementById('cumul-chart');
+  if (!canvas) return;
+
+  const dpr = window.devicePixelRatio || 1;
+
+  // ── Read column X-centres from the actual table header cells ──
+  const thead = document.getElementById('dashboard-thead');
+  const hCells = thead ? Array.from(thead.querySelectorAll('th')) : [];
+  // First th is the sticky "Проект" col, then 12 month ths
+  const monthThs = hCells.slice(1); // 12 cells
+  if (monthThs.length !== 12) return; // table not yet rendered
+
+  const canvasRect = canvas.getBoundingClientRect();
+  // x positions of month columns relative to canvas left edge
+  const colX = monthThs.map(th => {
+    const r = th.getBoundingClientRect();
+    return (r.left + r.right) / 2 - canvasRect.left;
+  });
+
+  const W = canvas.parentElement.clientWidth || 800;
+  const H = 220;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  // Left pad = leftmost column centre, right edge = rightmost centre
+  const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
+  const cH  = H - PAD.top - PAD.bottom;
+
+  const vals = cumul.map(v => v / 1000);
+  const minVal = Math.min(0, ...vals);
+  const maxVal = Math.max(0, ...vals);
+  const range  = maxVal - minVal || 1;
+  const pad    = range * 0.12;
+  const vMin   = minVal - pad;
+  const vMax   = maxVal + pad;
+  const vRange = vMax - vMin;
+
+  // Y axis label area to the left of first column
+  const yLabelRight = colX[0] - 8;
+
+  const toX = (m) => colX[m];
+  const toY = (v) => PAD.top + (1 - (v - vMin) / vRange) * cH;
+  const zeroY = toY(0);
+
+  // ── Grid lines (span full columns range) ─────────────────────
+  const xLeft  = colX[0];
+  const xRight = colX[11];
+
+  // round grid values to nice intervals
+  function niceGrid(vMin, vMax, steps) {
+    const span = vMax - vMin;
+    const rawStep = span / steps;
+    const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const n = Math.ceil(rawStep / pow);
+    const niceStep = n * pow;
+    const ticks = [];
+    for (let i = 0; i <= steps; i++) {
+      const v = Math.round(vMin / niceStep) * niceStep + i * niceStep;
+      ticks.push(v);
+    }
+    return ticks;
+  }
+
+  ctx.strokeStyle = '#e8e8e4';
+  ctx.lineWidth   = 1;
+  const ticks = niceGrid(vMin, vMax, 4);
+  ticks.forEach(v => {
+    const y = toY(v);
+    ctx.beginPath();
+    ctx.moveTo(xLeft, y);
+    ctx.lineTo(xRight, y);
+    ctx.stroke();
+    // Y labels
+    const lbl = String(Math.round(v));
+    ctx.fillStyle = '#bbb';
+    ctx.font = '10px system-ui,sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(lbl, yLabelRight, y + 3.5);
+  });
+
+  // ── Zero line ────────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(xLeft, zeroY);
+  ctx.lineTo(xRight, zeroY);
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#888';
+  ctx.font = 'bold 10px system-ui,sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('0', yLabelRight, zeroY + 3.5);
+
+  // ── Filled areas ─────────────────────────────────────────────
+  function drawFill(color, isAbove) {
+    ctx.save();
+    ctx.beginPath();
+    if (isAbove) ctx.rect(xLeft, PAD.top, xRight - xLeft, zeroY - PAD.top);
+    else         ctx.rect(xLeft, zeroY,   xRight - xLeft, PAD.top + cH - zeroY);
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(toX(0), zeroY);
+    for (let m = 0; m < 12; m++) ctx.lineTo(toX(m), toY(vals[m]));
+    ctx.lineTo(toX(11), zeroY);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  }
+  drawFill('rgba(10,110,78,0.10)', true);
+  drawFill('rgba(163,48,32,0.10)', false);
+
+  // ── Line with color split at zero ────────────────────────────
+  function drawLineFull(color, isAbove) {
+    ctx.save();
+    ctx.beginPath();
+    if (isAbove) ctx.rect(xLeft - 2, PAD.top - 2, xRight - xLeft + 4, zeroY - PAD.top + 2);
+    else         ctx.rect(xLeft - 2, zeroY, xRight - xLeft + 4, PAD.top + cH - zeroY + 2);
+    ctx.clip();
+    ctx.beginPath();
+    for (let m = 0; m < 12; m++) {
+      if (m === 0) ctx.moveTo(toX(m), toY(vals[m]));
+      else         ctx.lineTo(toX(m), toY(vals[m]));
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2.5;
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+  drawLineFull('#0a6e4e', true);
+  drawLineFull('#c0392b', false);
+
+  // ── Current month vertical marker ────────────────────────────
+  if (curM >= 0 && curM <= 11) {
+    ctx.save();
+    ctx.strokeStyle = '#e8a000';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(toX(curM), PAD.top);
+    ctx.lineTo(toX(curM), PAD.top + cH);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Dots ─────────────────────────────────────────────────────
+  for (let m = 0; m < 12; m++) {
+    const v = vals[m], cx = toX(m), cy = toY(v);
+    ctx.beginPath();
+    ctx.arc(cx, cy, m === curM ? 5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // ── Value labels ─────────────────────────────────────────────
+  ctx.textAlign = 'center';
+  for (let m = 0; m < 12; m++) {
+    const v = vals[m];
+    if (v === 0) continue;
+    const cx = toX(m), cy = toY(v);
+    const lbl = String(Math.round(v));
+    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
+    ctx.font = '10px system-ui,sans-serif';
+    ctx.fillText(lbl, cx, v >= 0 ? cy - 8 : cy + 15);
+  }
+}
+
+/* ---- DECADE CHART (dashboard) ---- */
+function renderCumulChartDec(cumulArr, shownDec) {
+  const shown = shownDec || cumulArr.length;
+  const canvas = document.getElementById('cumul-chart');
+  if (!canvas) return;
+
+  const dpr = window.devicePixelRatio || 1;
+
+  const thead = document.getElementById('dashboard-thead');
+  const decThs = thead ? Array.from(thead.querySelectorAll('th.dash-dec-head')) : [];
+  if (decThs.length < shown) return;
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const colX = decThs.map(th => {
+    const r = th.getBoundingClientRect();
+    return (r.left + r.right) / 2 - canvasRect.left;
+  });
+
+  const W = canvas.parentElement.clientWidth || 800;
+  const H = 220;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
+  const cH  = H - PAD.top - PAD.bottom;
+
+  const validVals = cumulArr.filter(v => v !== null).map(v => v / 1000);
+  const minVal = validVals.length ? Math.min(0, ...validVals) : 0;
+  const maxVal = validVals.length ? Math.max(0, ...validVals) : 1;
+  const pad    = (maxVal - minVal) * 0.12 || 1;
+  const vMin   = minVal - pad;
+  const vMax   = maxVal + pad;
+  const vRange = vMax - vMin;
+
+  const yLabelRight = colX[0] - 8;
+  const toX = (d) => colX[d] !== undefined ? colX[d] : colX[0];
+  const toY = (v) => PAD.top + (1 - (v - vMin) / vRange) * cH;
+  const zeroY = toY(0);
+
+  const xLeft  = colX[0];
+  const xRight = colX[shown - 1];
+
+  // ── Grid lines ─────────────────────────────────────────────
+  ctx.strokeStyle = '#e8e8e4';
+  ctx.lineWidth   = 1;
+  const steps = 4;
+  function niceGrid(vMn, vMx, stp) {
+    const span = vMx - vMn;
+    const rawStep = span / stp;
+    const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const n = Math.ceil(rawStep / pow);
+    const niceStep = n * pow;
+    const arr = [];
+    for (let i = 0; i <= stp; i++) arr.push(Math.round(vMn / niceStep) * niceStep + i * niceStep);
+    return arr;
+  }
+  const decTicks = niceGrid(vMin, vMax, steps);
+  decTicks.forEach(v => {
+    const y = toY(v);
+    ctx.beginPath();
+    ctx.moveTo(xLeft, y);
+    ctx.lineTo(xRight, y);
+    ctx.stroke();
+    const lbl = String(Math.round(v));
+    ctx.fillStyle = '#bbb';
+    ctx.font = '10px system-ui,sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(lbl, yLabelRight, y + 3.5);
+  });
+
+  // ── Zero line ──────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(xLeft, zeroY);
+  ctx.lineTo(xRight, zeroY);
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#888';
+  ctx.font = 'bold 10px system-ui,sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('0', yLabelRight, zeroY + 3.5);
+
+  // ── Filled areas ────────────────────────────────────────────
+  const valsScaled = cumulArr.map(v => v === null ? null : v / 1000);
+  function drawFill(color, isAbove) {
+    ctx.save();
+    if (isAbove) ctx.rect(xLeft, PAD.top, xRight - xLeft, zeroY - PAD.top);
+    else         ctx.rect(xLeft, zeroY, xRight - xLeft, PAD.top + cH - zeroY);
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(toX(0), zeroY);
+    for (let d = 0; d < shown; d++) {
+      if (valsScaled[d] === null) continue;
+      ctx.lineTo(toX(d), toY(valsScaled[d]));
+    }
+    ctx.lineTo(toX(shown - 1), zeroY);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  }
+  drawFill('rgba(10,110,78,0.10)', true);
+  drawFill('rgba(163,48,32,0.10)', false);
+
+  // ── Line ────────────────────────────────────────────────────
+  function drawLineFull(color, isAbove) {
+    ctx.save();
+    if (isAbove) ctx.rect(xLeft - 2, PAD.top - 2, xRight - xLeft + 4, zeroY - PAD.top + 2);
+    else         ctx.rect(xLeft - 2, zeroY, xRight - xLeft + 4, PAD.top + cH - zeroY + 2);
+    ctx.clip();
+    ctx.beginPath();
+    let first = true;
+    for (let d = 0; d < shown; d++) {
+      if (valsScaled[d] === null) { first = true; continue; }
+      if (first) { ctx.moveTo(toX(d), toY(valsScaled[d])); first = false; }
+      else         ctx.lineTo(toX(d), toY(valsScaled[d]));
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2.5;
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+  drawLineFull('#0a6e4e', true);
+  drawLineFull('#c0392b', false);
+
+  // ── Month boundary lines between shown decades ─────────────
+  const curM = new Date().getMonth();
+  for (let m = curM; m <= curM + 2 && m < 12; m++) {
+    if (m === curM) continue;
+    const absD = m * 3;
+    const relD = absD - curM * 3;
+    if (relD >= 1 && relD < shown) {
+      const xMid = colX[relD];
+      ctx.save();
+      ctx.strokeStyle = '#e0e0d8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(xMid, PAD.top);
+      ctx.lineTo(xMid, PAD.top + cH);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ── Dots ────────────────────────────────────────────────────
+  for (let d = 0; d < shown; d++) {
+    if (cumulArr[d] === null) continue;
+    const v = valsScaled[d], cx = toX(d), cy = toY(v);
+    ctx.beginPath();
+    ctx.arc(cx, cy, d === 0 ? 5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // ── Value labels ───────────────────────────────────────────
+  ctx.textAlign = 'center';
+  for (let d = 0; d < shown; d++) {
+    if (cumulArr[d] === null || cumulArr[d] === 0) continue;
+    const v = valsScaled[d], cx = toX(d), cy = toY(v);
+    const lbl = String(Math.round(v));
+    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
+    ctx.font = '10px system-ui,sans-serif';
+    ctx.fillText(lbl, cx, v >= 0 ? cy - 8 : cy + 15);
+  }
+}
+
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (name === 'dashboard') {
+    document.getElementById('page-dashboard').classList.add('active');
+    document.getElementById('nav-dashboard').classList.add('active');
+    renderDashboard();
+  } else if (name === 'payments') {
+    document.getElementById('page-payments').classList.add('active');
+    document.getElementById('nav-payments').classList.add('active');
+  } else {
+    document.getElementById('page-project').classList.add('active');
+    document.getElementById('nav-projects').classList.add('active');
+    renderSidebarProjects();
+    renderBudget();
+  }
+  closeSidebarIfOpen();
+}
+
+/* ---- PROJECT MONTHS ---- */
+// Returns array of {y, m} for the current project's date range.
+// Falls back to all 12 months of current year if dates not set.
+function getProjectMonths() {
+  const p = projects[currentProject];
+  if (p && p.start && p.end &&
+      p.start.m != null && p.end.m != null) {
+    const months = [];
+    let y = p.start.y, m = p.start.m;
+    const endKey = p.end.y * 12 + p.end.m;
+    while (y * 12 + m <= endKey) {
+      months.push({ y, m });
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+    return months.length ? months : _allMonths();
+  }
+  return _allMonths();
+}
+function _allMonths() {
+  const y = new Date().getFullYear();
+  return Array.from({length: 12}, (_,m) => ({y, m}));
+}
+
+/* ---- SHARED TOTALS COMPUTATION ---- */
+function computeGrandTotals(articles) {
+  const months = getProjectMonths();
+  const MC = months.length;
+
+  /* Build a lookup: pos12[m] = index in months[] for calendar month m (0-11) */
+  const pos12 = Array(12).fill(null);
+  months.forEach(({m}, i) => { pos12[m] = i; });
+
+  const grandIn12      = Array(12).fill(0);
+  const grandOut12    = Array(12).fill(0);
+  const grandFactIn12 = Array(12).fill(0);
+  const grandFactOut12= Array(12).fill(0);
+
+  articles.forEach(a => {
+    const artInPlan   = sectionSumEff(a, 'in',  'plan');
+    const artOutPlan  = sectionSumEff(a, 'out', 'plan');
+    const artInFact   = sectionSumEff(a, 'in',  'fact');
+    const artOutFact  = sectionSumEff(a, 'out', 'fact');
+    months.forEach(({m}) => {
+      const p = pos12[m]; // position (0..MC-1)
+      grandIn12[m]       += artInPlan[m]  || 0;
+      grandOut12[m]      += artOutPlan[m] || 0;
+      grandFactIn12[m]   += artInFact[m]  || 0;
+      grandFactOut12[m]  += artOutFact[m] || 0;
+    });
+  });
+
+  /* Extract project-month-sliced arrays for the table */
+  const grandIn      = months.map((_,i) => grandIn12[months[i].m]);
+  const grandOut     = months.map((_,i) => grandOut12[months[i].m]);
+  const grandFactIn  = months.map((_,i) => grandFactIn12[months[i].m]);
+  const grandFactOut = months.map((_,i) => grandFactOut12[months[i].m]);
+  const grandNet     = grandIn.map((v,i)   => v - grandOut[i]);
+  const grandFactNet = grandFactIn.map((v,i)=> v - grandFactOut[i]);
+
+  const cumulP = [], cumulF = [];
+  let runP = 0, runF = 0;
+  for (let i = 0; i < MC; i++) {
+    runP += grandNet[i];
+    runF += grandFactNet[i];
+    cumulP.push(runP);
+    cumulF.push(runF);
+  }
+  return { grandIn, grandOut, grandFactIn, grandFactOut, grandNet, grandFactNet, cumulP, cumulF, runP, runF, months, MC };
+}
+
+/* ---- BUDGET TABLE ---- */
+function renderBudget() {
+  const p = projects[currentProject];
+  document.getElementById('project-page-title').textContent = p.name;
+  let meta = '';
+  if (p.type) meta += p.type;
+  if (p.start && p.end) meta += (meta ? ' · ' : '') + `${MONTH_NAMES_FULL[p.start.m]} ${p.start.y} — ${MONTH_NAMES_FULL[p.end.m]} ${p.end.y}`;
+  document.getElementById('project-page-meta').textContent = meta;
+
+  const b = getBudget();
+  const articles = b.articles;
+
+  // Compute grand totals (includes months/MC)
+  const { grandIn, grandOut, grandFactIn, grandFactOut, grandNet, grandFactNet,
+          cumulP, cumulF, runP, runF, months, MC } = computeGrandTotals(articles);
+
+  // ---- RENDER THEAD ----
+  const DEC_LABELS = ['1–10','11–20','21–31'];
+  const colsPerMonth = viewDecade ? 6 : 2; // 3 dec × (plan+fact) or just plan+fact
+
+  let row1 = '', row2 = '', row3 = '';
+  // Actual visible columns per decade/month depend on viewFact
+  const visPerDec   = viewFact ? 2 : 1;   // plan+fact or plan only
+  const visPerMonth = viewDecade ? visPerDec * 3 : (viewFact ? 2 : 1);
+
+  months.forEach(({y, m}) => {
+    if (viewDecade) {
+      row1 += `<th class="month-group" colspan="${visPerDec * 3}">${MONTH_NAMES[m]} <small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
+      DEC_LABELS.forEach(lbl => {
+        row2 += `<th class="decade-group" colspan="${visPerDec}" style="text-align:center">${lbl}</th>`;
+      });
+      row3 += `<th class="decade-sub-head month-plan-head">пл</th>${viewFact ? '<th class="decade-sub-head month-fact-head">фк</th>' : ''}`.repeat(3);
+    } else {
+      row1 += `<th class="month-group" colspan="${viewFact ? 2 : 1}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
+      row2 += `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">план</th>` +
+              (viewFact ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6">факт</th>` : '');
+    }
+  });
+
+  const FIXED_COLS = `
+    <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья</th>
+    <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">план</small></th>
+    <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">факт</small></th>`;
+
+  if (viewDecade) {
+    document.getElementById('main-thead').innerHTML =
+      `<tr>${FIXED_COLS}${row1}</tr><tr>${row2}</tr><tr>${row3}</tr>`;
+  } else {
+    document.getElementById('main-thead').innerHTML =
+      `<tr>${FIXED_COLS}${row1}</tr><tr>${row2}</tr>`;
+  }
+
+  // Apply hide-fact class (colspans already correct from thead generation above)
+  const tbl = document.getElementById('main-table');
+  tbl.classList.toggle('hide-fact', !viewFact);
+
+  let html = '';
+
+  articles.forEach((art, ai) => {
+    // Aggregate article totals over project months
+    const artInPlan  = sectionSumEff(art, 'in',  'plan');
+    const artOutPlan = sectionSumEff(art, 'out', 'plan');
+    const artInFact  = sectionSumEff(art, 'in',  'fact');
+    const artOutFact = sectionSumEff(art, 'out', 'fact');
+    const inTotal     = months.reduce((s,{m}) => s + (artInPlan[m]  || 0), 0);
+    const outTotal    = months.reduce((s,{m}) => s + (artOutPlan[m] || 0), 0);
+    const factInTotal = months.reduce((s,{m}) => s + (artInFact[m]  || 0), 0);
+    const factOutTotal= months.reduce((s,{m}) => s + (artOutFact[m] || 0), 0);
+
+    // ---- Article header row ----
+    html += `<tr class="article-header" data-article="${ai}">
+      <td class="left sticky-name" colspan="1">
+        <span class="drag-handle" title="Перетащить статью">⠿</span>
+        <input class="row-name-input" value="${esc(art.name)}" onchange="renameArticle(${ai},this.value)">
+        <button class="delete-btn" style="margin-left:6px" onclick="deleteArticle(${ai})">✕</button>
+      </td>
+      <td class="sticky-tot-p"></td>
+      <td class="sticky-tot-f"></td>
+      <td colspan="${MC * colsPerMonth}"></td>
+    </tr>`;
+
+    // ---- Helper: render one section (in or out) ----
+    const renderSection = (section) => {
+      const isIn   = section === 'in';
+      if (isIn && art.inDeleted) return; // скрытая строка поступлений
+      const direct = art[section + 'Direct'];
+      const plan   = isIn ? artInPlan  : artOutPlan;
+      const fact   = isIn ? artInFact  : artOutFact;
+      const total  = isIn ? inTotal    : outTotal;
+      const fTotal = isIn ? factInTotal: factOutTotal;
+      const colorP = isIn ? '#0a6e4e'  : '#a33020';
+      const tagCls = isIn ? 'tag-in'   : 'tag-out';
+      const tagTxt = isIn ? '▲ Поступление' : '▼ Выплата';
+      const subCls = isIn ? 'sub-in'   : 'sub-out';
+      const bgAdd  = isIn ? '#f6fcfa'  : '#fdf8f6';
+      const btnTxt = isIn ? '+ подстроку поступления' : '+ подстроку выплаты';
+
+      if (direct) {
+        // ── DIRECT MODE ──
+        const dpArr = ensureDec(art[section + 'Dplan']);
+        const dfArr = ensureDec(art[section + 'Dfact']);
+        const directCells = months.map(({m: mi}) => {
+          if (viewDecade) {
+            // 3 decade columns × plan+fact
+            return [0,1,2].map(d => {
+              const di = mi*3+d;
+              const vp = dpArr[di]||0, vf = dfArr[di]||0;
+              return `<td class="cell-dplan cell-plan"><input class="month-input" type="text" inputmode="numeric"
+                value="${vp?fmt(vp):''}" placeholder="0"
+                onfocus="inputFocus(this)"
+                onblur="decDirectBlur(this,${ai},'${section}','dplan',${di})"
+                oninput="decDirectInput(${ai},'${section}','dplan',${di},this.value)"></td>` +
+              `<td class="cell-dfact cell-fact"><input class="month-input" type="text" inputmode="numeric"
+                value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
+                onfocus="inputFocus(this)"
+                onblur="decDirectBlur(this,${ai},'${section}','dfact',${di})"
+                oninput="decDirectInput(${ai},'${section}','dfact',${di},this.value)"></td>`;
+            }).join('');
+          } else {
+            const vp = art[section+'Plan'][mi]||0, vf = art[section+'Fact'][mi]||0;
+            return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
+                value="${vp?fmt(vp):''}" placeholder="0"
+                onfocus="inputFocus(this)"
+                onblur="directBlur(this,${ai},'${section}','plan',${mi})"
+                onkeydown="directKeydown(event,this,${ai},'${section}','plan',${mi})"
+                oninput="directInput(${ai},'${section}','plan',${mi},this.value)"></td>` +
+              `<td class="cell-fact"><input class="month-input" type="text" inputmode="numeric"
+                value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
+                onfocus="inputFocus(this)"
+                onblur="directBlur(this,${ai},'${section}','fact',${mi})"
+                onkeydown="directKeydown(event,this,${ai},'${section}','fact',${mi})"
+                oninput="directInput(${ai},'${section}','fact',${mi},this.value)"></td>`;
+          }
+        }).join('');
+        html += `<tr class="${subCls}" data-art-child="${ai}">
+          <td class="left sticky-name sub-label">
+            <span class="sub-type-tag ${tagCls}">${tagTxt}</span>
+            ${isIn ? '<button class="delete-btn" style="margin-left:6px" onclick="deleteInRow(' + ai + ')" title="Удалить поступления">✕</button>' : ''}
+            <button class="add-subline-btn" style="margin-left:8px" onclick="addSubline(${ai},'${section}')" title="Разбить на подстроки">+ подстроки</button>
+          </td>
+          <td class="sticky-tot-p total-cell" style="color:${colorP}" id="art-total-${isIn?'in':'out'}-${ai}">${total ? fmt(total) : '—'}</td>
+          <td class="sticky-tot-f total-cell" style="color:${colorP}" id="art-total-${isIn?'factin':'factout'}-${ai}">${fTotal ? fmt(fTotal) : '—'}</td>
+          ${directCells}
+        </tr>`;
+      } else {
+        // ── LINES MODE: агрегирующая строка + подстроки ──
+        const sumCells = months.map(({m: mi}, mIdx) => {
+          if (viewDecade) {
+            const ip   = sectionSum36(art, section, 'dplan');
+            const iF   = sectionSum36(art, section, 'dfact');
+            return [0,1,2].map(d => {
+              const di = mi*3+d;
+              const vp = ip[di]||0, vf = iF[di]||0;
+              return `<td class="total-cell cell-dplan cell-plan" style="color:${colorP}" id="art-${isIn?'in':'out'}-dplan-${ai}-${di}">${vp ? fmt(vp) : '—'}</td>` +
+                     `<td class="total-cell cell-dfact cell-fact" style="color:${colorP}" id="art-${isIn?'in':'out'}-dfact-${ai}-${di}">${vf ? fmt(vf) : '—'}</td>`;
+            }).join('');
+          }
+          const vp = plan[mi] || 0, vf = fact[mi] || 0;
+          return `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mIdx}">${vp ? fmt(vp) : '—'}</td>` +
+                 `<td class="cell-fact total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-fact-${ai}-${mIdx}">${vf ? fmt(vf) : '—'}</td>`;
+        }).join('');
+        html += `<tr class="${subCls}" data-art-child="${ai}">
+          <td class="left sticky-name sub-label">
+            <button class="toggle-btn${art[section+'Open']?' open':''}" onclick="toggleSection(${ai},'${section}')" title="Раскрыть/скрыть">▶</button>
+            <span class="sub-type-tag ${tagCls}">${tagTxt}</span>
+            ${isIn ? '<button class="delete-btn" style="margin-left:6px" onclick="deleteInRow(' + ai + ')" title="Удалить поступления">✕</button>' : ''}
+          </td>
+          <td class="sticky-tot-p total-cell" style="color:${colorP}" id="art-total-${isIn?'in':'out'}-${ai}">${total ? fmt(total) : '—'}</td>
+          <td class="sticky-tot-f total-cell" style="color:${colorP}" id="art-total-${isIn?'factin':'factout'}-${ai}">${fTotal ? fmt(fTotal) : '—'}</td>
+          ${sumCells}
+        </tr>`;
+
+        if (art[section + 'Open']) {
+          art[section + 'Lines'].forEach((line, li) => {
+            const ldp = ensureDec(line.dplan), ldf = ensureDec(line.dfact);
+            const lineCells = months.map(({m: mi}) => {
+              if (viewDecade) {
+                return [0,1,2].map(d => {
+                  const di = mi*3+d;
+                  const vp = ldp[di]||0, vf = ldf[di]||0;
+                  return `<td class="cell-dplan cell-plan"><input class="month-input" type="text" inputmode="numeric"
+                      value="${vp?fmt(vp):''}" placeholder="0"
+                      onfocus="inputFocus(this)"
+                      onblur="decSublineBlur(this,${ai},'${section}',${li},'dplan',${di})"
+                      oninput="decSublineInput(${ai},'${section}',${li},'dplan',${di},this.value)"></td>` +
+                    `<td class="cell-dfact cell-fact"><input class="month-input" type="text" inputmode="numeric"
+                      value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
+                      onfocus="inputFocus(this)"
+                      onblur="decSublineBlur(this,${ai},'${section}',${li},'dfact',${di})"
+                      oninput="decSublineInput(${ai},'${section}',${li},'dfact',${di},this.value)"></td>`;
+                }).join('');
+              } else {
+                const vp = line.plan[mi]||0, vf = line.fact[mi]||0;
+                return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
+                    value="${vp?fmt(vp):''}" placeholder="0"
+                    onfocus="inputFocus(this)"
+                    onblur="sublineBlur(this,${ai},'${section}',${li},'plan',${mi})"
+                    onkeydown="sublineKeydown(event,this,${ai},'${section}',${li},'plan',${mi})"
+                    oninput="sublineInput(${ai},'${section}',${li},'plan',${mi},this.value)"></td>` +
+                  `<td class="cell-fact"><input class="month-input" type="text" inputmode="numeric"
+                    value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
+                    onfocus="inputFocus(this)"
+                    onblur="sublineBlur(this,${ai},'${section}',${li},'fact',${mi})"
+                    oninput="sublineInput(${ai},'${section}',${li},'fact',${mi},this.value)"></td>`;
+              }
+            }).join('');
+            const lineTotal  = viewDecade
+              ? months.reduce((s,{m}) => s + decSum(ldp,m), 0)
+              : months.reduce((s,{m}) => s + (line.plan[m]||0), 0);
+            const lineFTotal = viewDecade
+              ? months.reduce((s,{m}) => s + decSum(ldf,m), 0)
+              : months.reduce((s,{m}) => s + (line.fact[m]||0), 0);
+            const subRowCls  = isIn ? 'subline-in' : 'subline-out';
+            html += `<tr class="${subRowCls}" data-art-child="${ai}">
+              <td class="left sticky-name subline-label">
+                <input class="subline-name-input" value="${esc(line.name)}" placeholder="Название..." onchange="renameSubline(${ai},'${section}',${li},this.value)">
+                <button class="delete-subline-btn" onclick="deleteSubline(${ai},'${section}',${li})" title="Удалить">✕</button>
+              </td>
+              <td class="sticky-tot-p total-cell" style="color:${colorP}">${lineTotal ? fmt(lineTotal) : '—'}</td>
+              <td class="sticky-tot-f total-cell" style="color:${colorP}">${lineFTotal ? fmt(lineFTotal) : '—'}</td>
+              ${lineCells}
+            </tr>`;
+          });
+          html += `<tr class="add-subline-row" data-art-child="${ai}">
+            <td class="sticky-name" style="background:${bgAdd}">
+              <button class="add-subline-btn" onclick="addSubline(${ai},'${section}')">${btnTxt}</button>
+            </td>
+            <td colspan="${MC * colsPerMonth + 2}" style="background:${bgAdd}"></td>
+          </tr>`;
+        }
+      }
+    };
+
+    renderSection('in');
+    renderSection('out');
+  });
+
+  // Grand total rows
+  const netSum = sumArr(grandNet);
+  const netFactSum = sumArr(grandFactNet);
+
+  // Helper: build cells for one total row across all project months
+  // rowData[m] = { p, f } for month mode; in decade mode we pull from dec arrays
+  function buildTotalCells(rowPlan12, rowFact12, planDec36, factDec36, cls, colorFn) {
+    return months.map(({m}, mi) => {
+      if (viewDecade) {
+        // 3 decades × plan+fact per month
+        return [0,1,2].map(d => {
+          const di = m*3+d;
+          const vp = planDec36 ? (planDec36[di]||0) : 0;
+          const vf = factDec36 ? (factDec36[di]||0) : 0;
+          return `<td class="total-cell ${cls} cell-dplan cell-plan" style="color:${colorFn(vp)}">${vp?fmt(vp):'—'}</td>` +
+                 `<td class="total-cell ${cls} cell-dfact cell-fact" style="color:${colorFn(vf)}">${vf?fmt(vf):'—'}</td>`;
+        }).join('');
+      } else {
+        const vp = rowPlan12[mi]||0, vf = rowFact12[mi]||0;
+        return `<td class="total-cell ${cls} cell-plan" style="color:${colorFn(vp)}">${fmt(vp)}</td>` +
+               `<td class="total-cell ${cls} cell-fact" style="color:${colorFn(vf)}">${fmt(vf)}</td>`;
+      }
+    }).join('');
+  }
+
+  // Compute decade [36] totals across all articles (plan + fact)
+  let grandInDec36    = Array(DEC_COUNT).fill(0);
+  let grandOutDec36   = Array(DEC_COUNT).fill(0);
+  let grandInFDec36   = Array(DEC_COUNT).fill(0);
+  let grandOutFDec36  = Array(DEC_COUNT).fill(0);
+  articles.forEach(a => {
+    const ip   = sectionSum36(a, 'in',  'dplan');
+    const op   = sectionSum36(a, 'out', 'dplan');
+    const inf  = sectionSum36(a, 'in',  'dfact');
+    const outf = sectionSum36(a, 'out', 'dfact');
+    for (let i = 0; i < DEC_COUNT; i++) {
+      grandInDec36[i]   += ip[i]  || 0;
+      grandOutDec36[i]  += op[i]  || 0;
+      grandInFDec36[i]  += inf[i] || 0;
+      grandOutFDec36[i] += outf[i]|| 0;
+    }
+  });
+  const grandNetDec36  = grandInDec36.map((v,i)  => v - (grandOutDec36[i] ||0));
+  const grandNetFDec36 = grandInFDec36.map((v,i) => v - (grandOutFDec36[i]||0));
+
+  // Cumulative by decade: running sum across all decades in project month order
+  const cumulDec36 = Array(DEC_COUNT).fill(0);
+  if (viewDecade) {
+    let run = 0;
+    months.forEach(({m}) => {
+      [0,1,2].forEach(d => {
+        run += grandNetDec36[m*3+d]||0;
+        cumulDec36[m*3+d] = run;
+      });
+    });
+  }
+
+  const posColor  = v => v >= 0 ? '#0a6e4e' : '#a33020';
+  const negColor  = v => v <= 0 ? '#a33020' : '#0a6e4e';
+  const netColorFn= v => netColor(v);
+
+  const inMonthCells   = buildTotalCells(grandIn,  grandFactIn,  grandInDec36,  grandInFDec36,  'positive', () => '#0a6e4e');
+  const outMonthCells  = buildTotalCells(grandOut, grandFactOut, grandOutDec36, grandOutFDec36, 'negative', () => '#a33020');
+  const netMonthCells  = buildTotalCells(grandNet, grandFactNet, grandNetDec36, grandNetFDec36, '',         netColorFn);
+  // Cumulative fact by decade
+  const cumulFDec36 = Array(DEC_COUNT).fill(0);
+  if (viewDecade) {
+    let runF2 = 0;
+    months.forEach(({m}) => {
+      [0,1,2].forEach(d => {
+        runF2 += grandNetFDec36[m*3+d]||0;
+        cumulFDec36[m*3+d] = runF2;
+      });
+    });
+  }
+
+  const cumulMonthCells = viewDecade
+    ? months.map(({m}) => [0,1,2].map(d => {
+        const di = m*3+d;
+        const vp = cumulDec36[di]||0, vf = cumulFDec36[di]||0;
+        return `<td class="total-cell cell-dplan cell-plan" style="color:${netColor(vp)}">${fmt(vp)}</td>` +
+               `<td class="total-cell cell-dfact cell-fact" style="color:${netColor(vf)}">${fmt(vf)}</td>`;
+      }).join('')).join('')
+    : cumulP.map((v,i) =>
+        `<td class="total-cell cell-plan" id="g-cumul-plan-m${i}" style="color:${netColor(v)}">${fmt(v)}</td>` +
+        `<td class="total-cell cell-fact" id="g-cumul-fact-m${i}" style="color:${netColor(cumulF[i])}">${fmt(cumulF[i])}</td>`
+      ).join('');
+
+  html += `
+    <tr class="total-row" id="grand-in-row">
+      <td class="left sticky-name">Итого поступления</td>
+      <td class="sticky-tot-p total-cell positive" id="g-in-plan">${fmt(sumArr(grandIn))}</td>
+      <td class="sticky-tot-f total-cell positive" id="g-in-fact">${fmt(sumArr(grandFactIn))}</td>
+      ${inMonthCells}
+    </tr>
+    <tr class="total-row" id="grand-out-row">
+      <td class="left sticky-name">Итого выплаты</td>
+      <td class="sticky-tot-p total-cell negative" id="g-out-plan">${fmt(sumArr(grandOut))}</td>
+      <td class="sticky-tot-f total-cell negative" id="g-out-fact">${fmt(sumArr(grandFactOut))}</td>
+      ${outMonthCells}
+    </tr>
+    <tr class="net-row" id="grand-net-row">
+      <td class="left sticky-name">Чистый денежный поток</td>
+      <td class="sticky-tot-p total-cell" id="g-net-plan" style="color:${netColor(netSum)}">${fmt(netSum)}</td>
+      <td class="sticky-tot-f total-cell" id="g-net-fact" style="color:${netColor(netFactSum)}">${fmt(netFactSum)}</td>
+      ${netMonthCells}
+    </tr>
+    <tr class="cumul-row" id="grand-cumul-row">
+      <td class="left sticky-name">Накопительно</td>
+      <td class="sticky-tot-p total-cell" id="g-cumul-plan" style="color:${netColor(runP)}">${fmt(runP)}</td>
+      <td class="sticky-tot-f total-cell" id="g-cumul-fact" style="color:${netColor(runF)}">${fmt(runF)}</td>
+      ${cumulMonthCells}
+    </tr>`;
+
+  document.getElementById('articles-body').innerHTML = html;
+  initArticleDrag();
+}
+
+function inputFocus(el) {
+  const num = parseFloat(el.value.replace(/\s/g,'').replace(',','.')) || 0;
+  el.value = num ? String(num) : '';
+  el.select();
+}
+
+function parseInput(val) { return parseFloat(val.replace(/\s/g,'').replace(',','.')) || 0; }
+
+/* Прямой ввод (direct mode) */
+function directInput(ai, section, field, mi, val) {
+  const art = getBudget().articles[ai];
+  art[section + field.charAt(0).toUpperCase() + field.slice(1)][mi] = parseInput(val);
+  renderTotals();
+}
+function directBlurM(el, ai, section, field, mi) {
+  const num = parseInput(el.value);
+  const art = getBudget().articles[ai];
+  art[section + field.charAt(0).toUpperCase() + field.slice(1)][mi] = num;
+  el.value = num ? fmt(num) : '';
+  saveData();
+  renderTotals();
+}
+function directKeydown(event, el, ai, section, field, mi) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    directBlur(el, ai, section, field, mi);
+    const allInputs = Array.from(document.querySelectorAll('.month-input'));
+    const idx = allInputs.indexOf(el);
+    if (idx >= 0 && idx + 1 < allInputs.length) allInputs[idx + 1].focus();
+  }
+}
+
+/* Подстрока: ввод */
+function sublineInput(ai, section, li, field, mi, val) {
+  const art = getBudget().articles[ai];
+  art[section+'Lines'][li][field][mi] = parseInput(val);
+  renderTotals();
+}
+function sublineBlur(el, ai, section, li, field, mi) {
+  const num = parseInput(el.value);
+  const line = getBudget().articles[ai][section+'Lines'][li];
+  // Check if extra decades have data
+  const df = field==='plan'?'dplan':'dfact';
+  const dArr = ensureDec(line[df]);
+  if (hasExtraDecData(dArr, mi)) {
+    el.value = fmt(line[field][mi]||0) || '';
+    showToast('Требуется планирование в формате 10 дней');
+    return;
+  }
+  line[field][mi] = num;
+  // sync to first decade slot
+  if (!Array.isArray(line[df])||line[df].length!==DEC_COUNT) line[df]=Array(DEC_COUNT).fill(0);
+  line[df][mi*3] = num;
+  el.value = num ? fmt(num) : '';
+  saveData();
+  renderTotals();
+}
+function sublineKeydown(event, el, ai, section, li, field, mi) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    sublineBlur(el, ai, section, li, field, mi);
+    const allInputs = Array.from(document.querySelectorAll('.month-input'));
+    const idx = allInputs.indexOf(el);
+    if (idx >= 0 && idx + 1 < allInputs.length) allInputs[idx + 1].focus();
+  }
+}
+
+/* Decade direct input handlers */
+function decDirectInput(ai, section, field, di, val) {
+  const art = getBudget().articles[ai];
+  ensureDec(art[section+field.charAt(0).toUpperCase()+field.slice(1)])[di] = parseInput(val);
+  // Monthly totals are recalculated only on blur — no need to re-render on every keystroke
+}
+function decDirectBlur(el, ai, section, field, di) {
+  const num = parseInput(el.value);
+  const art = getBudget().articles[ai];
+  const KEY = section + field.charAt(0).toUpperCase()+field.slice(1);
+  if (!Array.isArray(art[KEY]) || art[KEY].length!==DEC_COUNT) art[KEY]=Array(DEC_COUNT).fill(0);
+  art[KEY][di] = num;
+  const m = Math.floor(di/3);
+  const capF = field==='dplan'?'Plan':'Fact';
+  art[section+capF][m] = decSum(art[KEY], m);
+  el.value = num ? fmt(num) : '';
+  saveData(); renderTotals();
+}
+function decSublineInput(ai, section, li, field, di, val) {
+  const line = getBudget().articles[ai][section+'Lines'][li];
+  if (!Array.isArray(line[field])||line[field].length!==DEC_COUNT) line[field]=Array(DEC_COUNT).fill(0);
+  line[field][di] = parseInput(val);
+  const m = Math.floor(di/3);
+  const mf = field==='dplan'?'plan':'fact';
+  line[mf][m] = decSum(line[field], m);
+  // Update aggregate cells in DOM (no full re-render)
+  updateAggregateCell(ai, section, 'dplan', di, line);
+  updateAggregateCell(ai, section, 'dfact', di, line);
+}
+function decSublineBlur(el, ai, section, li, field, di) {
+  const num = parseInput(el.value);
+  const line = getBudget().articles[ai][section+'Lines'][li];
+  if (!Array.isArray(line[field])||line[field].length!==DEC_COUNT) line[field]=Array(DEC_COUNT).fill(0);
+  line[field][di] = num;
+  const m = Math.floor(di/3);
+  const mf = field==='dplan'?'plan':'fact';
+  line[mf][m] = decSum(line[field], m);
+  el.value = num ? fmt(num) : '';
+  updateAggregateCell(ai, section, field, di, line);
+  updateAggregateCell(ai, section, field === 'dplan' ? 'dfact' : 'dplan', di, line);
+  saveData(); renderTotals();
+}
+function updateAggregateCell(ai, section, field, di, changedLine) {
+  // Update the aggregate cells (plan or fact) for the given decade index
+  const art = getBudget().articles[ai];
+  const m = Math.floor(di/3);
+  // Recompute section totals across all lines for this decade
+  const allD = Array(DEC_COUNT).fill(0);
+  (art[section+'Lines']||[]).forEach(l => {
+    const arr = ensureDec(l[field]);
+    allD.forEach((_, i) => { allD[i] += arr[i]||0; });
+  });
+  const vp = allD[di]||0;
+  const cellId = field === 'dplan'
+    ? `art-${section}-dplan-${ai}-${di}`
+    : `art-${section}-dfact-${ai}-${di}`;
+  const el = document.getElementById(cellId);
+  if (el) el.textContent = vp ? fmt(vp) : '—';
+}
+
+/* Show toast warning */
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast-warn';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+/* directBlur in month mode: write to plan[mi] AND to dplan[mi*3+0] */
+function directBlur(el, ai, section, field, mi) {
+  const num = parseInput(el.value);
+  const art = getBudget().articles[ai];
+  const capF = field.charAt(0).toUpperCase()+field.slice(1);
+  // Check if extra decades have data
+  const df = field==='plan'?'dplan':'dfact';
+  const dArr = ensureDec(art[section+df.charAt(0).toUpperCase()+df.slice(1)]);
+  if (hasExtraDecData(dArr, mi)) {
+    el.value = fmt(art[section+capF][mi]||0) || '';
+    showToast('Требуется планирование в формате 10 дней');
+    return;
+  }
+  art[section+capF][mi] = num;
+  // sync to first decade slot
+  const dKEY = section + df.charAt(0).toUpperCase()+df.slice(1);
+  if (!Array.isArray(art[dKEY])||art[dKEY].length!==DEC_COUNT) art[dKEY]=Array(DEC_COUNT).fill(0);
+  art[dKEY][mi*3] = num;
+  el.value = num ? fmt(num) : '';
+  saveData(); renderTotals();
+}
+
+/* Управление подстроками */
+function addSubline(ai, section) {
+  const art = getBudget().articles[ai];
+  if (art[section + 'Direct']) {
+    // Переключаемся из direct в lines mode:
+    // данные из прямой строки переносим в первую подстроку
+    const label = section === 'in' ? 'Поступление 1' : 'Выплата 1';
+    const firstLine = newLine(label);
+    firstLine.plan  = art[section + 'Plan'].slice();
+    firstLine.fact  = art[section + 'Fact'].slice();
+    firstLine.dplan = art[section + 'Dplan'].slice();
+    firstLine.dfact = art[section + 'Dfact'].slice();
+    art[section + 'Lines'] = [firstLine];
+    art[section + 'Plan']  = Array(MONTHS_COUNT).fill(0);
+    art[section + 'Fact']  = Array(MONTHS_COUNT).fill(0);
+    art[section + 'Dplan'] = Array(DEC_COUNT).fill(0);
+    art[section + 'Dfact'] = Array(DEC_COUNT).fill(0);
+    art[section + 'Direct'] = false;
+    art[section + 'Open']  = true;
+    // Добавляем вторую подстроку сразу
+    const label2 = section === 'in' ? 'Поступление 2' : 'Выплата 2';
+    art[section + 'Lines'].push(newLine(label2));
+  } else {
+    const key = section + 'Lines';
+    const n = art[key].length + 1;
+    const label = section === 'in' ? 'Поступление ' : 'Выплата ';
+    art[key].push(newLine(label + n));
+  }
+  saveData();
+  renderBudget();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.subline-name-input');
+    if (inputs.length) inputs[inputs.length-1].focus();
+  }, 30);
+}
+function deleteSubline(ai, section, li) {
+  const art = getBudget().articles[ai];
+  const key = section + 'Lines';
+  if (art[key].length <= 1) {
+    // Последняя подстрока — переносим данные обратно в direct mode
+    if (confirm('Удалить подстроки и вернуться к прямому вводу? Данные этой подстроки сохранятся.')) {
+      art[section + 'Plan']  = art[key][0].plan.slice();
+      art[section + 'Fact']  = art[key][0].fact.slice();
+      art[section + 'Dplan'] = art[key][0].dplan.slice();
+      art[section + 'Dfact'] = art[key][0].dfact.slice();
+      art[section + 'Lines'] = [];
+      art[section + 'Direct'] = true;
+      saveData();
+      renderBudget();
+    }
+    return;
+  }
+  art[key].splice(li, 1);
+  saveData();
+  renderBudget();
+}
+function deleteInRow(ai) {
+  if (!confirm('Удалить строку «Поступление»? Статья останется с пустыми поступлениями.')) return;
+  const art = getBudget().articles[ai];
+  art.inDeleted = true;
+  art.inPlan    = Array(MONTHS_COUNT).fill(0);
+  art.inFact    = Array(MONTHS_COUNT).fill(0);
+  art.inDplan   = Array(DEC_COUNT).fill(0);
+  art.inDfact   = Array(DEC_COUNT).fill(0);
+  art.inLines   = [];
+  art.inDirect  = true;
+  art.inOpen    = false;
+  saveData();
+  renderBudget();
+}
+function renameSubline(ai, section, li, val) {
+  getBudget().articles[ai][section+'Lines'][li].name = val;
+  saveData();
+}
+function toggleSection(ai, section) {
+  const art = getBudget().articles[ai];
+  const key = section + 'Open';
+  art[key] = !art[key];
+  saveData();
+  renderBudget();
+}
+
+function renderTotals() {
+  // В режиме декад перерисовываем всю таблицу, т.к. id ячеек другие
+  if (viewDecade) { renderBudget(); return; }
+  const b = getBudget();
+  const articles = b.articles;
+  const { grandIn, grandOut, grandFactIn, grandFactOut, grandNet, grandFactNet, cumulP, cumulF, runP, runF, months } = computeGrandTotals(articles);
+
+  // Per-article sticky totals + monthly sub-row cells
+  articles.forEach((art, ai) => {
+    const artInPlan  = sectionSum(art, 'in',  'plan');
+    const artOutPlan = sectionSum(art, 'out', 'plan');
+    const artInFact  = sectionSum(art, 'in',  'fact');
+    const artOutFact = sectionSum(art, 'out', 'fact');
+    const s = (id, val) => { const el=document.getElementById(id); if(el) el.textContent = val ? fmt(val) : '—'; };
+    s(`art-total-in-${ai}`,      months.reduce((acc,{m}) => acc + (artInPlan[m]  || 0), 0));
+    s(`art-total-out-${ai}`,     months.reduce((acc,{m}) => acc + (artOutPlan[m] || 0), 0));
+    s(`art-total-factin-${ai}`,  months.reduce((acc,{m}) => acc + (artInFact[m]  || 0), 0));
+    s(`art-total-factout-${ai}`, months.reduce((acc,{m}) => acc + (artOutFact[m] || 0), 0));
+
+    // Monthly cells for in/out sub-rows
+    months.forEach(({m}, mi) => {
+      const elInP  = document.getElementById(`art-in-plan-${ai}-${mi}`);
+      const elInF  = document.getElementById(`art-in-fact-${ai}-${mi}`);
+      const elOutP = document.getElementById(`art-out-plan-${ai}-${mi}`);
+      const elOutF = document.getElementById(`art-out-fact-${ai}-${mi}`);
+      if (elInP)  elInP.textContent  = artInPlan[m]  ? fmt(artInPlan[m])  : '—';
+      if (elInF)  elInF.textContent  = artInFact[m]  ? fmt(artInFact[m])  : '—';
+      if (elOutP) elOutP.textContent = artOutPlan[m] ? fmt(artOutPlan[m]) : '—';
+      if (elOutF) elOutF.textContent = artOutFact[m] ? fmt(artOutFact[m]) : '—';
+    });
+  });
+
+  // Grand sticky totals
+  const sv = (id, val, color) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = fmt(val);
+    if (color !== undefined) el.style.color = color;
+  };
+  sv('g-in-plan',  sumArr(grandIn));
+  sv('g-in-fact',  sumArr(grandFactIn));
+  sv('g-out-plan', sumArr(grandOut));
+  sv('g-out-fact', sumArr(grandFactOut));
+  const ns = sumArr(grandNet), nfs = sumArr(grandFactNet);
+  sv('g-net-plan', ns,  netColor(ns));
+  sv('g-net-fact', nfs, netColor(nfs));
+
+  // Grand month cells (skip sticky col cells — only update month cells)
+  const updateRow = (rowId, arrP, arrF, colorFnP, colorFnF) => {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    // Filter to only td.cell-plan and td.cell-fact that are NOT sticky totals
+    const planCells = Array.from(row.querySelectorAll('td.cell-plan.total-cell')).filter(el =>
+      !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-f')
+    );
+    const factCells = Array.from(row.querySelectorAll('td.cell-fact.total-cell')).filter(el =>
+      !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-f')
+    );
+    arrP.forEach((v,i) => {
+      if (planCells[i]) { planCells[i].textContent = fmt(v); if(colorFnP) planCells[i].style.color = colorFnP(v); }
+    });
+    arrF.forEach((v,i) => {
+      if (factCells[i]) { factCells[i].textContent = fmt(v); if(colorFnF) factCells[i].style.color = colorFnF(v); }
+    });
+  };
+  updateRow('grand-in-row',  grandIn,  grandFactIn,  null, null);
+  updateRow('grand-out-row', grandOut, grandFactOut, null, null);
+  updateRow('grand-net-row', grandNet, grandFactNet, netColor, netColor);
+
+  // Накопительный поток — вычислен в computeGrandTotals
+  updateRow('grand-cumul-row', cumulP, cumulF, netColor, netColor);  const svC = (id, val) => { const el=document.getElementById(id); if(el){ el.textContent=fmt(val); el.style.color=netColor(val); } };
+  svC('g-cumul-plan', runP);
+  svC('g-cumul-fact', runF);
+}
+function renameArticle(ai, val) {
+  getBudget().articles[ai].name = val;
+  saveData();
+}
+function deleteArticle(ai) {
+  const arts = getBudget().articles;
+  if (arts.length <= 1) { alert('Должна быть хотя бы одна статья.'); return; }
+  arts.splice(ai, 1);
+  saveData();
+  renderBudget();
+}
+function addArticle() {
+  getBudget().articles.push(newArticle('Новая статья'));
+  saveData();
+  renderBudget();
+  // Scroll to bottom and focus new article name
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.row-name-input');
+    const last = inputs[inputs.length - 1];
+    if (last) { last.scrollIntoView({behavior:'smooth',block:'center'}); last.select(); }
+  }, 50);
+}
+
+/* ---- MODAL ---- */
+let modalMode = 'add'; // 'add' | 'edit'
+let modalEditIndex = null;
+
+function openAddModal() {
+  modalMode = 'add';
+  modalEditIndex = null;
+  pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
+  selectedType = null;
+  document.getElementById('modal-title').textContent = 'Новый проект';
+  document.getElementById('btn-create').textContent = 'Создать проект';
+  document.getElementById('modal-name').value = '';
+  document.getElementById('start-label').textContent = 'Выберите месяц';
+  document.getElementById('start-label').className = 'placeholder';
+  document.getElementById('end-label').textContent = 'Выберите месяц';
+  document.getElementById('end-label').className = 'placeholder';
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('picker-start').classList.add('hidden');
+  document.getElementById('picker-end').classList.add('hidden');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('modal-name').focus(), 50);
+}
+
+function openEditModal(idx) {
+  const i = (idx !== undefined) ? idx : currentProject;
+  const p = projects[i];
+  if (!p) return;
+  modalMode = 'edit';
+  modalEditIndex = i;
+  const curYear = new Date().getFullYear();
+  pickerState = {
+    start: { year: p.start ? p.start.y : curYear, month: p.start ? p.start.m : null },
+    end:   { year: p.end   ? p.end.y   : curYear, month: p.end   ? p.end.m   : null }
+  };
+  selectedType = p.type || null;
+  document.getElementById('modal-title').textContent = 'Редактировать проект';
+  document.getElementById('btn-create').textContent = 'Сохранить';
+  document.getElementById('modal-name').value = p.name;
+  // Start label
+  if (p.start && p.start.m != null) {
+    document.getElementById('start-label').textContent = `${MONTH_NAMES_FULL[p.start.m]} ${p.start.y}`;
+    document.getElementById('start-label').className = '';
+  } else {
+    document.getElementById('start-label').textContent = 'Выберите месяц';
+    document.getElementById('start-label').className = 'placeholder';
+  }
+  // End label
+  if (p.end && p.end.m != null) {
+    document.getElementById('end-label').textContent = `${MONTH_NAMES_FULL[p.end.m]} ${p.end.y}`;
+    document.getElementById('end-label').className = '';
+  } else {
+    document.getElementById('end-label').textContent = 'Выберите месяц';
+    document.getElementById('end-label').className = 'placeholder';
+  }
+  // Type buttons
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  if (p.type) {
+    const tb = document.getElementById('type-' + p.type);
+    if (tb) tb.classList.add('active');
+  }
+  document.getElementById('picker-start').classList.add('hidden');
+  document.getElementById('picker-end').classList.add('hidden');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('modal-name').focus(), 50);
+}
+
+function editProject(i) { openEditModal(i); }
+
+function confirmProjectModal() {
+  const name = document.getElementById('modal-name').value.trim();
+  if (!name) { document.getElementById('modal-name').focus(); return; }
+  const newData = {
+    name,
+    type: selectedType || null,
+    start: pickerState.start.month != null ? {y:pickerState.start.year, m:pickerState.start.month} : null,
+    end:   pickerState.end.month   != null ? {y:pickerState.end.year,   m:pickerState.end.month}   : null
+  };
+  if (modalMode === 'edit' && modalEditIndex !== null) {
+    Object.assign(projects[modalEditIndex], newData);
+    closeModal();
+    saveData();
+    renderSidebarProjects();
+    renderBudget();
+  } else {
+    projects.push(newData);
+    closeModal();
+    currentProject = projects.length - 1;
+    projectsOpen = true;
+    saveData();
+    renderSidebarProjects();
+    showPage('project');
+  }
+}
+
+// Keep old name as alias for any inline callers
+function confirmAddProject() { confirmProjectModal(); }
+
+function closeModal() { 
+  document.getElementById('modal-overlay').classList.add('hidden'); 
+  closeSidebarIfOpen();
+}
+function handleOverlayClick(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+
+/* ---- AUTH ---- */
+function showLoginError(msg) {
+  const errorEl = document.getElementById('login-error');
+  errorEl.textContent = msg;
+  errorEl.style.display = 'block';
+}
+
+function hideLoginError() {
+  const errorEl = document.getElementById('login-error');
+  errorEl.style.display = 'none';
+}
+
+function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  
+  if (!email || !password) {
+    showLoginError('Заполните email и пароль');
+    return;
+  }
+
+  window.auth.signInWithEmailAndPassword(email, password)
+    .then(() => {
+      hideLoginError();
+      window.loadData().then(() => {
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('main-layout').style.display = '';
+        window.renderSidebarProjects();
+        window.showPage('dashboard');
+      });
+    })
+    .catch(error => {
+      let msg = 'Ошибка входа';
+      if (error.code === 'auth/user-not-found') msg = 'Пользователь не найден';
+      if (error.code === 'auth/wrong-password') msg = 'Неверный пароль';
+      if (error.code === 'auth/invalid-email') msg = 'Неверный email';
+      showLoginError(msg);
+    });
+}
+
+function handleRegister() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  
+  if (!email || !password) {
+    showLoginError('Заполните email и пароль');
+    return;
+  }
+
+  if (password.length < 6) {
+    showLoginError('Пароль должен быть минимум 6 символов');
+    return;
+  }
+
+  window.auth.createUserWithEmailAndPassword(email, password)
+    .then(() => {
+      hideLoginError();
+      window.firebaseUid = window.auth.currentUser.uid;
+      // Create initial data for new user
+      projects = [
+        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
+        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+      ];
+      currentProject = 0;
+      budgets = {
+        0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
+        1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
+      };
+      window.saveData();
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('main-layout').style.display = '';
+      window.renderSidebarProjects();
+      window.showPage('dashboard');
+    })
+    .catch(error => {
+      let msg = 'Ошибка регистрации';
+      if (error.code === 'auth/email-already-in-use') msg = 'Email уже используется';
+      if (error.code === 'auth/weak-password') msg = 'Пароль слишком слабый';
+      if (error.code === 'auth/invalid-email') msg = 'Неверный email';
+      showLoginError(msg);
+    });
+}
+
+function handleLogout() {
+  if (confirm('Вы уверены что хотите выйти?')) {
+    window.auth.signOut().then(() => {
+      window.firebaseUid = null;
+      document.getElementById('login-page').style.display = 'flex';
+      document.getElementById('main-layout').style.display = 'none';
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-password').value = '';
+      hideLoginError();
+    });
+  }
+}
+
+function togglePicker(which) {
+  const other = which === 'start' ? 'end' : 'start';
+  document.getElementById('picker-'+other).classList.add('hidden');
+  const el = document.getElementById('picker-'+which);
+  el.classList.toggle('hidden');
+  if (!el.classList.contains('hidden')) renderGrid(which);
+}
+function changeYear(which, delta) {
+  pickerState[which].year += delta;
+  renderGrid(which);
+}
+function renderGrid(which) {
+  document.getElementById('year-'+which+'-label').textContent = pickerState[which].year;
+  const startSel = pickerState.start.month != null ? {y:pickerState.start.year,m:pickerState.start.month} : null;
+  const curYear = pickerState[which].year;
+  let html = '';
+  for (let m = 0; m < 12; m++) {
+    const isSelected = (pickerState[which].month === m);
+    let disabled = false;
+    if (which === 'end' && startSel) {
+      if (curYear*12+m < startSel.y*12+startSel.m) disabled = true;
+    }
+    html += `<div class="month-cell${isSelected?' selected':''}${disabled?' disabled':''}" onclick="selectMonth('${which}',${m})">${MONTH_NAMES[m]}</div>`;
+  }
+  document.getElementById('grid-'+which).innerHTML = html;
+}
+function selectMonth(which, m) {
+  pickerState[which].month = m;
+  document.getElementById(which+'-label').textContent = `${MONTH_NAMES_FULL[m]} ${pickerState[which].year}`;
+  document.getElementById(which+'-label').className = '';
+  document.getElementById('picker-'+which).classList.add('hidden');
+  if (which === 'start' && pickerState.end.month != null) {
+    if (pickerState.end.year*12+pickerState.end.month < pickerState.start.year*12+pickerState.start.month) {
+      pickerState.end.month = null;
+      document.getElementById('end-label').textContent = 'Выберите месяц';
+      document.getElementById('end-label').className = 'placeholder';
+    }
+  }
+}
+function selectType(t) {
+  selectedType = t;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('type-'+t).classList.add('active');
+}
+document.addEventListener('click', e => {
+  ['start','end'].forEach(w => {
+    const wrap = document.getElementById('wrap-'+w);
+    if (wrap && !wrap.contains(e.target)) document.getElementById('picker-'+w).classList.add('hidden');
+  });
+});
+
+/* INIT */
+let viewPlan = true, viewFact = true, viewDecade = false;
+let viewDashDecade = false;
+
+function toggleDashDecadeView(which) {
+  viewDashDecade = (which === 'decade');
+  document.getElementById('dash-btn-month').classList.toggle('active', !viewDashDecade);
+  document.getElementById('dash-btn-decade').classList.toggle('active', viewDashDecade);
+  renderDashboard();
+}
+
+function toggleDecadeView(which) {
+  viewDecade = (which === 'decade');
+  document.getElementById('view-btn-month').classList.toggle('active', !viewDecade);
+  document.getElementById('view-btn-decade').classList.toggle('active', viewDecade);
+  renderBudget();
+}
+
+function toggleView(which) {
+  if (which === 'fact') viewFact = !viewFact;
+  // viewPlan is always true — план всегда отображается
+
+  document.getElementById('view-btn-fact').classList.toggle('active', viewFact);
+
+  // Rebuild thead so colspans reflect new viewFact state, then reapply hide class
+  renderBudget();
+}
+
+/* ---- DRAG-AND-DROP для статей ---- */
+let dragSrcIndex = null;
+
+function initArticleDrag() {
+  const tbody = document.getElementById('articles-body');
+  if (!tbody) return;
+
+  tbody.querySelectorAll('tr.article-header').forEach(headerRow => {
+    const ai = parseInt(headerRow.dataset.article);
+    const handle = headerRow.querySelector('.drag-handle');
+    if (!handle) return;
+
+    handle.addEventListener('mousedown', () => { headerRow.draggable = true; });
+    window.addEventListener('mouseup', () => { headerRow.draggable = false; });
+
+    headerRow.addEventListener('dragstart', e => {
+      dragSrcIndex = ai;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => {
+        tbody.querySelectorAll(`tr[data-article="${ai}"], tr[data-art-child="${ai}"]`)
+          .forEach(r => r.classList.add('dragging-article'));
+      }, 0);
+    });
+
+    headerRow.addEventListener('dragend', () => {
+      dragSrcIndex = null;
+      tbody.querySelectorAll('.dragging-article').forEach(r => r.classList.remove('dragging-article'));
+      tbody.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(r => {
+        r.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+    });
+  });
+
+  tbody.querySelectorAll('tr.article-header').forEach(targetRow => {
+    const ai = parseInt(targetRow.dataset.article);
+
+    targetRow.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (dragSrcIndex === null || dragSrcIndex === ai) return;
+      tbody.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(r => {
+        r.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      const rect = targetRow.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      targetRow.classList.add(before ? 'drag-over-top' : 'drag-over-bottom');
+    });
+
+    targetRow.addEventListener('dragleave', e => {
+      if (!targetRow.contains(e.relatedTarget)) {
+        targetRow.classList.remove('drag-over-top', 'drag-over-bottom');
+      }
+    });
+
+    targetRow.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrcIndex === null || dragSrcIndex === ai) return;
+      const rect = targetRow.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+
+      const arts = getBudget().articles;
+      const [moved] = arts.splice(dragSrcIndex, 1);
+      let targetIdx = parseInt(targetRow.dataset.article);
+      if (dragSrcIndex < targetIdx) targetIdx--;
+      arts.splice(before ? targetIdx : targetIdx + 1, 0, moved);
+
+      saveData();
+      renderBudget();
+    });
+  });
+}
+
+renderSidebarProjects();
+showPage('dashboard');
+</script>
+</body>
+</html>
