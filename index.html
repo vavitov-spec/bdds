@@ -453,16 +453,18 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 })();
 
 function initFirebase() {
-  try { firebase.app().delete().catch(function(){}); } catch(e) {}
-  firebase.initializeApp({
-    apiKey: "AIzaSyDXkHVg3ucKGiG6QF3SFxds7MuTJ95Wx60",
-    authDomain: "bdds-1.firebaseapp.com",
-    projectId: "bdds-1",
-    storageBucket: "bdds-1.firebasestorage.app",
-    messagingSenderId: "94953276486",
-    appId: "1:94953276486:web:6c2df15276b2ea13cd7647"
-  });
-  startApp();
+  // Подключаем новый проект bdds-1
+  firebase.app().delete().then(function() {
+    firebase.initializeApp({
+      apiKey: "AIzaSyDXkHVg3ucKGiG6QF3SFxds7MuTJ95Wx60",
+      authDomain: "bdds-1.firebaseapp.com",
+      projectId: "bdds-1",
+      storageBucket: "bdds-1.firebasestorage.app",
+      messagingSenderId: "94953276486",
+      appId: "1:94953276486:web:6c2df15276b2ea13cd7647"
+    });
+    startApp();
+  }).catch(function() { startApp(); });
 
   function startApp() {
     var db    = firebase.firestore();
