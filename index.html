@@ -453,18 +453,16 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 })();
 
 function initFirebase() {
-  // Подключаем новый проект bdds-1
-  firebase.app().delete().then(function() {
-    firebase.initializeApp({
-      apiKey: "AIzaSyDXkHVg3ucKGiG6QF3SFxds7MuTJ95Wx60",
-      authDomain: "bdds-1.firebaseapp.com",
-      projectId: "bdds-1",
-      storageBucket: "bdds-1.firebasestorage.app",
-      messagingSenderId: "94953276486",
-      appId: "1:94953276486:web:6c2df15276b2ea13cd7647"
-    });
-    startApp();
-  }).catch(function() { startApp(); });
+  try { firebase.app().delete().catch(function(){}); } catch(e) {}
+  firebase.initializeApp({
+    apiKey: "AIzaSyDXkHVg3ucKGiG6QF3SFxds7MuTJ95Wx60",
+    authDomain: "bdds-1.firebaseapp.com",
+    projectId: "bdds-1",
+    storageBucket: "bdds-1.firebasestorage.app",
+    messagingSenderId: "94953276486",
+    appId: "1:94953276486:web:6c2df15276b2ea13cd7647"
+  });
+  startApp();
 
   function startApp() {
     var db    = firebase.firestore();
@@ -723,15 +721,26 @@ function deleteProject(i) {
 /* ---- DASHBOARD ---- */
 function computeProjectNet12(pi) {
   // Returns array[12] of net plan for calendar months 0-11 for project pi
-  // ALWAYS uses decade data and aggregates to monthly — for consistency with dashboard decade view
   const b = budgets[pi];
   if (!b || !b.articles) return Array(12).fill(0);
   const net12 = Array(12).fill(0);
   b.articles.forEach(a => {
-    const ip   = sectionSum36(a, 'in',  'dplan');
-    const op   = sectionSum36(a, 'out', 'dplan');
-    for (let d = 0; d < DEC_COUNT; d++) {
-      net12[Math.floor(d / 3)] += (ip[d]||0) - (op[d]||0);
+    // Check if decade data has any non-zero values
+    const ip36 = sectionSum36(a, 'in',  'dplan');
+    const op36 = sectionSum36(a, 'out', 'dplan');
+    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
+    if (hasDecData) {
+      // Use decade data
+      for (let d = 0; d < DEC_COUNT; d++) {
+        net12[Math.floor(d / 3)] += (ip36[d]||0) - (op36[d]||0);
+      }
+    } else {
+      // Fall back to monthly plan data
+      const ip = sectionSum(a, 'in',  'plan');
+      const op = sectionSum(a, 'out', 'plan');
+      for (let m = 0; m < MONTHS_COUNT; m++) {
+        net12[m] += (ip[m]||0) - (op[m]||0);
+      }
     }
   });
   // Zero out months outside project range (absolute year-month keys)
@@ -754,10 +763,21 @@ function computeProjectNetDec36(pi) {
   if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
   const net36 = Array(DEC_COUNT).fill(0);
   b.articles.forEach(a => {
-    const ip   = sectionSum36(a, 'in',  'dplan');
-    const op   = sectionSum36(a, 'out', 'dplan');
-    for (let i = 0; i < DEC_COUNT; i++) {
-      net36[i] += (ip[i]||0) - (op[i]||0);
+    const ip36 = sectionSum36(a, 'in',  'dplan');
+    const op36 = sectionSum36(a, 'out', 'dplan');
+    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
+    if (hasDecData) {
+      for (let i = 0; i < DEC_COUNT; i++) {
+        net36[i] += (ip36[i]||0) - (op36[i]||0);
+      }
+    } else {
+      // Fall back to monthly plan data, spread evenly across 3 decades
+      const ip = sectionSum(a, 'in',  'plan');
+      const op = sectionSum(a, 'out', 'plan');
+      for (let m = 0; m < MONTHS_COUNT; m++) {
+        const net = (ip[m]||0) - (op[m]||0);
+        for (let d = 0; d < 3; d++) net36[m*3+d] += net / 3;
+      }
     }
   });
   // Zero out decades outside project range (absolute year-month keys)
