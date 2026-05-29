@@ -53,9 +53,17 @@ td.sticky-name {
   min-width:200px; max-width:200px;
   border-right:2px solid #d8d8d0;
 }
+.sticky-tot-b,
+td.sticky-tot-b {
+  position:sticky; left:200px; z-index:3;
+  background:#fff8e8;
+  min-width:88px; width:88px;
+  border-right:1px solid #e8d8a0;
+  text-align:right;
+}
 .sticky-tot-p,
 td.sticky-tot-p {
-  position:sticky; left:200px; z-index:3;
+  position:sticky; left:288px; z-index:3;
   background:#eaf4ff;
   min-width:88px; width:88px;
   border-right:1px solid #c5d8ee;
@@ -63,7 +71,7 @@ td.sticky-tot-p {
 }
 .sticky-tot-f,
 td.sticky-tot-f {
-  position:sticky; left:288px; z-index:3;
+  position:sticky; left:376px; z-index:3;
   background:#eaf8f2;
   min-width:88px; width:88px;
   border-right:2px solid #b0d8c0;
@@ -74,24 +82,30 @@ td.sticky-tot-f {
 thead th.sticky-name{ z-index:5; background:#fafaf8; }
 thead th.sticky-tot-p{ z-index:5; background:#daeeff; }
 thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; }
+thead th.sticky-tot-b{ z-index:5; background:#ffefc0; }
 thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
 
 /* Row-specific overrides for sticky cols */
 tr.article-header td.sticky-name { background:#f7f7f4; }
 tr.article-header td.sticky-tot-p { background:#e2eefa; }
 tr.article-header td.sticky-tot-f { background:#dcf2ea; }
+tr.article-header td.sticky-tot-b { background:#fff3d0; }
 tr.sub-in td.sticky-name { background:#f6fcfa; }
 tr.sub-in td.sticky-tot-p { background:#e8f4ff; }
 tr.sub-in td.sticky-tot-f { background:#e4f8f0; }
+tr.sub-in td.sticky-tot-b { background:#fff8e0; }
 tr.sub-out td.sticky-name { background:#fdf8f6; }
 tr.sub-out td.sticky-tot-p { background:#f2eeff; }
 tr.sub-out td.sticky-tot-f { background:#fef2ec; }
+tr.sub-out td.sticky-tot-b { background:#fdf5e0; }
 tr.total-row td.sticky-name { background:#fafaf8; }
 tr.total-row td.sticky-tot-p { background:#daeeff; }
 tr.total-row td.sticky-tot-f { background:#d6f2e6; }
+tr.total-row td.sticky-tot-b { background:#ffefc0; }
 
 /* plan/fact cell tint */
 td.cell-plan { background:#f5f9ff; }
+td.cell-budget { background:#fffbee; border-left:2px solid #e8d8a0; }
 td.cell-fact { background:#fff8f6; border-right:1px solid #f0e8e4; }
 
 /* Article header row */
@@ -236,6 +250,10 @@ table.hide-fact th.sticky-tot-f,
 table.hide-fact td.sticky-tot-f,
 table.hide-fact th.decade-sub-head.month-fact-head,
 table.hide-fact td.cell-dfact { display:none }
+table.hide-budget th.month-budget-head,
+table.hide-budget td.cell-budget,
+table.hide-budget th.sticky-tot-b,
+table.hide-budget td.sticky-tot-b { display:none }
 
 /* DASHBOARD TABLE */
 #dashboard-table { width:100%; }
@@ -555,7 +573,8 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
           <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
-            <button id="view-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
+            <button id="view-btn-budget" class="view-btn active" onclick="toggleView('budget')">Бюджет</button>
+        <button id="view-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
             <button id="view-btn-fact" class="view-btn active" onclick="toggleView('fact')">Факт</button>
           </div>
           <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:4px">Детализация:</span>
@@ -2610,7 +2629,7 @@ document.addEventListener('click', e => {
 });
 
 /* INIT */
-let viewPlan = true, viewFact = true, viewDecade = false;
+let viewBudget = true, viewPlan = true, viewFact = true, viewDecade = false;
 let viewDashDecade = false;
 
 function toggleDashDecadeView(which) {
@@ -2628,10 +2647,12 @@ function toggleDecadeView(which) {
 }
 
 function toggleView(which) {
-  if (which === 'fact') viewFact = !viewFact;
+  if (which === 'fact')   viewFact   = !viewFact;
+  if (which === 'budget') viewBudget = !viewBudget;
   // viewPlan is always true — план всегда отображается
 
   document.getElementById('view-btn-fact').classList.toggle('active', viewFact);
+  document.getElementById('view-btn-budget').classList.toggle('active', viewBudget);
 
   // Rebuild thead so colspans reflect new viewFact state, then reapply hide class
   renderBudget();
