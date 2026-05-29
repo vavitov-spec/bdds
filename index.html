@@ -1704,12 +1704,12 @@ function renderBudget() {
 
   // ---- RENDER THEAD ----
   const DEC_LABELS = ['1–10','11–20','21–31'];
-  const colsPerMonth = viewDecade ? 6 : 2; // 3 dec × (plan+fact) or just plan+fact
+  const colsPerMonth = viewDecade ? 9 : 3; // 3 dec × (budget+plan+fact) or just budget+plan+fact
 
   let row1 = '', row2 = '', row3 = '';
   // Actual visible columns per decade/month depend on viewFact
-  const visPerDec   = viewFact ? 2 : 1;   // plan+fact or plan only
-  const visPerMonth = viewDecade ? visPerDec * 3 : (viewFact ? 2 : 1);
+  const visPerDec   = 1 + (viewBudget ? 1 : 0) + (viewFact ? 1 : 0);
+  const visPerMonth = viewDecade ? visPerDec * 3 : visPerDec;
 
   months.forEach(({y, m}) => {
     if (viewDecade) {
@@ -1719,14 +1719,16 @@ function renderBudget() {
       });
       row3 += `<th class="decade-sub-head month-plan-head">пл</th>${viewFact ? '<th class="decade-sub-head month-fact-head">фк</th>' : ''}`.repeat(3);
     } else {
-      row1 += `<th class="month-group" colspan="${viewFact ? 2 : 1}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
-      row2 += `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">план</th>` +
+      row1 += `<th class="month-group" colspan="${visPerMonth}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
+      row2 += (viewBudget ? `<th class="month-budget-head" style="color:#7a6000;font-size:10px;background:#fff8e8">бюдж</th>` : '') +
+              `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">план</th>` +
               (viewFact ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6">факт</th>` : '');
     }
   });
 
   const FIXED_COLS = `
     <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья</th>
+    <th class="sticky-tot-b" style="background:#ffefc0;color:#7a6000;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">бюдж</small></th>
     <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">план</small></th>
     <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">факт</small></th>`;
 
@@ -1741,6 +1743,7 @@ function renderBudget() {
   // Apply hide-fact class (colspans already correct from thead generation above)
   const tbl = document.getElementById('main-table');
   tbl.classList.toggle('hide-fact', !viewFact);
+  tbl.classList.toggle('hide-budget', !viewBudget);
 
   let html = '';
 
@@ -1762,6 +1765,7 @@ function renderBudget() {
         <input class="row-name-input" value="${esc(art.name)}" onchange="renameArticle(${ai},this.value)">
         <button class="delete-btn" style="margin-left:6px" onclick="deleteArticle(${ai})">✕</button>
       </td>
+      <td class="sticky-tot-b"></td>
       <td class="sticky-tot-p"></td>
       <td class="sticky-tot-f"></td>
       <td colspan="${MC * colsPerMonth}"></td>
@@ -1806,7 +1810,8 @@ function renderBudget() {
             }).join('');
           } else {
             const vp = art[section+'Plan'][mi]||0, vf = art[section+'Fact'][mi]||0;
-            return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
+            return `<td class="cell-budget" style="color:#7a6000">—</td>` +
+              `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
                 value="${vp?fmt(vp):''}" placeholder="0"
                 onfocus="inputFocus(this)"
                 onblur="directBlur(this,${ai},'${section}','plan',${mi})"
@@ -1844,7 +1849,8 @@ function renderBudget() {
             }).join('');
           }
           const vp = plan[mi] || 0, vf = fact[mi] || 0;
-          return `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mIdx}">${vp ? fmt(vp) : '—'}</td>` +
+          return `<td class="cell-budget total-cell" style="color:#7a6000">—</td>` +
+                 `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mIdx}">${vp ? fmt(vp) : '—'}</td>` +
                  `<td class="cell-fact total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-fact-${ai}-${mIdx}">${vf ? fmt(vf) : '—'}</td>`;
         }).join('');
         html += `<tr class="${subCls}" data-art-child="${ai}">
