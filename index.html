@@ -53,17 +53,9 @@ td.sticky-name {
   min-width:200px; max-width:200px;
   border-right:2px solid #d8d8d0;
 }
-.sticky-tot-b,
-td.sticky-tot-b {
-  position:sticky; left:200px; z-index:3;
-  background:#fff8e8;
-  min-width:88px; width:88px;
-  border-right:1px solid #e8d8a0;
-  text-align:right;
-}
 .sticky-tot-p,
 td.sticky-tot-p {
-  position:sticky; left:288px; z-index:3;
+  position:sticky; left:200px; z-index:3;
   background:#eaf4ff;
   min-width:88px; width:88px;
   border-right:1px solid #c5d8ee;
@@ -71,7 +63,7 @@ td.sticky-tot-p {
 }
 .sticky-tot-f,
 td.sticky-tot-f {
-  position:sticky; left:376px; z-index:3;
+  position:sticky; left:288px; z-index:3;
   background:#eaf8f2;
   min-width:88px; width:88px;
   border-right:2px solid #b0d8c0;
@@ -82,30 +74,24 @@ td.sticky-tot-f {
 thead th.sticky-name{ z-index:5; background:#fafaf8; }
 thead th.sticky-tot-p{ z-index:5; background:#daeeff; }
 thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; }
-thead th.sticky-tot-b{ z-index:5; background:#ffefc0; }
 thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
 
 /* Row-specific overrides for sticky cols */
 tr.article-header td.sticky-name { background:#f7f7f4; }
 tr.article-header td.sticky-tot-p { background:#e2eefa; }
 tr.article-header td.sticky-tot-f { background:#dcf2ea; }
-tr.article-header td.sticky-tot-b { background:#fff3d0; }
 tr.sub-in td.sticky-name { background:#f6fcfa; }
 tr.sub-in td.sticky-tot-p { background:#e8f4ff; }
 tr.sub-in td.sticky-tot-f { background:#e4f8f0; }
-tr.sub-in td.sticky-tot-b { background:#fff8e0; }
 tr.sub-out td.sticky-name { background:#fdf8f6; }
 tr.sub-out td.sticky-tot-p { background:#f2eeff; }
 tr.sub-out td.sticky-tot-f { background:#fef2ec; }
-tr.sub-out td.sticky-tot-b { background:#fdf5e0; }
 tr.total-row td.sticky-name { background:#fafaf8; }
 tr.total-row td.sticky-tot-p { background:#daeeff; }
 tr.total-row td.sticky-tot-f { background:#d6f2e6; }
-tr.total-row td.sticky-tot-b { background:#ffefc0; }
 
 /* plan/fact cell tint */
 td.cell-plan { background:#f5f9ff; }
-td.cell-budget { background:#fffbee; border-left:2px solid #e8d8a0; }
 td.cell-fact { background:#fff8f6; border-right:1px solid #f0e8e4; }
 
 /* Article header row */
@@ -236,7 +222,7 @@ tr.cumul-row td.cell-fact { background:#eef8f4; border-top:1px solid #ddd8f5; }
 .view-btn.active{background:#fff;color:#1a1a18;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .view-btn:hover:not(.active){color:#555}
 
-/* Hide plan or fact columns */
+/* Hide plan / budget / fact columns */
 table.hide-plan th.month-plan-head,
 table.hide-plan td.cell-plan,
 table.hide-plan th.sticky-tot-p,
@@ -250,10 +236,6 @@ table.hide-fact th.sticky-tot-f,
 table.hide-fact td.sticky-tot-f,
 table.hide-fact th.decade-sub-head.month-fact-head,
 table.hide-fact td.cell-dfact { display:none }
-table.hide-budget th.month-budget-head,
-table.hide-budget td.cell-budget,
-table.hide-budget th.sticky-tot-b,
-table.hide-budget td.sticky-tot-b { display:none }
 
 /* DASHBOARD TABLE */
 #dashboard-table { width:100%; }
@@ -573,8 +555,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
           <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
-            <button id="view-btn-budget" class="view-btn active" onclick="toggleView('budget')">Бюджет</button>
-        <button id="view-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
+            <button id="view-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
             <button id="view-btn-fact" class="view-btn active" onclick="toggleView('fact')">Факт</button>
           </div>
           <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:4px">Детализация:</span>
@@ -696,38 +677,6 @@ function initFirebase() {
     window.db    = firebase.firestore();
     window.auth  = firebase.auth();
 
-  // ── App constants (available only after Firebase init) ───────────────────
-  var MONTHS_COUNT = 12;
-  var DEC_COUNT    = 36;
-  var MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-  var MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-
-  function ensureDec(arr) {
-    if (!Array.isArray(arr.dplan) || arr.dplan.length !== DEC_COUNT) arr.dplan = Array(DEC_COUNT).fill(0);
-    if (!Array.isArray(arr.dfact) || arr.dfact.length !== DEC_COUNT) arr.dfact = Array(DEC_COUNT).fill(0);
-  }
-
-  function newLine(name) {
-    return {
-      name: name || '',
-      plan: Array(MONTHS_COUNT).fill(0), fact: Array(MONTHS_COUNT).fill(0),
-      dplan: Array(DEC_COUNT).fill(0),   dfact: Array(DEC_COUNT).fill(0)
-    };
-  }
-  function newArticle(name) {
-    return {
-      name: name || 'Новая статья',
-      inDirect: true,  outDirect: true,
-      inOpen:   true,  outOpen:   true,
-      inPlan:   Array(MONTHS_COUNT).fill(0), inFact:   Array(MONTHS_COUNT).fill(0),
-      outPlan:  Array(MONTHS_COUNT).fill(0), outFact:  Array(MONTHS_COUNT).fill(0),
-      inDplan:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
-      outDplan: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
-      inLines:  [],
-      outLines: []
-    };
-  }
-
   // ── Load from Firestore ─────────────────────────────────────────────────
   window.loadData = function() {
     return new Promise(function(resolve) {
@@ -778,8 +727,14 @@ function initFirebase() {
         if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
         if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
         if (!a.inDeleted) a.inDeleted = false;
-        (a.inLines  || []).forEach(function(l) { ensureDec(l); });
-        (a.outLines || []).forEach(function(l) { ensureDec(l); });
+        (a.inLines  || []).forEach(function(l) {
+          if (!Array.isArray(l.dplan) || l.dplan.length !== DEC_COUNT) l.dplan = Array(DEC_COUNT).fill(0);
+          if (!Array.isArray(l.dfact) || l.dfact.length !== DEC_COUNT) l.dfact = Array(DEC_COUNT).fill(0);
+        });
+        (a.outLines || []).forEach(function(l) {
+          if (!Array.isArray(l.dplan) || l.dplan.length !== DEC_COUNT) l.dplan = Array(DEC_COUNT).fill(0);
+          if (!Array.isArray(l.dfact) || l.dfact.length !== DEC_COUNT) l.dfact = Array(DEC_COUNT).fill(0);
+        });
       });
     });
   };
@@ -1704,12 +1659,12 @@ function renderBudget() {
 
   // ---- RENDER THEAD ----
   const DEC_LABELS = ['1–10','11–20','21–31'];
-  const colsPerMonth = viewDecade ? 9 : 3; // 3 dec × (budget+plan+fact) or just budget+plan+fact
+  const colsPerMonth = viewDecade ? 6 : 2; // 3 dec × (plan+fact) or just plan+fact
 
   let row1 = '', row2 = '', row3 = '';
   // Actual visible columns per decade/month depend on viewFact
-  const visPerDec   = 1 + (viewBudget ? 1 : 0) + (viewFact ? 1 : 0);
-  const visPerMonth = viewDecade ? visPerDec * 3 : visPerDec;
+  const visPerDec   = viewFact ? 2 : 1;   // plan+fact or plan only
+  const visPerMonth = viewDecade ? visPerDec * 3 : (viewFact ? 2 : 1);
 
   months.forEach(({y, m}) => {
     if (viewDecade) {
@@ -1719,16 +1674,14 @@ function renderBudget() {
       });
       row3 += `<th class="decade-sub-head month-plan-head">пл</th>${viewFact ? '<th class="decade-sub-head month-fact-head">фк</th>' : ''}`.repeat(3);
     } else {
-      row1 += `<th class="month-group" colspan="${visPerMonth}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
-      row2 += (viewBudget ? `<th class="month-budget-head" style="color:#7a6000;font-size:10px;background:#fff8e8">бюдж</th>` : '') +
-              `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">план</th>` +
+      row1 += `<th class="month-group" colspan="${viewFact ? 2 : 1}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
+      row2 += `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">план</th>` +
               (viewFact ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6">факт</th>` : '');
     }
   });
 
   const FIXED_COLS = `
     <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья</th>
-    <th class="sticky-tot-b" style="background:#ffefc0;color:#7a6000;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">бюдж</small></th>
     <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">план</small></th>
     <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">факт</small></th>`;
 
@@ -1743,7 +1696,6 @@ function renderBudget() {
   // Apply hide-fact class (colspans already correct from thead generation above)
   const tbl = document.getElementById('main-table');
   tbl.classList.toggle('hide-fact', !viewFact);
-  tbl.classList.toggle('hide-budget', !viewBudget);
 
   let html = '';
 
@@ -1765,7 +1717,6 @@ function renderBudget() {
         <input class="row-name-input" value="${esc(art.name)}" onchange="renameArticle(${ai},this.value)">
         <button class="delete-btn" style="margin-left:6px" onclick="deleteArticle(${ai})">✕</button>
       </td>
-      <td class="sticky-tot-b"></td>
       <td class="sticky-tot-p"></td>
       <td class="sticky-tot-f"></td>
       <td colspan="${MC * colsPerMonth}"></td>
@@ -1810,8 +1761,7 @@ function renderBudget() {
             }).join('');
           } else {
             const vp = art[section+'Plan'][mi]||0, vf = art[section+'Fact'][mi]||0;
-            return `<td class="cell-budget" style="color:#7a6000">—</td>` +
-              `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
+            return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
                 value="${vp?fmt(vp):''}" placeholder="0"
                 onfocus="inputFocus(this)"
                 onblur="directBlur(this,${ai},'${section}','plan',${mi})"
@@ -1849,8 +1799,7 @@ function renderBudget() {
             }).join('');
           }
           const vp = plan[mi] || 0, vf = fact[mi] || 0;
-          return `<td class="cell-budget total-cell" style="color:#7a6000">—</td>` +
-                 `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mIdx}">${vp ? fmt(vp) : '—'}</td>` +
+          return `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mIdx}">${vp ? fmt(vp) : '—'}</td>` +
                  `<td class="cell-fact total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-fact-${ai}-${mIdx}">${vf ? fmt(vf) : '—'}</td>`;
         }).join('');
         html += `<tr class="${subCls}" data-art-child="${ai}">
@@ -2061,14 +2010,6 @@ function directInput(ai, section, field, mi, val) {
   art[section + field.charAt(0).toUpperCase() + field.slice(1)][mi] = parseInput(val);
   renderTotals();
 }
-function directBlurM(el, ai, section, field, mi) {
-  const num = parseInput(el.value);
-  const art = getBudget().articles[ai];
-  art[section + field.charAt(0).toUpperCase() + field.slice(1)][mi] = num;
-  el.value = num ? fmt(num) : '';
-  saveData();
-  renderTotals();
-}
 function directKeydown(event, el, ai, section, field, mi) {
   if (event.key === 'Enter') {
     event.preventDefault();
@@ -2140,8 +2081,7 @@ function decSublineInput(ai, section, li, field, di, val) {
   const mf = field==='dplan'?'plan':'fact';
   line[mf][m] = decSum(line[field], m);
   // Update aggregate cells in DOM (no full re-render)
-  updateAggregateCell(ai, section, 'dplan', di, line);
-  updateAggregateCell(ai, section, 'dfact', di, line);
+  updateAggregateCell(ai, section, field, di, line);
 }
 function decSublineBlur(el, ai, section, li, field, di) {
   const num = parseInput(el.value);
@@ -2153,7 +2093,6 @@ function decSublineBlur(el, ai, section, li, field, di) {
   line[mf][m] = decSum(line[field], m);
   el.value = num ? fmt(num) : '';
   updateAggregateCell(ai, section, field, di, line);
-  updateAggregateCell(ai, section, field === 'dplan' ? 'dfact' : 'dplan', di, line);
   saveData(); renderTotals();
 }
 function updateAggregateCell(ai, section, field, di, changedLine) {
@@ -2635,7 +2574,7 @@ document.addEventListener('click', e => {
 });
 
 /* INIT */
-let viewBudget = true, viewPlan = true, viewFact = true, viewDecade = false;
+let viewPlan = true, viewFact = true, viewDecade = false;
 let viewDashDecade = false;
 
 function toggleDashDecadeView(which) {
@@ -2653,12 +2592,10 @@ function toggleDecadeView(which) {
 }
 
 function toggleView(which) {
-  if (which === 'fact')   viewFact   = !viewFact;
-  if (which === 'budget') viewBudget = !viewBudget;
+  if (which === 'fact') viewFact = !viewFact;
   // viewPlan is always true — план всегда отображается
 
   document.getElementById('view-btn-fact').classList.toggle('active', viewFact);
-  document.getElementById('view-btn-budget').classList.toggle('active', viewBudget);
 
   // Rebuild thead so colspans reflect new viewFact state, then reapply hide class
   renderBudget();
