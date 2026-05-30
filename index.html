@@ -678,28 +678,57 @@ function initFirebase() {
     window.auth  = firebase.auth();
 
   // ── Load from Firestore ─────────────────────────────────────────────────
+  // loadData reads from Firestore for the currently signed-in user.
+  // Uses auth.currentUser directly — no listener accumulation.
   window.loadData = function() {
     return new Promise(function(resolve) {
-      window.auth.onAuthStateChanged(function(user) {
-        if (!user) { resolve(false); return; }
-        window.firebaseUid = user.uid;
-        window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
-          if (snap.exists) {
-            var d = snap.data();
-            if (d.projects && d.budgets) {
-              projects       = d.projects;
-              budgets        = d.budgets;
-              currentProject = d.currentProject || 0;
-              window.migrateData();
-              resolve(true);
-              return;
-            }
+      var user = window.auth.currentUser;
+      if (!user) { resolve(false); return; }
+      window.firebaseUid = user.uid;
+      window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
+        if (snap.exists) {
+          var d = snap.data();
+          if (d.projects && d.budgets) {
+            projects       = d.projects;
+            budgets        = d.budgets;
+            currentProject = d.currentProject || 0;
+            window.migrateData();
+            resolve(true);
+            return;
           }
-          resolve(false);
-        });
-      });
+        }
+        resolve(false);
+      }).catch(function() { resolve(false); });
     });
   };
+  // One-time auth state listener for the initial page load only.
+  window.auth.onAuthStateChanged(function(user) {
+    if (user) {
+      window.firebaseUid = user.uid;
+      window.loadData().then(function(loaded) {
+        if (!loaded) {
+          projects = [
+            { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
+            { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+          ];
+          currentProject = 0;
+          budgets = {
+            0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
+            1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
+          };
+          window.saveData();
+        }
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('main-layout').style.display = '';
+        window.renderSidebarProjects();
+        window.showPage('dashboard');
+      });
+    } else {
+      window.firebaseUid = null;
+      document.getElementById('login-page').style.display = 'flex';
+      document.getElementById('main-layout').style.display = 'none';
+    }
+  }, { once: true }); // fired only once on page load
 
   // ── Save to Firestore (fire-and-forget) ─────────────────────────────────
   window.saveData = function() {
@@ -714,8 +743,13 @@ function initFirebase() {
     Object.values(budgets).forEach(function(b) {
       (b.articles || []).forEach(function(a) {
         if (a.in !== undefined) {
-          a.inLines  = [{ name: 'Поступление 1', plan: a.in,     fact: a.factIn  || Array(MONTHS_COUNT).fill(0) }];
-          a.outLines = [{ name: 'Выплата 1',     plan: a.out,    fact: a.factOut || Array(MONTHS_COUNT).fill(0) }];
+          // Migrate old format: preserve dplan/dfact if they existed on the article
+          var inDplan  = (Array.isArray(a.inDplan)  && a.inDplan.length  === DEC_COUNT) ? a.inDplan  : Array(DEC_COUNT).fill(0);
+          var inDfact  = (Array.isArray(a.inDfact)  && a.inDfact.length  === DEC_COUNT) ? a.inDfact  : Array(DEC_COUNT).fill(0);
+          var outDplan = (Array.isArray(a.outDplan) && a.outDplan.length === DEC_COUNT) ? a.outDplan : Array(DEC_COUNT).fill(0);
+          var outDfact = (Array.isArray(a.outDfact) && a.outDfact.length === DEC_COUNT) ? a.outDfact : Array(DEC_COUNT).fill(0);
+          a.inLines  = [{ name: 'Поступление 1', plan: a.in,  fact: a.factIn  || Array(MONTHS_COUNT).fill(0), dplan: inDplan,  dfact: inDfact  }];
+          a.outLines = [{ name: 'Выплата 1',     plan: a.out, fact: a.factOut || Array(MONTHS_COUNT).fill(0), dplan: outDplan, dfact: outDfact }];
           delete a.in; delete a.out; delete a.factIn; delete a.factOut;
         }
         if (a.inDirect === undefined) a.inDirect = true;
@@ -739,33 +773,6 @@ function initFirebase() {
     });
   };
 
-  // ── App start (after Firebase is ready) ─────────────────────────────────
-  window.loadData().then(function(loaded) {
-    if (!loaded && window.firebaseUid) {
-      // User is logged in but has no data yet, create defaults
-      projects = [
-        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
-        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
-      ];
-      currentProject = 0;
-      budgets = {
-        0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
-        1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
-      };
-      window.saveData();
-    }
-    if (window.firebaseUid) {
-      // User is logged in, show app
-      document.getElementById('login-page').style.display = 'none';
-      document.getElementById('main-layout').style.display = '';
-      window.renderSidebarProjects();
-      window.showPage('dashboard');
-    } else {
-      // User not logged in, show login page
-      document.getElementById('login-page').style.display = 'flex';
-      document.getElementById('main-layout').style.display = 'none';
-    }
-  });
   } // end startApp()
 }
 // article.inDirect  — true: данные вбиваются прямо в строку (plan/fact), подстрок нет
@@ -955,14 +962,15 @@ function computeProjectNet12(pi) {
       }
     }
   });
-  // Zero out months outside project range (absolute year-month keys)
+  // Zero out months outside project range using the dashboard year
   const p = projects[pi];
   if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
     const startKey = p.start.y * 12 + p.start.m;
     const endKey   = p.end.y   * 12 + p.end.m;
+    // Dashboard always shows calendar months 0-11 of the project's start year
+    const dashY = p.start.y;
     for (let m = 0; m < 12; m++) {
-      const y = new Date().getFullYear();
-      const mKey = y * 12 + m;
+      const mKey = dashY * 12 + m;
       if (mKey < startKey || mKey > endKey) net12[m] = null;
     }
   }
@@ -992,15 +1000,15 @@ function computeProjectNetDec36(pi) {
       }
     }
   });
-  // Zero out decades outside project range (absolute year-month keys)
+  // Zero out decades outside project range using the project's start year
   const p = projects[pi];
   if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
     const startKey = p.start.y * 12 + p.start.m;
     const endKey   = p.end.y   * 12 + p.end.m;
+    const dashY = p.start.y;
     for (let d = 0; d < DEC_COUNT; d++) {
       const m = Math.floor(d / 3);
-      const y = new Date().getFullYear();
-      const mKey = y * 12 + m;
+      const mKey = dashY * 12 + m;
       if (mKey < startKey || mKey > endKey) net36[d] = 0;
     }
   }
@@ -2410,6 +2418,10 @@ function confirmProjectModal() {
     projects.push(newData);
     closeModal();
     currentProject = projects.length - 1;
+    // Immediately initialise budget so renderDashboard/computeProjectNet12 never sees undefined
+    if (!budgets[currentProject]) {
+      budgets[currentProject] = { articles: [newArticle('Новая статья')] };
+    }
     projectsOpen = true;
     saveData();
     renderSidebarProjects();
@@ -2450,6 +2462,8 @@ function handleLogin() {
   window.auth.signInWithEmailAndPassword(email, password)
     .then(() => {
       hideLoginError();
+      // Auth state listener (registered once in startApp) handles the UI transition.
+      // We just call loadData directly since the user is now signed in.
       window.loadData().then(() => {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('main-layout').style.display = '';
@@ -2660,10 +2674,16 @@ function initArticleDrag() {
       const rect = targetRow.getBoundingClientRect();
       const before = e.clientY < rect.top + rect.height / 2;
 
-      const arts = getBudget().articles;
-      const [moved] = arts.splice(dragSrcIndex, 1);
+      // Snapshot indices before any mutation (avoids stale dataset.article refs)
+      const srcIdx = dragSrcIndex;
       let targetIdx = parseInt(targetRow.dataset.article);
-      if (dragSrcIndex < targetIdx) targetIdx--;
+
+      // Lock further drops until re-render completes
+      dragSrcIndex = null;
+
+      const arts = getBudget().articles;
+      const [moved] = arts.splice(srcIdx, 1);
+      if (srcIdx < targetIdx) targetIdx--;
       arts.splice(before ? targetIdx : targetIdx + 1, 0, moved);
 
       saveData();
