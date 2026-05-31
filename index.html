@@ -567,7 +567,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           </div>
         </div>
       </div>
-      <div class="section"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам — бюджет</div><div class="table-wrap"><table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table></div></div><div class="section" style="margin-top:0"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Накопительный денежный поток — бюджет</div><canvas id="cumul-chart" style="width:100%;display:block"></canvas></div>
+      <div class="section"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам</div><div class="table-wrap"><table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table></div></div><div class="section" style="margin-top:0"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Накопительный денежный поток</div><canvas id="cumul-chart" style="width:100%;display:block"></canvas></div>
     </div>
 
     <div class="page" id="page-project">
@@ -976,22 +976,19 @@ function deleteProject(i) {
 /* ---- PAGES ---- */
 /* ---- DASHBOARD ---- */
 function computeProjectNet12(pi) {
-  // Returns array[12] of net plan for calendar months 0-11 for project pi
+  // Returns array[12] of net budget (plan) for calendar months 0-11 for project pi
   const b = budgets[pi];
   if (!b || !b.articles) return Array(12).fill(0);
   const net12 = Array(12).fill(0);
   b.articles.forEach(a => {
-    // Check if decade data has any non-zero values
     const ip36 = sectionSum36(a, 'in',  'dplan');
     const op36 = sectionSum36(a, 'out', 'dplan');
     const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
     if (hasDecData) {
-      // Use decade data
       for (let d = 0; d < DEC_COUNT; d++) {
         net12[Math.floor(d / 3)] += (ip36[d]||0) - (op36[d]||0);
       }
     } else {
-      // Fall back to monthly plan data
       const ip = sectionSum(a, 'in',  'plan');
       const op = sectionSum(a, 'out', 'plan');
       for (let m = 0; m < MONTHS_COUNT; m++) {
@@ -999,12 +996,44 @@ function computeProjectNet12(pi) {
       }
     }
   });
-  // Zero out months outside project range using the dashboard year
   const p = projects[pi];
   if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
     const startKey = p.start.y * 12 + p.start.m;
     const endKey   = p.end.y   * 12 + p.end.m;
-    // Dashboard always shows calendar months 0-11 of the project's start year
+    const dashY = p.start.y;
+    for (let m = 0; m < 12; m++) {
+      const mKey = dashY * 12 + m;
+      if (mKey < startKey || mKey > endKey) net12[m] = null;
+    }
+  }
+  return net12;
+}
+
+function computeProjectNet12Forecast(pi) {
+  // Returns array[12] of net forecast (план) for calendar months 0-11 for project pi
+  const b = budgets[pi];
+  if (!b || !b.articles) return Array(12).fill(0);
+  const net12 = Array(12).fill(0);
+  b.articles.forEach(a => {
+    const ip36 = sectionSum36(a, 'in',  'dforecast');
+    const op36 = sectionSum36(a, 'out', 'dforecast');
+    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
+    if (hasDecData) {
+      for (let d = 0; d < DEC_COUNT; d++) {
+        net12[Math.floor(d / 3)] += (ip36[d]||0) - (op36[d]||0);
+      }
+    } else {
+      const ip = sectionSum(a, 'in',  'forecast');
+      const op = sectionSum(a, 'out', 'forecast');
+      for (let m = 0; m < MONTHS_COUNT; m++) {
+        net12[m] += (ip[m]||0) - (op[m]||0);
+      }
+    }
+  });
+  const p = projects[pi];
+  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
+    const startKey = p.start.y * 12 + p.start.m;
+    const endKey   = p.end.y   * 12 + p.end.m;
     const dashY = p.start.y;
     for (let m = 0; m < 12; m++) {
       const mKey = dashY * 12 + m;
@@ -1015,7 +1044,7 @@ function computeProjectNet12(pi) {
 }
 
 function computeProjectNetDec36(pi) {
-  // Returns array[36] of net plan per decade for project pi
+  // Returns array[36] of net budget (plan) per decade for project pi
   const b = budgets[pi];
   if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
   const net36 = Array(DEC_COUNT).fill(0);
@@ -1028,7 +1057,6 @@ function computeProjectNetDec36(pi) {
         net36[i] += (ip36[i]||0) - (op36[i]||0);
       }
     } else {
-      // Fall back to monthly plan data, spread evenly across 3 decades
       const ip = sectionSum(a, 'in',  'plan');
       const op = sectionSum(a, 'out', 'plan');
       for (let m = 0; m < MONTHS_COUNT; m++) {
@@ -1037,7 +1065,42 @@ function computeProjectNetDec36(pi) {
       }
     }
   });
-  // Zero out decades outside project range using the project's start year
+  const p = projects[pi];
+  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
+    const startKey = p.start.y * 12 + p.start.m;
+    const endKey   = p.end.y   * 12 + p.end.m;
+    const dashY = p.start.y;
+    for (let d = 0; d < DEC_COUNT; d++) {
+      const m = Math.floor(d / 3);
+      const mKey = dashY * 12 + m;
+      if (mKey < startKey || mKey > endKey) net36[d] = 0;
+    }
+  }
+  return net36;
+}
+
+function computeProjectNetDec36Forecast(pi) {
+  // Returns array[36] of net forecast (план) per decade for project pi
+  const b = budgets[pi];
+  if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
+  const net36 = Array(DEC_COUNT).fill(0);
+  b.articles.forEach(a => {
+    const ip36 = sectionSum36(a, 'in',  'dforecast');
+    const op36 = sectionSum36(a, 'out', 'dforecast');
+    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
+    if (hasDecData) {
+      for (let i = 0; i < DEC_COUNT; i++) {
+        net36[i] += (ip36[i]||0) - (op36[i]||0);
+      }
+    } else {
+      const ip = sectionSum(a, 'in',  'forecast');
+      const op = sectionSum(a, 'out', 'forecast');
+      for (let m = 0; m < MONTHS_COUNT; m++) {
+        const net = (ip[m]||0) - (op[m]||0);
+        for (let d = 0; d < 3; d++) net36[m*3+d] += net / 3;
+      }
+    }
+  });
   const p = projects[pi];
   if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
     const startKey = p.start.y * 12 + p.start.m;
@@ -1057,186 +1120,189 @@ function renderDashboard() {
   const curM = new Date().getMonth();
   const DEC_LABELS = ['1–10','11–20','21–31'];
   document.getElementById('dashboard-year-label').textContent = curY + ' год';
-
   const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
-  // Build header
-  let thead = '<tr>';
-  thead += '<th class="dash-sticky">Проект</th>';
+  const fmtD    = (v) => v === null ? '' : (v === 0 ? '—' : Math.round(v / 1000).toLocaleString('ru-RU'));
+  const colorB  = (v) => v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
+  const colorPl = (v) => v > 0 ? '#7a6000' : v < 0 ? '#a33020' : '#999';
 
+  // ── DECADE VIEW ──────────────────────────────────────────────────────
   if (viewDashDecade) {
-    // Show 9 decades: starting from current decade of current month
-    const startDecIdx = curM * 3; // first decade of current month
-    const SHOWN_DEC = 9;
-    const startMonth = curM;
-    const endMonth = Math.min(curM + 2, 11); // up to 2 more months = 9 decades max
+    const startDecIdx  = curM * 3;
+    const SHOWN_DEC    = 9;
+    const startMonth   = curM;
+    const endMonth     = Math.min(curM + 2, 11);
+    const today        = new Date().getDate();
+    const curDecLocal  = today <= 10 ? 0 : today <= 20 ? 1 : 2;
+    const curDecGlobal = curM * 3 + curDecLocal;
 
-    // Month group header: 3 decades per month, label centered via colspan
+    // THEAD — 3 строки:
+    // 1) «Проект» rowspan=3 | месяц colspan=6 (3 декады × 2 col)
+    // 2) декада colspan=2
+    // 3) «бюджет» | «план»
+    let thead = '<tr><th class="dash-sticky" rowspan="3" style="text-align:left">Проект</th>';
     for (let m = startMonth; m <= endMonth; m++) {
-      const isCurM = (m === curM);
-      thead += `<th class="dash-dec-group${isCurM?' dash-cur-month':''}" colspan="3">${MNAMES[m]}</th>`;
+      thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="6">${MNAMES[m]}</th>`;
     }
-    thead += '</tr><tr><th class="dash-sticky"></th>';
-    const today = new Date().getDate();
-    const curDecIdx = today <= 10 ? 0 : today <= 20 ? 1 : 2;
-    const curDecGlobal = curM * 3 + curDecIdx;
+    thead += '</tr><tr>';
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-      const isCurDec = (d === curDecGlobal);
-      thead += `<th class="dash-dec-head${isCurDec?' dash-cur-month':''}" style="text-align:center">${DEC_LABELS[d % 3]}</th>`;
+      const cm = d === curDecGlobal ? ' dash-cur-month' : '';
+      thead += `<th class="dash-dec-head${cm}" colspan="2" style="text-align:center;border-right:2px solid #c0c0d0">${DEC_LABELS[d % 3]}</th>`;
     }
-  } else {
-    for (let m = 0; m < 12; m++) {
-      thead += `<th${m === curM ? ' class="dash-cur-month"' : ''}>${MNAMES[m]}</th>`;
-    }
-  }
-  thead += '</tr>';
-  document.getElementById('dashboard-thead').innerHTML = thead;
-
-  const fmtD = (v) => v === null ? '' : (v === 0 ? '—' : (Math.round(v / 1000)).toLocaleString('ru-RU'));
-  const cellClass = (v, outRange, isCurM) => {
-    const cls = [];
-    if (outRange) { cls.push('dash-out-range'); }
-    else if (v === null || v === 0) { cls.push('dash-zero'); }
-    else if (v > 0) { cls.push('dash-pos'); }
-    else { cls.push('dash-neg'); }
-    if (isCurM) cls.push('dash-cur-month');
-    return cls.join(' ');
-  };
-
-  let tbody = '';
-
-  if (viewDashDecade) {
-    // Show 9 decades starting from current month
-    const startDecIdx = curM * 3;
-    const SHOWN_DEC = 9;
-    const today = new Date().getDate();
-    const curDecIdx = today <= 10 ? 0 : today <= 20 ? 1 : 2;
-    const curDecGlobal = curM * 3 + curDecIdx;
-
-    const projectNets36 = projects.map((p, pi) => computeProjectNetDec36(pi));
-
-    // Company totals per decade (decades outside project range = 0)
-    const companyNet36 = Array(DEC_COUNT).fill(0);
-    projectNets36.forEach((net36, pi) => {
-      for (let d = 0; d < DEC_COUNT; d++) {
-        companyNet36[d] += net36[d] || 0;
-      }
-    });
-
-    // Cumulative over the full year (dec 0..35)
-    const fullCumul = [];
-    let run = 0;
-    for (let d = 0; d < DEC_COUNT; d++) {
-      run += companyNet36[d] || 0;
-      fullCumul[d] = run;
-    }
-    // Value that was accumulated BEFORE the first shown decade (dec 0 = Jan 1-10)
-    const cumulBeforeStart = startDecIdx > 0 ? (fullCumul[startDecIdx - 1] || 0) : 0;
-    // For 9 shown decades: start from cumulBeforeStart, add each shown decade
-    const cumul9 = [];
-    let runShown = cumulBeforeStart;
+    thead += '</tr><tr>';
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-      runShown += companyNet36[d] || 0;
-      cumul9.push(runShown);
+      const cm = d === curDecGlobal ? ' dash-cur-month' : '';
+      thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none">бюджет</th>`;
+      thead += `<th class="dash-dec-head${cm}" style="color:#7a6000;background:#fff8e0;font-size:9px;border-right:2px solid #c0c0d0">план</th>`;
+    }
+    thead += '</tr>';
+    document.getElementById('dashboard-thead').innerHTML = thead;
+
+    // DATA
+    const nets36B  = projects.map((p, pi) => computeProjectNetDec36(pi));
+    const nets36P  = projects.map((p, pi) => computeProjectNetDec36Forecast(pi));
+    const totB36   = Array(DEC_COUNT).fill(0);
+    const totP36   = Array(DEC_COUNT).fill(0);
+    nets36B.forEach(n => { for (let d=0;d<DEC_COUNT;d++) totB36[d] += n[d]||0; });
+    nets36P.forEach(n => { for (let d=0;d<DEC_COUNT;d++) totP36[d] += n[d]||0; });
+
+    // Накопительные
+    const fullCB=[],fullCP=[];
+    let rB=0,rP=0;
+    for(let d=0;d<DEC_COUNT;d++){rB+=totB36[d]||0;fullCB[d]=rB;rP+=totP36[d]||0;fullCP[d]=rP;}
+    const befB = startDecIdx>0?(fullCB[startDecIdx-1]||0):0;
+    const befP = startDecIdx>0?(fullCP[startDecIdx-1]||0):0;
+    const cum9B=[],cum9P=[];
+    let rsB=befB,rsP=befP;
+    for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++){
+      rsB+=totB36[d]||0; cum9B.push(rsB);
+      rsP+=totP36[d]||0; cum9P.push(rsP);
     }
 
-    projects.forEach((p, pi) => {
-      const net36 = projectNets36[pi];
-      tbody += '<tr>';
-      const badge = p.type ? `<span class="proj-badge">${p.type}</span>` : '';
-      tbody += `<td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
-      for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-        const v = net36[d] || 0;
-        const isCurDec = (d === curDecGlobal);
-        const colorCls = v === 0 ? 'dash-zero' : (v > 0 ? 'dash-pos' : 'dash-neg');
-        tbody += `<td class="dash-dec-cell ${colorCls}${isCurDec?' dash-cur-month':''}">${fmtD(v)}</td>`;
-      }
+    // TBODY
+    let tbody = '';
+    const pair = (vB,vP,cur) => {
+      const cm = cur?' dash-cur-month':'';
+      const cB = vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg');
+      const cP = vP===0?'dash-zero':(vP>0?'dash-pos':'dash-neg');
+      return `<td class="dash-dec-cell ${cB}${cm}" style="border-right:none">${fmtD(vB)}</td>`+
+             `<td class="dash-dec-cell ${cP}${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
+    };
+
+    projects.forEach((p,pi) => {
+      const nB=nets36B[pi], nP=nets36P[pi];
+      const badge = p.type?`<span class="proj-badge">${p.type}</span>`:'';
+      tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++)
+        tbody += pair(nB[d]||0, nP[d]||0, d===curDecGlobal);
       tbody += '</tr>';
     });
 
-    // Company total row
-    tbody += '<tr class="dash-total">';
-    tbody += '<td class="dash-sticky left">Денежный поток компании</td>';
-    for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-      const v = companyNet36[d] || 0;
-      const isCurDec = (d === curDecGlobal);
-      const color = v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="dash-dec-cell${isCurDec?' dash-cur-month':''}" style="color:${color}">${fmtD(v)}</td>`;
+    tbody += '<tr class="dash-total"><td class="dash-sticky left">Денежный поток компании</td>';
+    for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++){
+      const vB=totB36[d]||0, vP=totP36[d]||0, cur=d===curDecGlobal;
+      const cm=cur?' dash-cur-month':'';
+      tbody += `<td class="dash-dec-cell${cm}" style="color:${colorB(vB)};border-right:none">${fmtD(vB)}</td>`;
+      tbody += `<td class="dash-dec-cell${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
-    // Cumulative row
-    tbody += '<tr class="dash-cumul">';
-    tbody += '<td class="dash-sticky left">Накопительно</td>';
-    for (let d = 0; d < SHOWN_DEC; d++) {
-      const v = cumul9[d] || 0;
-      const isCurDec = (d === curDecIdx);
-      const color = v > 0 ? '#3d1a8a' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="dash-dec-cell${isCurDec?' dash-cur-month':''}" style="color:${color}">${fmtD(v)}</td>`;
-    }
-    tbody += '</tr>';
-    
-    document.getElementById('dashboard-body').innerHTML = tbody;
-    // Build sliced cumul36 for chart (9 values)
-    const cumul36Slice = cumul9.slice(0, SHOWN_DEC);
-    requestAnimationFrame(() => renderCumulChartDec(cumul36Slice, SHOWN_DEC));
-  } else {
-    // Month view
-    const projectNets12 = projects.map((p, pi) => computeProjectNet12(pi));
-
-    const companyNet = Array(12).fill(0);
-    projectNets12.forEach(net12 => {
-      for (let m = 0; m < 12; m++) {
-        companyNet[m] += net12[m] || 0;
-      }
-    });
-
-    const cumul = [];
-    let run = 0;
-    for (let m = 0; m < 12; m++) {
-      run += companyNet[m];
-      cumul.push(run);
-    }
-
-    projects.forEach((p, pi) => {
-      const net12 = projectNets12[pi];
-      tbody += '<tr>';
-      const badge = p.type ? `<span class="proj-badge">${p.type}</span>` : '';
-      tbody += `<td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
-      for (let m = 0; m < 12; m++) {
-        const v = net12[m];
-        const outRange = v === null;
-        tbody += `<td class="${cellClass(v, outRange, m === curM)}">${outRange ? '' : fmtD(v)}</td>`;
-      }
-      tbody += '</tr>';
-    });
-
-    tbody += '<tr class="dash-total">';
-    tbody += '<td class="dash-sticky left">Денежный поток компании</td>';
-    for (let m = 0; m < 12; m++) {
-      const v = companyNet[m];
-      const color = v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="${m === curM ? 'dash-cur-month' : ''}" style="color:${color}">${fmtD(v)}</td>`;
-    }
-    tbody += '</tr>';
-
-    tbody += '<tr class="dash-cumul">';
-    tbody += '<td class="dash-sticky left">Накопительно</td>';
-    for (let m = 0; m < 12; m++) {
-      const v = cumul[m];
-      const color = v > 0 ? '#3d1a8a' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="${m === curM ? 'dash-cur-month' : ''}" style="color:${color}">${fmtD(v)}</td>`;
+    tbody += '<tr class="dash-cumul"><td class="dash-sticky left">Накопительно</td>';
+    for(let i=0;i<SHOWN_DEC;i++){
+      const vB=cum9B[i]||0, vP=cum9P[i]||0, cur=i===curDecLocal;
+      const cm=cur?' dash-cur-month':'';
+      const cB=vB>0?'#3d1a8a':vB<0?'#a33020':'#999';
+      const cP=vP>0?'#5a4000':vP<0?'#a33020':'#999';
+      tbody += `<td class="dash-dec-cell${cm}" style="color:${cB};border-right:none">${fmtD(vB)}</td>`;
+      tbody += `<td class="dash-dec-cell${cm}" style="color:${cP};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
     document.getElementById('dashboard-body').innerHTML = tbody;
-    requestAnimationFrame(() => renderCumulChart(cumul, curM));
+    requestAnimationFrame(() => renderCumulChartDec(cum9B, cum9P, SHOWN_DEC));
+
+  // ── MONTH VIEW ───────────────────────────────────────────────────────
+  } else {
+
+    // THEAD — 2 строки:
+    // 1) «Проект» rowspan=2 | месяц colspan=2
+    // 2) «бюджет» | «план»
+    let thead = '<tr><th class="dash-sticky" rowspan="2" style="text-align:left">Проект</th>';
+    for(let m=0;m<12;m++){
+      const cm = m===curM?' class="dash-cur-month"':'';
+      thead += `<th${cm} colspan="2" style="text-align:center;border-right:2px solid #c0c0d0">${MNAMES[m]}</th>`;
+    }
+    thead += '</tr><tr>';
+    for(let m=0;m<12;m++){
+      const cm = m===curM?' class="dash-cur-month"':'';
+      thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бюджет</th>`;
+      thead += `<th${cm} style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
+    }
+    thead += '</tr>';
+    document.getElementById('dashboard-thead').innerHTML = thead;
+
+    // DATA
+    const nets12B  = projects.map((p,pi) => computeProjectNet12(pi));
+    const nets12P  = projects.map((p,pi) => computeProjectNet12Forecast(pi));
+    const totB     = Array(12).fill(0);
+    const totP     = Array(12).fill(0);
+    nets12B.forEach(n => { for(let m=0;m<12;m++) totB[m] += n[m]||0; });
+    nets12P.forEach(n => { for(let m=0;m<12;m++) totP[m] += n[m]||0; });
+
+    const cumB=[],cumP=[];
+    let rB=0,rP=0;
+    for(let m=0;m<12;m++){
+      rB+=totB[m]; cumB.push(rB);
+      rP+=totP[m]; cumP.push(rP);
+    }
+
+    // TBODY
+    let tbody = '';
+
+    const pair = (vB, vP, outB, outP, cur) => {
+      const cm = cur?' dash-cur-month':'';
+      const cB = outB?'dash-out-range':(vB===null||vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg'));
+      return `<td class="${cB}${cm}" style="border-right:none">${outB?'':fmtD(vB)}</td>`+
+             `<td class="${outP?'dash-out-range':cm}" style="${outP?'':'color:'+colorPl(vP||0)+';background:#fffce8'};border-right:2px solid #c0c0d0">${outP?'':fmtD(vP)}</td>`;
+    };
+
+    projects.forEach((p,pi) => {
+      const nB=nets12B[pi], nP=nets12P[pi];
+      const badge = p.type?`<span class="proj-badge">${p.type}</span>`:'';
+      tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      for(let m=0;m<12;m++)
+        tbody += pair(nB[m], nP[m], nB[m]===null, nP[m]===null, m===curM);
+      tbody += '</tr>';
+    });
+
+    tbody += '<tr class="dash-total"><td class="dash-sticky left">Денежный поток компании</td>';
+    for(let m=0;m<12;m++){
+      const vB=totB[m], vP=totP[m], cur=m===curM;
+      const cm=cur?' dash-cur-month':'';
+      tbody += `<td class="${cm}" style="color:${colorB(vB)};border-right:none">${fmtD(vB)}</td>`;
+      tbody += `<td class="${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
+    }
+    tbody += '</tr>';
+
+    tbody += '<tr class="dash-cumul"><td class="dash-sticky left">Накопительно</td>';
+    for(let m=0;m<12;m++){
+      const vB=cumB[m], vP=cumP[m], cur=m===curM;
+      const cm=cur?' dash-cur-month':'';
+      const cB=vB>0?'#3d1a8a':vB<0?'#a33020':'#999';
+      const cP=vP>0?'#5a4000':vP<0?'#a33020':'#999';
+      tbody += `<td class="${cm}" style="color:${cB};border-right:none">${fmtD(vB)}</td>`;
+      tbody += `<td class="${cm}" style="color:${cP};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
+    }
+    tbody += '</tr>';
+
+    document.getElementById('dashboard-body').innerHTML = tbody;
+    requestAnimationFrame(() => renderCumulChart(cumB, cumP, curM));
   }
 }
 
 
 /* ---- CUMULATIVE CHART ---- */
-function renderCumulChart(cumul, curM) {
+function renderCumulChart(cumul, cumulFC, curM) {
   const canvas = document.getElementById('cumul-chart');
   if (!canvas) return;
 
@@ -1244,8 +1310,10 @@ function renderCumulChart(cumul, curM) {
 
   // ── Read column X-centres from the actual table header cells ──
   const thead = document.getElementById('dashboard-thead');
-  const hCells = thead ? Array.from(thead.querySelectorAll('th')) : [];
-  // First th is the sticky "Проект" col, then 12 month ths
+  // Берём только первую строку thead — там месячные группы
+  const firstRow = thead ? thead.querySelector('tr') : null;
+  const hCells   = firstRow ? Array.from(firstRow.querySelectorAll('th')) : [];
+  // First th is the sticky «Проект», остальные — месяцы (colspan=2)
   const monthThs = hCells.slice(1); // 12 cells
   if (monthThs.length !== 12) return; // table not yet rendered
 
@@ -1271,9 +1339,10 @@ function renderCumulChart(cumul, curM) {
   const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
   const cH  = H - PAD.top - PAD.bottom;
 
-  const vals = cumul.map(v => v / 1000);
-  const minVal = Math.min(0, ...vals);
-  const maxVal = Math.max(0, ...vals);
+  const vals   = cumul.map(v => v / 1000);
+  const valsFC = cumulFC ? cumulFC.map(v => v / 1000) : vals;
+  const minVal = Math.min(0, ...vals, ...valsFC);
+  const maxVal = Math.max(0, ...vals, ...valsFC);
   const range  = maxVal - minVal || 1;
   const pad    = range * 0.12;
   const vMin   = minVal - pad;
@@ -1391,7 +1460,24 @@ function renderCumulChart(cumul, curM) {
     ctx.restore();
   }
 
-  // ── Dots ─────────────────────────────────────────────────────
+  // ── Forecast (план) line — dashed ───────────────────────────
+  if (cumulFC) {
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    for (let m = 0; m < 12; m++) {
+      const v = valsFC[m];
+      if (m === 0) ctx.moveTo(toX(m), toY(v));
+      else         ctx.lineTo(toX(m), toY(v));
+    }
+    ctx.strokeStyle = '#c8a000';
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Dots бюджет ───────────────────────────────────────────────
   for (let m = 0; m < 12; m++) {
     const v = vals[m], cx = toX(m), cy = toY(v);
     ctx.beginPath();
@@ -1403,21 +1489,46 @@ function renderCumulChart(cumul, curM) {
     ctx.stroke();
   }
 
-  // ── Value labels ─────────────────────────────────────────────
+  // ── Dots план ────────────────────────────────────────────────
+  if (cumulFC) {
+    for (let m = 0; m < 12; m++) {
+      const v = valsFC[m], cx = toX(m), cy = toY(v);
+      ctx.beginPath();
+      ctx.arc(cx, cy, m === curM ? 4 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#c8a000';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // ── Value labels бюджет ──────────────────────────────────────
   ctx.textAlign = 'center';
+  ctx.font = '10px system-ui,sans-serif';
   for (let m = 0; m < 12; m++) {
     const v = vals[m];
     if (v === 0) continue;
     const cx = toX(m), cy = toY(v);
-    const lbl = String(Math.round(v));
     ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
+    ctx.fillText(String(Math.round(v)), cx, v >= 0 ? cy - 8 : cy + 15);
+  }
+
+  // ── Value labels план ────────────────────────────────────────
+  if (cumulFC) {
     ctx.font = '10px system-ui,sans-serif';
-    ctx.fillText(lbl, cx, v >= 0 ? cy - 8 : cy + 15);
+    for (let m = 0; m < 12; m++) {
+      const v = valsFC[m];
+      if (v === 0) continue;
+      const cx = toX(m), cy = toY(v);
+      ctx.fillStyle = '#c8a000';
+      ctx.fillText(String(Math.round(v)), cx, v >= 0 ? cy - 20 : cy + 27);
+    }
   }
 }
 
 /* ---- DECADE CHART (dashboard) ---- */
-function renderCumulChartDec(cumulArr, shownDec) {
+function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   const shown = shownDec || cumulArr.length;
   const canvas = document.getElementById('cumul-chart');
   if (!canvas) return;
@@ -1425,7 +1536,10 @@ function renderCumulChartDec(cumulArr, shownDec) {
   const dpr = window.devicePixelRatio || 1;
 
   const thead = document.getElementById('dashboard-thead');
-  const decThs = thead ? Array.from(thead.querySelectorAll('th.dash-dec-head')) : [];
+  // Берём 2-ю строку thead (декады с colspan=2), не 3-ю (бюджет/план)
+  const theadRows = thead ? Array.from(thead.querySelectorAll('tr')) : [];
+  const decRow    = theadRows[1] || null; // 0=месяцы, 1=декады, 2=бюджет/план
+  const decThs    = decRow ? Array.from(decRow.querySelectorAll('th.dash-dec-head')) : [];
   if (decThs.length < shown) return;
 
   const canvasRect = canvas.getBoundingClientRect();
@@ -1448,9 +1562,10 @@ function renderCumulChartDec(cumulArr, shownDec) {
   const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
   const cH  = H - PAD.top - PAD.bottom;
 
-  const validVals = cumulArr.filter(v => v !== null).map(v => v / 1000);
-  const minVal = validVals.length ? Math.min(0, ...validVals) : 0;
-  const maxVal = validVals.length ? Math.max(0, ...validVals) : 1;
+  const validVals   = cumulArr.filter(v => v !== null).map(v => v / 1000);
+  const validValsFC = cumulArrFC ? cumulArrFC.filter(v => v !== null).map(v => v / 1000) : [];
+  const minVal = Math.min(0, ...(validVals.length ? validVals : [0]), ...(validValsFC.length ? validValsFC : [0]));
+  const maxVal = Math.max(0, ...(validVals.length ? validVals : [1]), ...(validValsFC.length ? validValsFC : [1]));
   const pad    = (maxVal - minVal) * 0.12 || 1;
   const vMin   = minVal - pad;
   const vMax   = maxVal + pad;
@@ -1583,7 +1698,49 @@ function renderCumulChartDec(cumulArr, shownDec) {
     ctx.stroke();
   }
 
-  // ── Value labels ───────────────────────────────────────────
+  // ── Линия план (пунктир) ──────────────────────────────────
+  if (cumulArrFC) {
+    const valsFC = cumulArrFC.map(v => v === null ? null : v / 1000);
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = '#c8a000';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    let firstFC = true;
+    for (let d = 0; d < shown; d++) {
+      if (valsFC[d] === null) { firstFC = true; continue; }
+      if (firstFC) { ctx.moveTo(toX(d), toY(valsFC[d])); firstFC = false; }
+      else          ctx.lineTo(toX(d), toY(valsFC[d]));
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Dots план
+    for (let d = 0; d < shown; d++) {
+      if (cumulArrFC[d] === null) continue;
+      const v = valsFC[d], cx = toX(d), cy = toY(v);
+      ctx.beginPath();
+      ctx.arc(cx, cy, d === 0 ? 4 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#c8a000';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // Value labels план
+    ctx.textAlign = 'center';
+    ctx.font = '10px system-ui,sans-serif';
+    for (let d = 0; d < shown; d++) {
+      if (!cumulArrFC[d]) continue;
+      const v = valsFC[d], cx = toX(d), cy = toY(v);
+      ctx.fillStyle = '#c8a000';
+      ctx.fillText(String(Math.round(v)), cx, v >= 0 ? cy - 20 : cy + 27);
+    }
+  }
+
+  // ── Value labels бюджет ─────────────────────────────────────
   ctx.textAlign = 'center';
   for (let d = 0; d < shown; d++) {
     if (cumulArr[d] === null || cumulArr[d] === 0) continue;
