@@ -263,11 +263,13 @@ table.hide-fact th.decade-sub-head.month-fact-head,
 table.hide-fact td.cell-dfact { display:none }
 
 /* DASHBOARD TABLE */
-#dashboard-table { width:100%; }
-#dashboard-table th { text-align:right; font-weight:500; color:#888; padding:5px 8px; border-bottom:2px solid #e5e5e0; font-size:12px; white-space:nowrap; }
+#dash-scroll-wrap { overflow-x:auto; overflow-y:visible; }
+#dashboard-table { width:auto; min-width:100%; table-layout:auto; }
+#cumul-chart { display:block; min-width:100%; }
+#dashboard-table th { text-align:right; font-weight:500; color:#888; padding:4px 4px; border-bottom:2px solid #e5e5e0; font-size:11px; white-space:nowrap; }
 #dashboard-table th.left { text-align:left; }
 #dashboard-table th.dash-cur-month { background:#fffbe6; color:#7a6000; }
-#dashboard-table td { text-align:right; padding:3px 8px; border-bottom:1px solid #f0f0ec; font-size:13px; white-space:nowrap; }
+#dashboard-table td { text-align:right; padding:3px 4px; border-bottom:1px solid #f0f0ec; font-size:11px; white-space:nowrap; }
 #dashboard-table td.left { text-align:left; }
 #dashboard-table td.dash-zero { color:#ccc; }
 #dashboard-table td.dash-pos { color:#0a6e4e; }
@@ -278,7 +280,7 @@ table.hide-fact td.cell-dfact { display:none }
 #dashboard-table th.dash-sticky,
 #dashboard-table td.dash-sticky {
   position:sticky; left:0; z-index:3;
-  background:#fff; width:210px; min-width:210px; max-width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  background:#fff; width:160px; min-width:160px; max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   border-right:2px solid #d8d8d0; text-align:left;
 }
 #dashboard-table thead th.dash-sticky { background:#fafaf8; z-index:5; }
@@ -286,11 +288,11 @@ table.hide-fact td.cell-dfact { display:none }
 /* Dashboard decade cells */
 #dashboard-table th.dash-dec-group { font-size:11px; font-weight:600; color:#555; background:#f0f0ec; text-align:center; white-space:nowrap; padding:4px 2px; border-right:2px solid #c0c0d0; }
 #dashboard-table th.dash-dec-group.dash-cur-month { background:#fff4cc; color:#7a6000; border-right-color:#e8c800; }
-#dashboard-table th.dash-dec-head { font-size:10px; font-weight:500; color:#6677aa; background:#f0f2ff; white-space:nowrap; padding:3px 4px; border-right:2px solid #c8c8e0; }
+#dashboard-table th.dash-dec-head { font-size:9px; font-weight:500; color:#6677aa; background:#f0f2ff; white-space:nowrap; padding:3px 3px; border-right:2px solid #c8c8e0; }
 #dashboard-table th.dash-dec-head:nth-child(3n+2) { border-right:1px solid #d8d8e8; }
 #dashboard-table th.dash-dec-head.dash-cur-month { background:#fff8e0; color:#7a6000; }
 #dashboard-table th.dash-dec-head:last-of-type { border-right:none !important; }
-#dashboard-table td.dash-dec-cell { font-size:13px; white-space:nowrap; padding:3px 8px; border-bottom:1px solid #f0f0ec; border-right:1px solid #e8e8f0; }
+#dashboard-table td.dash-dec-cell { font-size:11px; white-space:nowrap; padding:3px 4px; border-bottom:1px solid #f0f0ec; border-right:1px solid #e8e8f0; }
 #dashboard-table td.dash-dec-cell:nth-child(3n+4) { border-right:2px solid #b8b8d0; }
 #dashboard-table tr:last-child td.dash-dec-cell { border-bottom:none; }
 #dashboard-table td.dash-dec-cell.dash-zero { color:#ccc; }
@@ -560,14 +562,28 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <div style="display:flex;align-items:flex-end;gap:40px;margin-bottom:20px">
         <div><div style="font-size:20px;font-weight:500;margin-bottom:4px">Дашборд</div><div style="font-size:13px;color:#aaa" id="dashboard-year-label"></div></div>
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Детализация:</span>
+          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
+          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+            <button id="dash-btn-budget" class="view-btn" onclick="toggleDashView('budget')">Бюджет</button>
+            <button id="dash-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
+          </div>
+          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:16px">Детализация:</span>
           <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
             <button id="dash-btn-month" class="view-btn active" onclick="toggleDashDecadeView('month')">Месяц</button>
             <button id="dash-btn-decade" class="view-btn" onclick="toggleDashDecadeView('decade')">10 дней</button>
           </div>
         </div>
       </div>
-      <div class="section"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам</div><div class="table-wrap"><table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table></div></div><div class="section" style="margin-top:0"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Накопительный денежный поток</div><canvas id="cumul-chart" style="width:100%;display:block"></canvas></div>
+      <div class="section">
+  <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам (в тыс. руб)</div>
+  <div id="dash-scroll-wrap" style="overflow-x:auto;overflow-y:visible">
+    <table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table>
+    <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-top:24px;margin-bottom:14px;position:sticky;left:0">Накопительный денежный поток (в тыс. руб)</div>
+    <div id="dash-chart-wrap" style="position:relative">
+      <canvas id="cumul-chart" style="display:block"></canvas>
+    </div>
+  </div>
+</div>
     </div>
 
     <div class="page" id="page-project">
@@ -714,10 +730,10 @@ function initFirebase() {
       window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
         if (snap.exists) {
           var d = snap.data();
-          if (d.projects && d.budgets) {
+          if (d.projects && Array.isArray(d.projects) && d.budgets && typeof d.budgets === 'object') {
             projects       = d.projects;
             budgets        = d.budgets;
-            currentProject = d.currentProject || 0;
+            currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
             window.migrateData();
             resolve(true);
             return;
@@ -733,9 +749,10 @@ function initFirebase() {
       window.firebaseUid = user.uid;
       window.loadData().then(function(loaded) {
         if (!loaded) {
+          var demoY = new Date().getFullYear();
           projects = [
-            { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
-            { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+            { name: 'Проект А', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} },
+            { name: 'Проект Б', type: 'ПИР', start: {y:demoY,m:2}, end: {y:demoY,m:8} }
           ];
           currentProject = 0;
           budgets = {
@@ -756,16 +773,33 @@ function initFirebase() {
     }
   }, { once: true }); // fired only once on page load
 
-  // ── Save to Firestore (fire-and-forget) ─────────────────────────────────
-  window.saveData = function() {
+  // ── Save to Firestore (debounced) ───────────────────────────────────────
+  var _saveTimer = null;
+  window.persistDataNow = function() {
     if (!window.firebaseUid) return;
     window.db.doc('bdds/' + window.firebaseUid).set(
       { projects: projects, budgets: budgets, currentProject: currentProject }
     ).catch(function(e) { console.error('Save error:', e); });
   };
+  window.flushSaveData = function() {
+    clearTimeout(_saveTimer);
+    _saveTimer = null;
+    window.persistDataNow();
+  };
+  window.saveData = function() {
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(window.persistDataNow, 500);
+  };
+  window.addEventListener('beforeunload', function() { window.flushSaveData(); });
 
   // ── Migrate data ────────────────────────────────────────────────────────
   window.migrateData = function() {
+    projects.forEach(function(p) {
+      if (p.start && p.end && p.start.y !== p.end.y) {
+        p.end.y = p.start.y;
+        if (p.end.m < p.start.m) p.end.m = p.start.m;
+      }
+    });
     Object.values(budgets).forEach(function(b) {
       (b.articles || []).forEach(function(a) {
         if (a.in !== undefined) {
@@ -893,8 +927,10 @@ function sumLines(lines, field) {
 
 let projects = [], budgets = {}, currentProject = 0;
 
-// Заглушка — Firebase перезапишет window.saveData после инициализации
+// Заглушки — Firebase перезапишет после инициализации
 window.saveData = function() {};
+window.flushSaveData = function() {};
+window.persistDataNow = function() {};
 
 let projectsOpen = true;
 let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
@@ -921,7 +957,7 @@ function renderSidebarProjects() {
     <div class="nav-sub-item${i===currentProject?' active':''}" onclick="selectProject(${i})">
       <span class="dot"></span>
       <span style="flex:1">${esc(p.name)}</span>
-      ${p.type ? `<span class="proj-type-badge">${p.type}</span>` : ''}
+      ${p.type ? `<span class="proj-type-badge">${esc(p.type)}</span>` : ''}
       <button class="delete-btn" onclick="event.stopPropagation();deleteProject(${i})">✕</button>
     </div>`).join('');
   document.getElementById('projects-submenu').style.display = projectsOpen ? '' : 'none';
@@ -959,7 +995,7 @@ function toggleProjectsMenu() {
   renderSidebarProjects();
 }
 
-function selectProject(i) { currentProject = i; showPage('project'); }
+function selectProject(i) { currentProject = i; flushSaveData(); showPage('project'); }
 
 function deleteProject(i) {
   if (projects.length <= 1) { alert('Должен быть хотя бы один проект.'); return; }
@@ -975,143 +1011,85 @@ function deleteProject(i) {
 
 /* ---- PAGES ---- */
 /* ---- DASHBOARD ---- */
-function computeProjectNet12(pi) {
-  // Returns array[12] of net budget (plan) for calendar months 0-11 for project pi
+function computeProjectNet12(pi, dashY) {
   const b = budgets[pi];
-  if (!b || !b.articles) return Array(12).fill(0);
-  const net12 = Array(12).fill(0);
+  const p = projects[pi];
+  if (!b || !b.articles) return Array(12).fill(null);
+  dashY = dashY ?? new Date().getFullYear();
+  if (!p || !p.start || p.start.y !== dashY) return Array(12).fill(null);
+  const startM = p.start.m ?? 0;
+  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
+  const net12  = Array(12).fill(null);
+  for (let m = startM; m <= endM; m++) net12[m] = 0;
   b.articles.forEach(a => {
-    const ip36 = sectionSum36(a, 'in',  'dplan');
-    const op36 = sectionSum36(a, 'out', 'dplan');
-    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
-    if (hasDecData) {
-      for (let d = 0; d < DEC_COUNT; d++) {
-        net12[Math.floor(d / 3)] += (ip36[d]||0) - (op36[d]||0);
-      }
-    } else {
-      const ip = sectionSum(a, 'in',  'plan');
-      const op = sectionSum(a, 'out', 'plan');
-      for (let m = 0; m < MONTHS_COUNT; m++) {
-        net12[m] += (ip[m]||0) - (op[m]||0);
-      }
+    const ip = sectionSum(a, 'in',  'plan');
+    const op = sectionSum(a, 'out', 'plan');
+    for (let m = startM; m <= endM; m++) {
+      net12[m] += (ip[m]||0) - (op[m]||0);
     }
   });
-  const p = projects[pi];
-  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
-    const startKey = p.start.y * 12 + p.start.m;
-    const endKey   = p.end.y   * 12 + p.end.m;
-    const dashY = p.start.y;
-    for (let m = 0; m < 12; m++) {
-      const mKey = dashY * 12 + m;
-      if (mKey < startKey || mKey > endKey) net12[m] = null;
-    }
-  }
   return net12;
 }
 
-function computeProjectNet12Forecast(pi) {
-  // Returns array[12] of net forecast (план) for calendar months 0-11 for project pi
+function computeProjectNet12Forecast(pi, dashY) {
   const b = budgets[pi];
-  if (!b || !b.articles) return Array(12).fill(0);
-  const net12 = Array(12).fill(0);
+  const p = projects[pi];
+  if (!b || !b.articles) return Array(12).fill(null);
+  dashY = dashY ?? new Date().getFullYear();
+  if (!p || !p.start || p.start.y !== dashY) return Array(12).fill(null);
+  const startM = p.start.m ?? 0;
+  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
+  const net12  = Array(12).fill(null);
+  for (let m = startM; m <= endM; m++) net12[m] = 0;
   b.articles.forEach(a => {
-    const ip36 = sectionSum36(a, 'in',  'dforecast');
-    const op36 = sectionSum36(a, 'out', 'dforecast');
-    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
-    if (hasDecData) {
-      for (let d = 0; d < DEC_COUNT; d++) {
-        net12[Math.floor(d / 3)] += (ip36[d]||0) - (op36[d]||0);
-      }
-    } else {
-      const ip = sectionSum(a, 'in',  'forecast');
-      const op = sectionSum(a, 'out', 'forecast');
-      for (let m = 0; m < MONTHS_COUNT; m++) {
-        net12[m] += (ip[m]||0) - (op[m]||0);
-      }
+    const ip = sectionSum(a, 'in',  'forecast');
+    const op = sectionSum(a, 'out', 'forecast');
+    for (let m = startM; m <= endM; m++) {
+      net12[m] += (ip[m]||0) - (op[m]||0);
     }
   });
-  const p = projects[pi];
-  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
-    const startKey = p.start.y * 12 + p.start.m;
-    const endKey   = p.end.y   * 12 + p.end.m;
-    const dashY = p.start.y;
-    for (let m = 0; m < 12; m++) {
-      const mKey = dashY * 12 + m;
-      if (mKey < startKey || mKey > endKey) net12[m] = null;
-    }
-  }
   return net12;
 }
 
-function computeProjectNetDec36(pi) {
-  // Returns array[36] of net budget (plan) per decade for project pi
+function computeProjectNetDec36(pi, dashY) {
   const b = budgets[pi];
+  const p = projects[pi];
   if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
-  const net36 = Array(DEC_COUNT).fill(0);
+  dashY = dashY ?? new Date().getFullYear();
+  if (!p || !p.start || p.start.y !== dashY) return Array(DEC_COUNT).fill(0);
+  const startM = p.start.m ?? 0;
+  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
+  const net36  = Array(DEC_COUNT).fill(0);
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dplan');
     const op36 = sectionSum36(a, 'out', 'dplan');
-    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
-    if (hasDecData) {
-      for (let i = 0; i < DEC_COUNT; i++) {
-        net36[i] += (ip36[i]||0) - (op36[i]||0);
-      }
-    } else {
-      const ip = sectionSum(a, 'in',  'plan');
-      const op = sectionSum(a, 'out', 'plan');
-      for (let m = 0; m < MONTHS_COUNT; m++) {
-        const net = (ip[m]||0) - (op[m]||0);
-        for (let d = 0; d < 3; d++) net36[m*3+d] += net / 3;
+    for (let m = startM; m <= endM; m++) {
+      for (let d = 0; d < 3; d++) {
+        net36[m*3+d] += (ip36[m*3+d]||0) - (op36[m*3+d]||0);
       }
     }
   });
-  const p = projects[pi];
-  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
-    const startKey = p.start.y * 12 + p.start.m;
-    const endKey   = p.end.y   * 12 + p.end.m;
-    const dashY = p.start.y;
-    for (let d = 0; d < DEC_COUNT; d++) {
-      const m = Math.floor(d / 3);
-      const mKey = dashY * 12 + m;
-      if (mKey < startKey || mKey > endKey) net36[d] = 0;
-    }
-  }
   return net36;
 }
 
-function computeProjectNetDec36Forecast(pi) {
-  // Returns array[36] of net forecast (план) per decade for project pi
+function computeProjectNetDec36Forecast(pi, dashY) {
   const b = budgets[pi];
+  const p = projects[pi];
   if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
-  const net36 = Array(DEC_COUNT).fill(0);
+  dashY = dashY ?? new Date().getFullYear();
+  if (!p || !p.start || p.start.y !== dashY) return Array(DEC_COUNT).fill(0);
+  const startM = p.start.m ?? 0;
+  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
+  const net36  = Array(DEC_COUNT).fill(0);
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dforecast');
     const op36 = sectionSum36(a, 'out', 'dforecast');
-    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
-    if (hasDecData) {
-      for (let i = 0; i < DEC_COUNT; i++) {
-        net36[i] += (ip36[i]||0) - (op36[i]||0);
-      }
-    } else {
-      const ip = sectionSum(a, 'in',  'forecast');
-      const op = sectionSum(a, 'out', 'forecast');
-      for (let m = 0; m < MONTHS_COUNT; m++) {
-        const net = (ip[m]||0) - (op[m]||0);
-        for (let d = 0; d < 3; d++) net36[m*3+d] += net / 3;
+    for (let m = startM; m <= endM; m++) {
+      for (let d = 0; d < 3; d++) {
+        net36[m*3+d] += (ip36[m*3+d]||0) - (op36[m*3+d]||0);
       }
     }
   });
-  const p = projects[pi];
-  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
-    const startKey = p.start.y * 12 + p.start.m;
-    const endKey   = p.end.y   * 12 + p.end.m;
-    const dashY = p.start.y;
-    for (let d = 0; d < DEC_COUNT; d++) {
-      const m = Math.floor(d / 3);
-      const mKey = dashY * 12 + m;
-      if (mKey < startKey || mKey > endKey) net36[d] = 0;
-    }
-  }
   return net36;
 }
 
@@ -1122,16 +1100,21 @@ function renderDashboard() {
   document.getElementById('dashboard-year-label').textContent = curY + ' год';
   const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
-  const fmtD    = (v) => v === null ? '' : (v === 0 ? '—' : Math.round(v / 1000).toLocaleString('ru-RU'));
+  const fmtD = (v) => {
+    if (v === null) return '';
+    if (v === 0) return '—';
+    const k = Math.round(v / 1000);
+    return k.toLocaleString('ru-RU');
+  };
   const colorB  = (v) => v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
   const colorPl = (v) => v > 0 ? '#7a6000' : v < 0 ? '#a33020' : '#999';
 
   // ── DECADE VIEW ──────────────────────────────────────────────────────
   if (viewDashDecade) {
-    const startDecIdx  = curM * 3;
     const SHOWN_DEC    = 9;
-    const startMonth   = curM;
-    const endMonth     = Math.min(curM + 2, 11);
+    const startDecIdx  = Math.min(curM * 3, DEC_COUNT - SHOWN_DEC);
+    const startMonth   = Math.floor(startDecIdx / 3);
+    const endMonth     = Math.min(Math.floor((startDecIdx + SHOWN_DEC - 1) / 3), 11);
     const today        = new Date().getDate();
     const curDecLocal  = today <= 10 ? 0 : today <= 20 ? 1 : 2;
     const curDecGlobal = curM * 3 + curDecLocal;
@@ -1142,25 +1125,26 @@ function renderDashboard() {
     // 3) «бюджет» | «план»
     let thead = '<tr><th class="dash-sticky" rowspan="3" style="text-align:left">Проект</th>';
     for (let m = startMonth; m <= endMonth; m++) {
-      thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="6">${MNAMES[m]}</th>`;
+      thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="${viewDashBudget?6:3}">${MNAMES[m]}</th>`;
     }
     thead += '</tr><tr>';
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
       const cm = d === curDecGlobal ? ' dash-cur-month' : '';
-      thead += `<th class="dash-dec-head${cm}" colspan="2" style="text-align:center;border-right:2px solid #c0c0d0">${DEC_LABELS[d % 3]}</th>`;
+      thead += `<th class="dash-dec-head${cm}" colspan="${viewDashBudget?2:1}" style="text-align:center;border-right:2px solid #c0c0d0">${DEC_LABELS[d % 3]}</th>`;
     }
     thead += '</tr><tr>';
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
       const cm = d === curDecGlobal ? ' dash-cur-month' : '';
-      thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none">бюджет</th>`;
+      if (viewDashBudget)
+        thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none">бюджет</th>`;
       thead += `<th class="dash-dec-head${cm}" style="color:#7a6000;background:#fff8e0;font-size:9px;border-right:2px solid #c0c0d0">план</th>`;
     }
     thead += '</tr>';
     document.getElementById('dashboard-thead').innerHTML = thead;
 
     // DATA
-    const nets36B  = projects.map((p, pi) => computeProjectNetDec36(pi));
-    const nets36P  = projects.map((p, pi) => computeProjectNetDec36Forecast(pi));
+    const nets36B  = projects.map((p, pi) => computeProjectNetDec36(pi, curY));
+    const nets36P  = projects.map((p, pi) => computeProjectNetDec36Forecast(pi, curY));
     const totB36   = Array(DEC_COUNT).fill(0);
     const totP36   = Array(DEC_COUNT).fill(0);
     nets36B.forEach(n => { for (let d=0;d<DEC_COUNT;d++) totB36[d] += n[d]||0; });
@@ -1183,18 +1167,22 @@ function renderDashboard() {
     let tbody = '';
     const pair = (vB,vP,cur) => {
       const cm = cur?' dash-cur-month':'';
-      const cB = vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg');
-      const cP = vP===0?'dash-zero':(vP>0?'dash-pos':'dash-neg');
-      return `<td class="dash-dec-cell ${cB}${cm}" style="border-right:none">${fmtD(vB)}</td>`+
-             `<td class="dash-dec-cell ${cP}${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
+      const cB = vB===null||vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg');
+      const cP = vP===null||vP===0?'dash-zero':(vP>0?'dash-pos':'dash-neg');
+      const budgetTd = viewDashBudget
+        ? `<td class="dash-dec-cell ${cB}${cm}" style="border-right:none">${vB===null?'':fmtD(vB)}</td>`
+        : '';
+      return budgetTd +
+             `<td class="dash-dec-cell ${cP}${cm}" style="color:${colorPl(vP||0)};background:#fffce8;border-right:2px solid #c0c0d0">${vP===null?'':fmtD(vP)}</td>`;
     };
 
     projects.forEach((p,pi) => {
       const nB=nets36B[pi], nP=nets36P[pi];
-      const badge = p.type?`<span class="proj-badge">${p.type}</span>`:'';
+      const inYear = p.start && p.start.y === curY;
+      const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
       tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
       for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++)
-        tbody += pair(nB[d]||0, nP[d]||0, d===curDecGlobal);
+        tbody += pair(inYear ? (nB[d]||0) : null, inYear ? (nP[d]||0) : null, d===curDecGlobal);
       tbody += '</tr>';
     });
 
@@ -1202,19 +1190,21 @@ function renderDashboard() {
     for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++){
       const vB=totB36[d]||0, vP=totP36[d]||0, cur=d===curDecGlobal;
       const cm=cur?' dash-cur-month':'';
-      tbody += `<td class="dash-dec-cell${cm}" style="color:${colorB(vB)};border-right:none">${fmtD(vB)}</td>`;
+      if (viewDashBudget)
+        tbody += `<td class="dash-dec-cell${cm}" style="color:${colorB(vB)};border-right:none">${fmtD(vB)}</td>`;
       tbody += `<td class="dash-dec-cell${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
     tbody += '<tr class="dash-cumul"><td class="dash-sticky left">Накопительно</td>';
     for(let i=0;i<SHOWN_DEC;i++){
-      const vB=cum9B[i]||0, vP=cum9P[i]||0, cur=i===curDecLocal;
+      const vB=cum9B[i]||0, vP=cum9P[i]||0, cur=(startDecIdx+i)===curDecGlobal;
       const cm=cur?' dash-cur-month':'';
       const cB=vB>0?'#3d1a8a':vB<0?'#a33020':'#999';
       const cP=vP>0?'#5a4000':vP<0?'#a33020':'#999';
-      tbody += `<td class="dash-dec-cell${cm}" style="color:${cB};border-right:none">${fmtD(vB)}</td>`;
-      tbody += `<td class="dash-dec-cell${cm}" style="color:${cP};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
+      if (viewDashBudget)
+        tbody += `<td class="dash-dec-cell${cm}" style="color:${cB};border-right:none">${fmtD(vB)}</td>`;
+      tbody += `<td class="dash-dec-cell${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
@@ -1230,30 +1220,32 @@ function renderDashboard() {
     let thead = '<tr><th class="dash-sticky" rowspan="2" style="text-align:left">Проект</th>';
     for(let m=0;m<12;m++){
       const cm = m===curM?' class="dash-cur-month"':'';
-      thead += `<th${cm} colspan="2" style="text-align:center;border-right:2px solid #c0c0d0">${MNAMES[m]}</th>`;
+      const cs = viewDashBudget ? 2 : 1;
+      thead += `<th${cm} colspan="${cs}" style="text-align:center;border-right:2px solid #c0c0d0">${MNAMES[m]}</th>`;
     }
     thead += '</tr><tr>';
     for(let m=0;m<12;m++){
       const cm = m===curM?' class="dash-cur-month"':'';
-      thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бюджет</th>`;
+      if (viewDashBudget)
+        thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бюджет</th>`;
       thead += `<th${cm} style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
     }
     thead += '</tr>';
     document.getElementById('dashboard-thead').innerHTML = thead;
 
     // DATA
-    const nets12B  = projects.map((p,pi) => computeProjectNet12(pi));
-    const nets12P  = projects.map((p,pi) => computeProjectNet12Forecast(pi));
-    const totB     = Array(12).fill(0);
-    const totP     = Array(12).fill(0);
-    nets12B.forEach(n => { for(let m=0;m<12;m++) totB[m] += n[m]||0; });
-    nets12P.forEach(n => { for(let m=0;m<12;m++) totP[m] += n[m]||0; });
+    const nets12B  = projects.map((p,pi) => computeProjectNet12(pi, curY));
+    const nets12P  = projects.map((p,pi) => computeProjectNet12Forecast(pi, curY));
+    const totB     = Array(12).fill(null);
+    const totP     = Array(12).fill(null);
+    nets12B.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totB[m] = (totB[m] ?? 0) + n[m]; });
+    nets12P.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totP[m] = (totP[m] ?? 0) + n[m]; });
 
     const cumB=[],cumP=[];
     let rB=0,rP=0;
     for(let m=0;m<12;m++){
-      rB+=totB[m]; cumB.push(rB);
-      rP+=totP[m]; cumP.push(rP);
+      if (totB[m] !== null) { rB += totB[m]; cumB.push(rB); } else cumB.push(null);
+      if (totP[m] !== null) { rP += totP[m]; cumP.push(rP); } else cumP.push(null);
     }
 
     // TBODY
@@ -1262,13 +1254,17 @@ function renderDashboard() {
     const pair = (vB, vP, outB, outP, cur) => {
       const cm = cur?' dash-cur-month':'';
       const cB = outB?'dash-out-range':(vB===null||vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg'));
-      return `<td class="${cB}${cm}" style="border-right:none">${outB?'':fmtD(vB)}</td>`+
-             `<td class="${outP?'dash-out-range':cm}" style="${outP?'':'color:'+colorPl(vP||0)+';background:#fffce8'};border-right:2px solid #c0c0d0">${outP?'':fmtD(vP)}</td>`;
+      const planBorder = 'border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td class="${cB}${cm}" style="border-right:none">${outB?'':fmtD(vB)}</td>`
+        : '';
+      const planTd = `<td class="${outP?'dash-out-range':cm}" style="${outP?'':('color:'+colorPl(vP||0)+';background:#fffce8')};${planBorder}">${outP?'':fmtD(vP)}</td>`;
+      return budgetTd + planTd;
     };
 
     projects.forEach((p,pi) => {
       const nB=nets12B[pi], nP=nets12P[pi];
-      const badge = p.type?`<span class="proj-badge">${p.type}</span>`:'';
+      const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
       tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
       for(let m=0;m<12;m++)
         tbody += pair(nB[m], nP[m], nB[m]===null, nP[m]===null, m===curM);
@@ -1279,8 +1275,9 @@ function renderDashboard() {
     for(let m=0;m<12;m++){
       const vB=totB[m], vP=totP[m], cur=m===curM;
       const cm=cur?' dash-cur-month':'';
-      tbody += `<td class="${cm}" style="color:${colorB(vB)};border-right:none">${fmtD(vB)}</td>`;
-      tbody += `<td class="${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
+      if (viewDashBudget)
+        tbody += `<td class="${cm}" style="color:${vB===null?'#999':colorB(vB)};border-right:none">${vB===null?'':fmtD(vB)}</td>`;
+      tbody += `<td class="${cm}" style="color:${vP===null?'#999':colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${vP===null?'':fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
@@ -1288,10 +1285,11 @@ function renderDashboard() {
     for(let m=0;m<12;m++){
       const vB=cumB[m], vP=cumP[m], cur=m===curM;
       const cm=cur?' dash-cur-month':'';
-      const cB=vB>0?'#3d1a8a':vB<0?'#a33020':'#999';
-      const cP=vP>0?'#5a4000':vP<0?'#a33020':'#999';
-      tbody += `<td class="${cm}" style="color:${cB};border-right:none">${fmtD(vB)}</td>`;
-      tbody += `<td class="${cm}" style="color:${cP};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
+      const cB=vB===null?'#999':(vB>0?'#3d1a8a':vB<0?'#a33020':'#999');
+      const cP=vP===null?'#999':(vP>0?'#5a4000':vP<0?'#a33020':'#999');
+      if (viewDashBudget)
+        tbody += `<td class="${cm}" style="color:${cB};border-right:none">${vB===null?'':fmtD(vB)}</td>`;
+      tbody += `<td class="${cm}" style="color:${colorPl(vP||0)};background:#fffce8;border-right:2px solid #c0c0d0">${vP===null?'':fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
@@ -1308,6 +1306,10 @@ function renderCumulChart(cumul, cumulFC, curM) {
 
   const dpr = window.devicePixelRatio || 1;
 
+  // Синхронизируем ширину canvas с таблицей
+  const tbl = document.getElementById('dashboard-table');
+  if (tbl) canvas.style.width = tbl.offsetWidth + 'px';
+
   // ── Read column X-centres from the actual table header cells ──
   const thead = document.getElementById('dashboard-thead');
   // Берём только первую строку thead — там месячные группы
@@ -1317,11 +1319,11 @@ function renderCumulChart(cumul, cumulFC, curM) {
   const monthThs = hCells.slice(1); // 12 cells
   if (monthThs.length !== 12) return; // table not yet rendered
 
-  const canvasRect = canvas.getBoundingClientRect();
-  // x positions of month columns relative to canvas left edge
+  // x positions of month columns — используем offsetLeft чтобы не зависеть от скролла
+  const tableOffsetLeft = tbl ? tbl.getBoundingClientRect().left - canvas.getBoundingClientRect().left : 0;
   const colX = monthThs.map(th => {
     const r = th.getBoundingClientRect();
-    return (r.left + r.right) / 2 - canvasRect.left;
+    return (r.left + r.right) / 2 - canvas.getBoundingClientRect().left;
   });
 
   const W = canvas.parentElement.clientWidth || 800;
@@ -1535,6 +1537,10 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
 
   const dpr = window.devicePixelRatio || 1;
 
+  // Синхронизируем ширину canvas с таблицей
+  const tbl = document.getElementById('dashboard-table');
+  if (tbl) canvas.style.width = tbl.offsetWidth + 'px';
+
   const thead = document.getElementById('dashboard-thead');
   // Берём 2-ю строку thead (декады с colspan=2), не 3-ю (бюджет/план)
   const theadRows = thead ? Array.from(thead.querySelectorAll('tr')) : [];
@@ -1542,10 +1548,9 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   const decThs    = decRow ? Array.from(decRow.querySelectorAll('th.dash-dec-head')) : [];
   if (decThs.length < shown) return;
 
-  const canvasRect = canvas.getBoundingClientRect();
   const colX = decThs.map(th => {
     const r = th.getBoundingClientRect();
-    return (r.left + r.right) / 2 - canvasRect.left;
+    return (r.left + r.right) / 2 - canvas.getBoundingClientRect().left;
   });
 
   const W = canvas.parentElement.clientWidth || 800;
@@ -1779,15 +1784,12 @@ function getProjectMonths() {
   const p = projects[currentProject];
   if (p && p.start && p.end &&
       p.start.m != null && p.end.m != null) {
-    const months = [];
-    let y = p.start.y, m = p.start.m;
-    const endKey = p.end.y * 12 + p.end.m;
-    while (y * 12 + m <= endKey) {
-      months.push({ y, m });
-      m++;
-      if (m > 11) { m = 0; y++; }
+    const y = p.start.y;
+    const startM = p.start.m;
+    const endM = (p.end.y === y) ? p.end.m : 11;
+    if (startM <= endM) {
+      return Array.from({length: endM - startM + 1}, (_, i) => ({ y, m: startM + i }));
     }
-    return months.length ? months : _allMonths();
   }
   return _allMonths();
 }
@@ -1800,10 +1802,6 @@ function _allMonths() {
 function computeGrandTotals(articles) {
   const months = getProjectMonths();
   const MC = months.length;
-
-  /* Build a lookup: pos12[m] = index in months[] for calendar month m (0-11) */
-  const pos12 = Array(12).fill(null);
-  months.forEach(({m}, i) => { pos12[m] = i; });
 
   const grandIn12      = Array(12).fill(0);
   const grandOut12    = Array(12).fill(0);
@@ -1853,6 +1851,52 @@ function computeGrandTotals(articles) {
   return { grandIn, grandOut, grandForecastIn, grandForecastOut, grandFactIn, grandFactOut,
            grandNet, grandForecastNet, grandFactNet,
            cumulP, cumulFC, cumulF, runP, runFC, runF, months, MC };
+}
+
+function computeGrandDecTotals(articles, months) {
+  let grandInDec36      = Array(DEC_COUNT).fill(0);
+  let grandOutDec36     = Array(DEC_COUNT).fill(0);
+  let grandInFCDec36    = Array(DEC_COUNT).fill(0);
+  let grandOutFCDec36   = Array(DEC_COUNT).fill(0);
+  let grandInFDec36     = Array(DEC_COUNT).fill(0);
+  let grandOutFDec36    = Array(DEC_COUNT).fill(0);
+  articles.forEach(a => {
+    const ip   = sectionSum36(a, 'in',  'dplan');
+    const op   = sectionSum36(a, 'out', 'dplan');
+    const ifc  = sectionSum36(a, 'in',  'dforecast');
+    const ofc  = sectionSum36(a, 'out', 'dforecast');
+    const inf  = sectionSum36(a, 'in',  'dfact');
+    const outf = sectionSum36(a, 'out', 'dfact');
+    for (let i = 0; i < DEC_COUNT; i++) {
+      grandInDec36[i]    += ip[i]   || 0;
+      grandOutDec36[i]   += op[i]   || 0;
+      grandInFCDec36[i]  += ifc[i]  || 0;
+      grandOutFCDec36[i] += ofc[i]  || 0;
+      grandInFDec36[i]   += inf[i]  || 0;
+      grandOutFDec36[i]  += outf[i] || 0;
+    }
+  });
+  const grandNetDec36   = grandInDec36.map((v,i)   => v - (grandOutDec36[i]  ||0));
+  const grandNetFCDec36 = grandInFCDec36.map((v,i) => v - (grandOutFCDec36[i]||0));
+  const grandNetFDec36  = grandInFDec36.map((v,i)  => v - (grandOutFDec36[i] ||0));
+
+  const cumulDec36   = Array(DEC_COUNT).fill(0);
+  const cumulFCDec36 = Array(DEC_COUNT).fill(0);
+  const cumulFDec36  = Array(DEC_COUNT).fill(0);
+  let run = 0, runFC = 0, runF = 0;
+  months.forEach(({m}) => {
+    [0,1,2].forEach(d => {
+      const di = m*3+d;
+      run   += grandNetDec36[di]   || 0;
+      runFC += grandNetFCDec36[di] || 0;
+      runF  += grandNetFDec36[di]  || 0;
+      cumulDec36[di]   = run;
+      cumulFCDec36[di] = runFC;
+      cumulFDec36[di]  = runF;
+    });
+  });
+  return { grandInDec36, grandOutDec36, grandInFCDec36, grandOutFCDec36, grandInFDec36, grandOutFDec36,
+           grandNetDec36, grandNetFCDec36, grandNetFDec36, cumulDec36, cumulFCDec36, cumulFDec36 };
 }
 
 /* ---- BUDGET TABLE ---- */
@@ -2162,65 +2206,15 @@ function renderBudget() {
   }
 
   // Compute decade [36] totals across all articles (plan + forecast + fact)
-  let grandInDec36      = Array(DEC_COUNT).fill(0);
-  let grandOutDec36     = Array(DEC_COUNT).fill(0);
-  let grandInFCDec36    = Array(DEC_COUNT).fill(0);
-  let grandOutFCDec36   = Array(DEC_COUNT).fill(0);
-  let grandInFDec36     = Array(DEC_COUNT).fill(0);
-  let grandOutFDec36    = Array(DEC_COUNT).fill(0);
-  articles.forEach(a => {
-    const ip   = sectionSum36(a, 'in',  'dplan');
-    const op   = sectionSum36(a, 'out', 'dplan');
-    const ifc  = sectionSum36(a, 'in',  'dforecast');
-    const ofc  = sectionSum36(a, 'out', 'dforecast');
-    const inf  = sectionSum36(a, 'in',  'dfact');
-    const outf = sectionSum36(a, 'out', 'dfact');
-    for (let i = 0; i < DEC_COUNT; i++) {
-      grandInDec36[i]    += ip[i]   || 0;
-      grandOutDec36[i]   += op[i]   || 0;
-      grandInFCDec36[i]  += ifc[i]  || 0;
-      grandOutFCDec36[i] += ofc[i]  || 0;
-      grandInFDec36[i]   += inf[i]  || 0;
-      grandOutFDec36[i]  += outf[i] || 0;
-    }
-  });
-  const grandNetDec36   = grandInDec36.map((v,i)   => v - (grandOutDec36[i]  ||0));
-  const grandNetFCDec36 = grandInFCDec36.map((v,i) => v - (grandOutFCDec36[i]||0));
-  const grandNetFDec36  = grandInFDec36.map((v,i)  => v - (grandOutFDec36[i] ||0));
+  const { grandInDec36, grandOutDec36, grandInFCDec36, grandOutFCDec36, grandInFDec36, grandOutFDec36,
+          grandNetDec36, grandNetFCDec36, grandNetFDec36, cumulDec36, cumulFCDec36, cumulFDec36 } =
+    computeGrandDecTotals(articles, months);
 
-  // Cumulative by decade: running sum across all decades in project month order
-  const cumulDec36   = Array(DEC_COUNT).fill(0);
-  const cumulFCDec36 = Array(DEC_COUNT).fill(0);
-  if (viewDecade) {
-    let run = 0, runFC2 = 0;
-    months.forEach(({m}) => {
-      [0,1,2].forEach(d => {
-        run   += grandNetDec36[m*3+d]  ||0;
-        runFC2 += grandNetFCDec36[m*3+d]||0;
-        cumulDec36[m*3+d]   = run;
-        cumulFCDec36[m*3+d] = runFC2;
-      });
-    });
-  }
-
-  const posColor  = v => v >= 0 ? '#0a6e4e' : '#a33020';
-  const negColor  = v => v <= 0 ? '#a33020' : '#0a6e4e';
   const netColorFn= v => netColor(v);
 
   const inMonthCells   = buildTotalCells(grandIn,  grandForecastIn,  grandFactIn,  grandInDec36,  grandInFCDec36,  grandInFDec36,  'positive', () => '#0a6e4e');
   const outMonthCells  = buildTotalCells(grandOut, grandForecastOut, grandFactOut, grandOutDec36, grandOutFCDec36, grandOutFDec36, 'negative', () => '#a33020');
   const netMonthCells  = buildTotalCells(grandNet, grandForecastNet, grandFactNet, grandNetDec36, grandNetFCDec36, grandNetFDec36, '',         netColorFn);
-  // Cumulative fact by decade
-  const cumulFDec36 = Array(DEC_COUNT).fill(0);
-  if (viewDecade) {
-    let runF2 = 0;
-    months.forEach(({m}) => {
-      [0,1,2].forEach(d => {
-        runF2 += grandNetFDec36[m*3+d]||0;
-        cumulFDec36[m*3+d] = runF2;
-      });
-    });
-  }
 
   const cumulMonthCells = viewDecade
     ? months.map(({m}) => [0,1,2].map(d => {
@@ -2522,8 +2516,6 @@ function updateStickyPositions() {
 }
 
 function renderTotals() {
-  // В режиме декад перерисовываем всю таблицу, т.к. id ячеек другие
-  if (viewDecade) { renderBudget(); return; }
   updateStickyPositions();
   const b = getBudget();
   const articles = b.articles;
@@ -2531,14 +2523,15 @@ function renderTotals() {
           grandNet, grandForecastNet, grandFactNet,
           cumulP, cumulFC, cumulF, runP, runFC, runF, months } = computeGrandTotals(articles);
 
-  // Per-article sticky totals + monthly sub-row cells
+  const sumEff = (art, sec, fld) => viewDecade ? sectionSumEff(art, sec, fld) : sectionSum(art, sec, fld);
+
   articles.forEach((art, ai) => {
-    const artInPlan      = sectionSum(art, 'in',  'plan');
-    const artOutPlan     = sectionSum(art, 'out', 'plan');
-    const artInForecast  = sectionSum(art, 'in',  'forecast');
-    const artOutForecast = sectionSum(art, 'out', 'forecast');
-    const artInFact      = sectionSum(art, 'in',  'fact');
-    const artOutFact     = sectionSum(art, 'out', 'fact');
+    const artInPlan      = sumEff(art, 'in',  'plan');
+    const artOutPlan     = sumEff(art, 'out', 'plan');
+    const artInForecast  = sumEff(art, 'in',  'forecast');
+    const artOutForecast = sumEff(art, 'out', 'forecast');
+    const artInFact      = sumEff(art, 'in',  'fact');
+    const artOutFact     = sumEff(art, 'out', 'fact');
     const s = (id, val) => { const el=document.getElementById(id); if(el) el.textContent = val ? fmt(val) : '—'; };
     s(`art-total-in-${ai}`,      months.reduce((acc,{m}) => acc + (artInPlan[m]       || 0), 0));
     s(`art-total-fcin-${ai}`,    months.reduce((acc,{m}) => acc + (artInForecast[m]   || 0), 0));
@@ -2547,24 +2540,53 @@ function renderTotals() {
     s(`art-total-factin-${ai}`,  months.reduce((acc,{m}) => acc + (artInFact[m]       || 0), 0));
     s(`art-total-factout-${ai}`, months.reduce((acc,{m}) => acc + (artOutFact[m]      || 0), 0));
 
-    // Monthly cells for in/out sub-rows
-    months.forEach(({m}, mi) => {
-      const elInP   = document.getElementById(`art-in-plan-${ai}-${mi}`);
-      const elInFC  = document.getElementById(`art-in-forecast-${ai}-${mi}`);
-      const elInF   = document.getElementById(`art-in-fact-${ai}-${mi}`);
-      const elOutP  = document.getElementById(`art-out-plan-${ai}-${mi}`);
-      const elOutFC = document.getElementById(`art-out-forecast-${ai}-${mi}`);
-      const elOutF  = document.getElementById(`art-out-fact-${ai}-${mi}`);
-      if (elInP)   elInP.textContent   = artInPlan[m]      ? fmt(artInPlan[m])       : '—';
-      if (elInFC)  elInFC.textContent  = artInForecast[m]  ? fmt(artInForecast[m])  : '—';
-      if (elInF)   elInF.textContent   = artInFact[m]      ? fmt(artInFact[m])       : '—';
-      if (elOutP)  elOutP.textContent  = artOutPlan[m]     ? fmt(artOutPlan[m])      : '—';
-      if (elOutFC) elOutFC.textContent = artOutForecast[m] ? fmt(artOutForecast[m]) : '—';
-      if (elOutF)  elOutF.textContent  = artOutFact[m]     ? fmt(artOutFact[m])      : '—';
-    });
+    if (viewDecade) {
+      if (!art.inDirect && !art.inDeleted) {
+        months.forEach(({m}) => {
+          [0,1,2].forEach(d => {
+            const di = m*3+d;
+            const ip  = sectionSum36(art, 'in',  'dplan');
+            const ifc = sectionSum36(art, 'in',  'dforecast');
+            const iF  = sectionSum36(art, 'in',  'dfact');
+            const setDec = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? fmt(v) : '—'; };
+            setDec(`art-in-dplan-${ai}-${di}`,    ip[di]  || 0);
+            setDec(`art-in-dforecast-${ai}-${di}`, ifc[di] || 0);
+            setDec(`art-in-dfact-${ai}-${di}`,    iF[di]  || 0);
+          });
+        });
+      }
+      if (!art.outDirect) {
+        months.forEach(({m}) => {
+          [0,1,2].forEach(d => {
+            const di = m*3+d;
+            const op  = sectionSum36(art, 'out', 'dplan');
+            const ofc = sectionSum36(art, 'out', 'dforecast');
+            const oF  = sectionSum36(art, 'out', 'dfact');
+            const setDec = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? fmt(v) : '—'; };
+            setDec(`art-out-dplan-${ai}-${di}`,   op[di]  || 0);
+            setDec(`art-out-dforecast-${ai}-${di}`, ofc[di] || 0);
+            setDec(`art-out-dfact-${ai}-${di}`,   oF[di]  || 0);
+          });
+        });
+      }
+    } else {
+      months.forEach(({m}, mi) => {
+        const elInP   = document.getElementById(`art-in-plan-${ai}-${mi}`);
+        const elInFC  = document.getElementById(`art-in-forecast-${ai}-${mi}`);
+        const elInF   = document.getElementById(`art-in-fact-${ai}-${mi}`);
+        const elOutP  = document.getElementById(`art-out-plan-${ai}-${mi}`);
+        const elOutFC = document.getElementById(`art-out-forecast-${ai}-${mi}`);
+        const elOutF  = document.getElementById(`art-out-fact-${ai}-${mi}`);
+        if (elInP)   elInP.textContent   = artInPlan[m]      ? fmt(artInPlan[m])       : '—';
+        if (elInFC)  elInFC.textContent  = artInForecast[m]  ? fmt(artInForecast[m])   : '—';
+        if (elInF)   elInF.textContent   = artInFact[m]      ? fmt(artInFact[m])        : '—';
+        if (elOutP)  elOutP.textContent  = artOutPlan[m]     ? fmt(artOutPlan[m])       : '—';
+        if (elOutFC) elOutFC.textContent = artOutForecast[m] ? fmt(artOutForecast[m])   : '—';
+        if (elOutF)  elOutF.textContent  = artOutFact[m]     ? fmt(artOutFact[m])       : '—';
+      });
+    }
   });
 
-  // Grand sticky totals
   const sv = (id, val, color) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -2582,7 +2604,6 @@ function renderTotals() {
   sv('g-net-forecast', nfcs, netColor(nfcs));
   sv('g-net-fact',     nfs,  netColor(nfs));
 
-  // Grand month cells
   const updateRow = (rowId, arrP, arrFC, arrF, colorFnP, colorFnF) => {
     const row = document.getElementById(rowId);
     if (!row) return;
@@ -2596,21 +2617,50 @@ function renderTotals() {
       !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-fc') && !el.classList.contains('sticky-tot-f')
     );
     arrP.forEach((v,i) => {
-      if (planCells[i]) { planCells[i].textContent = fmt(v); if(colorFnP) planCells[i].style.color = colorFnP(v); }
+      if (planCells[i]) { planCells[i].textContent = v ? fmt(v) : '—'; if(colorFnP) planCells[i].style.color = colorFnP(v); }
     });
     arrFC.forEach((v,i) => {
-      if (forecastCells[i]) { forecastCells[i].textContent = fmt(v); if(colorFnP) forecastCells[i].style.color = colorFnP(v); }
+      if (forecastCells[i]) { forecastCells[i].textContent = v ? fmt(v) : '—'; if(colorFnP) forecastCells[i].style.color = colorFnP(v); }
     });
     arrF.forEach((v,i) => {
-      if (factCells[i]) { factCells[i].textContent = fmt(v); if(colorFnF) factCells[i].style.color = colorFnF(v); }
+      if (factCells[i]) { factCells[i].textContent = v ? fmt(v) : '—'; if(colorFnF) factCells[i].style.color = colorFnF(v); }
     });
   };
-  updateRow('grand-in-row',  grandIn,  grandForecastIn,  grandFactIn,  null, null);
-  updateRow('grand-out-row', grandOut, grandForecastOut, grandFactOut, null, null);
-  updateRow('grand-net-row', grandNet, grandForecastNet, grandFactNet, netColor, netColor);
 
-  // Накопительный поток
-  updateRow('grand-cumul-row', cumulP, cumulFC, cumulF, netColor, netColor);
+  if (viewDecade) {
+    const dec = computeGrandDecTotals(articles, months);
+    const flatInP = [], flatInFC = [], flatInF = [];
+    const flatOutP = [], flatOutFC = [], flatOutF = [];
+    const flatNetP = [], flatNetFC = [], flatNetF = [];
+    const flatCumP = [], flatCumFC = [], flatCumF = [];
+    months.forEach(({m}) => {
+      [0,1,2].forEach(d => {
+        const di = m*3+d;
+        flatInP.push(dec.grandInDec36[di]||0);
+        flatInFC.push(dec.grandInFCDec36[di]||0);
+        flatInF.push(dec.grandInFDec36[di]||0);
+        flatOutP.push(dec.grandOutDec36[di]||0);
+        flatOutFC.push(dec.grandOutFCDec36[di]||0);
+        flatOutF.push(dec.grandOutFDec36[di]||0);
+        flatNetP.push(dec.grandNetDec36[di]||0);
+        flatNetFC.push(dec.grandNetFCDec36[di]||0);
+        flatNetF.push(dec.grandNetFDec36[di]||0);
+        flatCumP.push(dec.cumulDec36[di]||0);
+        flatCumFC.push(dec.cumulFCDec36[di]||0);
+        flatCumF.push(dec.cumulFDec36[di]||0);
+      });
+    });
+    updateRow('grand-in-row',  flatInP,  flatInFC,  flatInF,  null, null);
+    updateRow('grand-out-row', flatOutP, flatOutFC, flatOutF, null, null);
+    updateRow('grand-net-row', flatNetP, flatNetFC, flatNetF, netColor, netColor);
+    updateRow('grand-cumul-row', flatCumP, flatCumFC, flatCumF, netColor, netColor);
+  } else {
+    updateRow('grand-in-row',  grandIn,  grandForecastIn,  grandFactIn,  null, null);
+    updateRow('grand-out-row', grandOut, grandForecastOut, grandFactOut, null, null);
+    updateRow('grand-net-row', grandNet, grandForecastNet, grandFactNet, netColor, netColor);
+    updateRow('grand-cumul-row', cumulP, cumulFC, cumulF, netColor, netColor);
+  }
+
   const svC = (id, val) => { const el=document.getElementById(id); if(el){ el.textContent=fmt(val); el.style.color=netColor(val); } };
   svC('g-cumul-plan',     runP);
   svC('g-cumul-forecast', runFC);
@@ -2710,6 +2760,11 @@ function editProject(i) { openEditModal(i); }
 function confirmProjectModal() {
   const name = document.getElementById('modal-name').value.trim();
   if (!name) { document.getElementById('modal-name').focus(); return; }
+  if (pickerState.start.month != null && pickerState.end.month != null &&
+      pickerState.start.year !== pickerState.end.year) {
+    alert('Период проекта должен быть в пределах одного календарного года.');
+    return;
+  }
   const newData = {
     name,
     type: selectedType || null,
@@ -2806,17 +2861,17 @@ function handleRegister() {
     .then(() => {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
-      // Create initial data for new user
+      var demoY = new Date().getFullYear();
       projects = [
-        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
-        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+        { name: 'Проект А', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} },
+        { name: 'Проект Б', type: 'ПИР', start: {y:demoY,m:2}, end: {y:demoY,m:8} }
       ];
       currentProject = 0;
       budgets = {
         0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
         1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
       };
-      window.saveData();
+      window.flushSaveData();
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('main-layout').style.display = '';
       window.renderSidebarProjects();
@@ -2833,6 +2888,7 @@ function handleRegister() {
 
 function handleLogout() {
   if (confirm('Вы уверены что хотите выйти?')) {
+    window.flushSaveData();
     window.auth.signOut().then(() => {
       window.firebaseUid = null;
       document.getElementById('login-page').style.display = 'flex';
@@ -2853,6 +2909,10 @@ function togglePicker(which) {
 }
 function changeYear(which, delta) {
   pickerState[which].year += delta;
+  if (which === 'end' && pickerState.start.month != null &&
+      pickerState.end.year < pickerState.start.year) {
+    pickerState.end.year = pickerState.start.year;
+  }
   renderGrid(which);
 }
 function renderGrid(which) {
@@ -2898,6 +2958,15 @@ document.addEventListener('click', e => {
 /* INIT */
 let viewPlan = true, viewForecast = true, viewFact = true, viewDecade = false;
 let viewDashDecade = false;
+let viewDashBudget = false;
+
+function toggleDashView(which) {
+  if (which === 'budget') {
+    viewDashBudget = !viewDashBudget;
+    document.getElementById('dash-btn-budget').classList.toggle('active', viewDashBudget);
+  }
+  renderDashboard();
+}
 
 function toggleDashDecadeView(which) {
   viewDashDecade = (which === 'decade');
@@ -2926,10 +2995,20 @@ function toggleView(which) {
 
 /* ---- DRAG-AND-DROP для статей ---- */
 let dragSrcIndex = null;
+let _dragMouseupBound = false;
+
+function _onDragMouseup() {
+  document.querySelectorAll('tr.article-header[draggable="true"]').forEach(r => { r.draggable = false; });
+}
 
 function initArticleDrag() {
   const tbody = document.getElementById('articles-body');
   if (!tbody) return;
+
+  if (!_dragMouseupBound) {
+    window.addEventListener('mouseup', _onDragMouseup);
+    _dragMouseupBound = true;
+  }
 
   tbody.querySelectorAll('tr.article-header').forEach(headerRow => {
     const ai = parseInt(headerRow.dataset.article);
@@ -2937,7 +3016,6 @@ function initArticleDrag() {
     if (!handle) return;
 
     handle.addEventListener('mousedown', () => { headerRow.draggable = true; });
-    window.addEventListener('mouseup', () => { headerRow.draggable = false; });
 
     headerRow.addEventListener('dragstart', e => {
       dragSrcIndex = ai;
@@ -3001,8 +3079,6 @@ function initArticleDrag() {
   });
 }
 
-renderSidebarProjects();
-showPage('dashboard');
 </script>
 </body>
 </html>
