@@ -748,7 +748,9 @@ function initFirebase() {
     });
   };
   // One-time auth state listener for the initial page load only.
-  window.auth.onAuthStateChanged(function(user) {
+  // Firebase Compat SDK не поддерживает {once:true} — отписываемся вручную.
+  var _unsubAuth = window.auth.onAuthStateChanged(function(user) {
+    _unsubAuth(); // сразу отписаться, чтобы сработало ровно один раз
     if (user) {
       window.firebaseUid = user.uid;
       window.loadData().then(function() {
@@ -763,7 +765,7 @@ function initFirebase() {
       document.getElementById('login-page').style.display = 'flex';
       document.getElementById('main-layout').style.display = 'none';
     }
-  }, { once: true }); // fired only once on page load
+  });
 
   // ── Save to Firestore (debounced) ───────────────────────────────────────
   var _saveTimer = null;
@@ -803,25 +805,26 @@ function initFirebase() {
         if (a.outDirect === undefined) a.outDirect = true;
         if (a.inOpen  === undefined) a.inOpen  = true;
         if (a.outOpen === undefined) a.outOpen = true;
-        if (!Array.isArray(a.inDplan)  || a.inDplan.length  !== DEC_COUNT) a.inDplan  = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.inDfact)  || a.inDfact.length  !== DEC_COUNT) a.inDfact  = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
+        // ensureDec сохраняет старые данные и расширяет до DEC_COUNT (теперь 180)
+        a.inDplan      = ensureDec(a.inDplan);
+        a.inDfact      = ensureDec(a.inDfact);
+        a.outDplan     = ensureDec(a.outDplan);
+        a.outDfact     = ensureDec(a.outDfact);
         if (a.inDeleted === undefined) a.inDeleted = false;
-        if (!Array.isArray(a.inDforecast)  || a.inDforecast.length  !== DEC_COUNT) a.inDforecast  = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.outDforecast) || a.outDforecast.length !== DEC_COUNT) a.outDforecast = Array(DEC_COUNT).fill(0);
+        a.inDforecast  = ensureDec(a.inDforecast);
+        a.outDforecast = ensureDec(a.outDforecast);
         if (!Array.isArray(a.inForecast)   || a.inForecast.length   !== MONTHS_COUNT) a.inForecast   = Array(MONTHS_COUNT).fill(0);
         if (!Array.isArray(a.outForecast)  || a.outForecast.length  !== MONTHS_COUNT) a.outForecast  = Array(MONTHS_COUNT).fill(0);
         (a.inLines  || []).forEach(function(l) {
-          if (!Array.isArray(l.dplan) || l.dplan.length !== DEC_COUNT) l.dplan = Array(DEC_COUNT).fill(0);
-          if (!Array.isArray(l.dforecast) || l.dforecast.length !== DEC_COUNT) l.dforecast = Array(DEC_COUNT).fill(0);
-          if (!Array.isArray(l.dfact) || l.dfact.length !== DEC_COUNT) l.dfact = Array(DEC_COUNT).fill(0);
+          l.dplan     = ensureDec(l.dplan);
+          l.dforecast = ensureDec(l.dforecast);
+          l.dfact     = ensureDec(l.dfact);
           if (!Array.isArray(l.forecast) || l.forecast.length !== MONTHS_COUNT) l.forecast = Array(MONTHS_COUNT).fill(0);
         });
         (a.outLines || []).forEach(function(l) {
-          if (!Array.isArray(l.dplan) || l.dplan.length !== DEC_COUNT) l.dplan = Array(DEC_COUNT).fill(0);
-          if (!Array.isArray(l.dforecast) || l.dforecast.length !== DEC_COUNT) l.dforecast = Array(DEC_COUNT).fill(0);
-          if (!Array.isArray(l.dfact) || l.dfact.length !== DEC_COUNT) l.dfact = Array(DEC_COUNT).fill(0);
+          l.dplan     = ensureDec(l.dplan);
+          l.dforecast = ensureDec(l.dforecast);
+          l.dfact     = ensureDec(l.dfact);
           if (!Array.isArray(l.forecast) || l.forecast.length !== MONTHS_COUNT) l.forecast = Array(MONTHS_COUNT).fill(0);
         });
       });
@@ -858,9 +861,15 @@ function newArticle(name) {
   };
 }
 // Helpers for decade arrays
-function ensureDec(arr) { return Array.isArray(arr) && arr.length === DEC_COUNT ? arr : Array(DEC_COUNT).fill(0); }
-// Sum three decades of month m from a [36] array → monthly value
-function decSum(arr36, m) { return (arr36[m*3]||0)+(arr36[m*3+1]||0)+(arr36[m*3+2]||0); }
+function ensureDec(arr) {
+  if (Array.isArray(arr) && arr.length === DEC_COUNT) return arr;
+  // Сохраняем существующие данные при смене размера (например при миграции со старых 36-слотных массивов)
+  const base = Array.isArray(arr) ? arr.slice(0, DEC_COUNT) : [];
+  while (base.length < DEC_COUNT) base.push(0);
+  return base;
+}
+// Sum three decades of month m (position in project) from a decade array → monthly value
+function decSum(arr, m) { return (arr[m*3]||0)+(arr[m*3+1]||0)+(arr[m*3+2]||0); }
 // Does month m have data in decade 1 or 2?
 function hasExtraDecData(arr36, m) { return (arr36[m*3+1]||0)!==0 || (arr36[m*3+2]||0)!==0; }
 // Build monthly [12] array from direct decade [36], summing the three decades
@@ -923,8 +932,9 @@ let projectsOpen = true;
 let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
 let selectedType = null;
 
-const MONTHS_COUNT = 60; // макс длина проекта в месяцах (5 лет)
-const DEC_COUNT    = 36;
+const MONTHS_COUNT   = 60; // макс длина проекта в месяцах (5 лет)
+const DEC_COUNT      = MONTHS_COUNT * 3; // 180 — декадные массивы по проекту (5 лет × 3 декады)
+const DEC_COUNT_YEAR = 36; // 12 мес × 3 декады — для годового дашборда
 const MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 const MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
@@ -1059,13 +1069,14 @@ function computeProjectNetDec36(pi, dashY) {
   if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT).fill(0);
   dashY = dashY ?? new Date().getFullYear();
   const projY = _projectMonthsForYear(p, dashY);
-  if (!projY.length) return Array(DEC_COUNT).fill(0);
-  const net36 = Array(DEC_COUNT).fill(0);
+  if (!projY.length) return Array(DEC_COUNT_YEAR).fill(0);
+  const net36 = Array(DEC_COUNT_YEAR).fill(0); // годовой массив (0-35 = Jan.d1..Dec.d3)
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dplan');
     const op36 = sectionSum36(a, 'out', 'dplan');
     projY.forEach(({calM, projIdx}) => {
       for (let d = 0; d < 3; d++) {
+        // calM = позиция в году (0-11), projIdx = позиция в проекте (0..N)
         net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
       }
     });
@@ -1076,11 +1087,11 @@ function computeProjectNetDec36(pi, dashY) {
 function computeProjectNetDec36Forecast(pi, dashY) {
   const b = budgets[pi];
   const p = projects[pi];
-  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT).fill(0);
+  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT_YEAR).fill(0);
   dashY = dashY ?? new Date().getFullYear();
   const projY = _projectMonthsForYear(p, dashY);
-  if (!projY.length) return Array(DEC_COUNT).fill(0);
-  const net36 = Array(DEC_COUNT).fill(0);
+  if (!projY.length) return Array(DEC_COUNT_YEAR).fill(0);
+  const net36 = Array(DEC_COUNT_YEAR).fill(0); // годовой массив (0-35 = Jan.d1..Dec.d3)
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dforecast');
     const op36 = sectionSum36(a, 'out', 'dforecast');
@@ -1134,7 +1145,7 @@ function renderDashboard() {
   // ── DECADE VIEW ──────────────────────────────────────────────────────
   if (viewDashDecade) {
     const SHOWN_DEC    = 9;
-    const startDecIdx  = Math.min(curM * 3, DEC_COUNT - SHOWN_DEC);
+    const startDecIdx  = Math.min(curM * 3, DEC_COUNT_YEAR - SHOWN_DEC);
     const startMonth   = Math.floor(startDecIdx / 3);
     const endMonth     = Math.min(Math.floor((startDecIdx + SHOWN_DEC - 1) / 3), 11);
     const today        = new Date().getDate();
@@ -1174,18 +1185,18 @@ function renderDashboard() {
     const nets36P  = projects.map((p, pi) => computeProjectNetDec36Forecast(pi, curY));
     // Prior period: cumulative of ALL 36 decades of previous year
     const prior12  = projects.map((p, pi) => computePriorPeriodCumul(pi));
-    const totB36   = Array(DEC_COUNT).fill(0);
-    const totP36   = Array(DEC_COUNT).fill(0);
-    nets36B.forEach(n => { for (let d=0;d<DEC_COUNT;d++) totB36[d] += n[d]||0; });
-    nets36P.forEach(n => { for (let d=0;d<DEC_COUNT;d++) totP36[d] += n[d]||0; });
+    const totB36   = Array(DEC_COUNT_YEAR).fill(0);
+    const totP36   = Array(DEC_COUNT_YEAR).fill(0);
+    nets36B.forEach(n => { for (let d=0;d<DEC_COUNT_YEAR;d++) totB36[d] += n[d]||0; });
+    nets36P.forEach(n => { for (let d=0;d<DEC_COUNT_YEAR;d++) totP36[d] += n[d]||0; });
     // Company prior period totals
     let compPriorB = 0, compPriorP = 0;
     prior12.forEach(p => { compPriorB += p.budget; compPriorP += p.forecast; });
 
-    // Full cumulative arrays for current year (36 decades)
+    // Full cumulative arrays for current year (DEC_COUNT_YEAR = 36 decades)
     const fullCB=[],fullCP=[];
     let rB=0,rP=0;
-    for(let d=0;d<DEC_COUNT;d++){rB+=totB36[d]||0;fullCB[d]=rB;rP+=totP36[d]||0;fullCP[d]=rP;}
+    for(let d=0;d<DEC_COUNT_YEAR;d++){rB+=totB36[d]||0;fullCB[d]=rB;rP+=totP36[d]||0;fullCP[d]=rP;}
     // Prior period value (cumulative before first shown decade)
     const befB = startDecIdx>0?(fullCB[startDecIdx-1]||0):0;
     const befP = startDecIdx>0?(fullCP[startDecIdx-1]||0):0;
@@ -1233,7 +1244,7 @@ function renderDashboard() {
     projects.forEach((p,pi) => {
       const nB=nets36B[pi], nP=nets36P[pi];
       const pr=prior12[pi];
-      const inYear = p.start && p.start.y === curY;
+      const inYear = _projectMonthsForYear(p, curY).length > 0;
       const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
       tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
       // Prior period column
@@ -1992,9 +2003,9 @@ function computeGrandDecTotals(articles, months) {
   const cumulFCDec36 = Array(DEC_COUNT).fill(0);
   const cumulFDec36  = Array(DEC_COUNT).fill(0);
   let run = 0, runFC = 0, runF = 0;
-  months.forEach(({m}) => {
+  months.forEach(({m}, i) => {
     [0,1,2].forEach(d => {
-      const di = m*3+d;
+      const di = i*3+d; // позиция в проекте (не календарный месяц — без коллизий по годам)
       run   += grandNetDec36[di]   || 0;
       runFC += grandNetFCDec36[di] || 0;
       runF  += grandNetFDec36[di]  || 0;
@@ -2077,10 +2088,10 @@ function renderBudget() {
     const artOutPlan = sectionSumEff(art, 'out', 'plan');
     const artInFact  = sectionSumEff(art, 'in',  'fact');
     const artOutFact = sectionSumEff(art, 'out', 'fact');
-    const inTotal     = months.reduce((s,{m}) => s + (artInPlan[m]  || 0), 0);
-    const outTotal    = months.reduce((s,{m}) => s + (artOutPlan[m] || 0), 0);
-    const factInTotal = months.reduce((s,{m}) => s + (artInFact[m]  || 0), 0);
-    const factOutTotal= months.reduce((s,{m}) => s + (artOutFact[m] || 0), 0);
+    const inTotal     = months.reduce((s,_,i) => s + (artInPlan[i]  || 0), 0);
+    const outTotal    = months.reduce((s,_,i) => s + (artOutPlan[i] || 0), 0);
+    const factInTotal = months.reduce((s,_,i) => s + (artInFact[i]  || 0), 0);
+    const factOutTotal= months.reduce((s,_,i) => s + (artOutFact[i] || 0), 0);
 
     // ---- Article header row ----
     html += `<tr class="article-header" data-article="${ai}">
@@ -2104,7 +2115,7 @@ function renderBudget() {
       const forecast = isIn ? sectionSumEff(art, 'in', 'forecast') : sectionSumEff(art, 'out', 'forecast');
       const fact     = isIn ? artInFact       : artOutFact;
       const total    = isIn ? inTotal         : outTotal;
-      const fcTotal  = months.reduce((s,{m}) => s + (forecast[m] || 0), 0);
+      const fcTotal  = months.reduce((s,_,i) => s + (forecast[i] || 0), 0);
       const fTotal   = isIn ? factInTotal     : factOutTotal;
       const colorP   = isIn ? '#0a6e4e'       : '#a33020';
       const tagCls   = isIn ? 'tag-in'        : 'tag-out';
@@ -2188,9 +2199,9 @@ function renderBudget() {
             }).join('');
           }
           const vp = plan[mi] || 0, vfc = forecast[mi] || 0, vf = fact[mi] || 0;
-          return `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mIdx}">${vp ? fmt(vp) : '—'}</td>` +
-                 `<td class="cell-forecast total-cell" style="color:#7a6000" id="art-${isIn?'in':'out'}-forecast-${ai}-${mIdx}">${vfc ? fmt(vfc) : '—'}</td>` +
-                 `<td class="cell-fact total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-fact-${ai}-${mIdx}">${vf ? fmt(vf) : '—'}</td>`;
+          return `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mi}">${vp ? fmt(vp) : '—'}</td>` +
+                 `<td class="cell-forecast total-cell" style="color:#7a6000" id="art-${isIn?'in':'out'}-forecast-${ai}-${mi}">${vfc ? fmt(vfc) : '—'}</td>` +
+                 `<td class="cell-fact total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-fact-${ai}-${mi}">${vf ? fmt(vf) : '—'}</td>`;
         }).join('');
         html += `<tr class="${subCls}" data-art-child="${ai}">
           <td class="left sticky-name sub-label">
@@ -2209,7 +2220,7 @@ function renderBudget() {
             const ldp  = ensureDec(line.dplan);
             const ldfc = ensureDec(line.dforecast || []);
             const ldf  = ensureDec(line.dfact);
-            const lineCells = months.map(({m: mi}) => {
+            const lineCells = months.map(({m}, mi) => {  // mi = позиция в проекте (как в directCells)
               if (viewDecade) {
                 return [0,1,2].map(d => {
                   const di = mi*3+d;
@@ -2252,14 +2263,14 @@ function renderBudget() {
               }
             }).join('');
             const lineTotal  = viewDecade
-              ? months.reduce((s,{m}) => s + decSum(ldp,m), 0)
-              : months.reduce((s,{m}) => s + (line.plan[m]||0), 0);
+              ? months.reduce((s,_,i) => s + decSum(ldp,i), 0)
+              : months.reduce((s,_,i) => s + (line.plan[i]||0), 0);
             const lineFCTotal = viewDecade
-              ? months.reduce((s,{m}) => s + decSum(ldfc,m), 0)
-              : months.reduce((s,{m}) => s + ((line.forecast||[])[m]||0), 0);
+              ? months.reduce((s,_,i) => s + decSum(ldfc,i), 0)
+              : months.reduce((s,_,i) => s + ((line.forecast||[])[i]||0), 0);
             const lineFTotal = viewDecade
-              ? months.reduce((s,{m}) => s + decSum(ldf,m), 0)
-              : months.reduce((s,{m}) => s + (line.fact[m]||0), 0);
+              ? months.reduce((s,_,i) => s + decSum(ldf,i), 0)
+              : months.reduce((s,_,i) => s + (line.fact[i]||0), 0);
             const subRowCls  = isIn ? 'subline-in' : 'subline-out';
             html += `<tr class="${subRowCls}" data-art-child="${ai}">
               <td class="left sticky-name subline-label">
@@ -2296,7 +2307,7 @@ function renderBudget() {
     return months.map(({m}, mi) => {
       if (viewDecade) {
         return [0,1,2].map(d => {
-          const di = m*3+d;
+          const di = mi*3+d; // позиционный индекс в проекте, не календарный месяц
           const vp  = planDec36     ? (planDec36[di]    ||0) : 0;
           const vfc = forecastDec36 ? (forecastDec36[di]||0) : 0;
           const vf  = factDec36     ? (factDec36[di]    ||0) : 0;
@@ -2325,8 +2336,8 @@ function renderBudget() {
   const netMonthCells  = buildTotalCells(grandNet, grandForecastNet, grandFactNet, grandNetDec36, grandNetFCDec36, grandNetFDec36, '',         netColorFn);
 
   const cumulMonthCells = viewDecade
-    ? months.map(({m}) => [0,1,2].map(d => {
-        const di = m*3+d;
+    ? months.map(({m}, mi) => [0,1,2].map(d => {
+        const di = mi*3+d; // позиционный индекс в проекте
         const vp = cumulDec36[di]||0, vfc = cumulFCDec36[di]||0, vf = cumulFDec36[di]||0;
         return `<td class="total-cell cell-dplan cell-plan" style="color:${netColor(vp)}">${fmt(vp)}</td>` +
                `<td class="total-cell cell-forecast" style="color:${netColor(vfc)}">${fmt(vfc)}</td>` +
@@ -2651,30 +2662,30 @@ function renderTotals() {
 
     if (viewDecade) {
       if (!art.inDirect && !art.inDeleted) {
-        months.forEach(({m}) => {
+        const ip  = sectionSum36(art, 'in',  'dplan');
+        const ifc = sectionSum36(art, 'in',  'dforecast');
+        const iF  = sectionSum36(art, 'in',  'dfact');
+        months.forEach(({m}, mi) => {
           [0,1,2].forEach(d => {
-            const di = m*3+d;
-            const ip  = sectionSum36(art, 'in',  'dplan');
-            const ifc = sectionSum36(art, 'in',  'dforecast');
-            const iF  = sectionSum36(art, 'in',  'dfact');
+            const di = mi*3+d; // позиционный индекс в проекте
             const setDec = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? fmt(v) : '—'; };
-            setDec(`art-in-dplan-${ai}-${di}`,    ip[di]  || 0);
+            setDec(`art-in-dplan-${ai}-${di}`,     ip[di]  || 0);
             setDec(`art-in-dforecast-${ai}-${di}`, ifc[di] || 0);
-            setDec(`art-in-dfact-${ai}-${di}`,    iF[di]  || 0);
+            setDec(`art-in-dfact-${ai}-${di}`,     iF[di]  || 0);
           });
         });
       }
       if (!art.outDirect) {
-        months.forEach(({m}) => {
+        const op  = sectionSum36(art, 'out', 'dplan');
+        const ofc = sectionSum36(art, 'out', 'dforecast');
+        const oF  = sectionSum36(art, 'out', 'dfact');
+        months.forEach(({m}, mi) => {
           [0,1,2].forEach(d => {
-            const di = m*3+d;
-            const op  = sectionSum36(art, 'out', 'dplan');
-            const ofc = sectionSum36(art, 'out', 'dforecast');
-            const oF  = sectionSum36(art, 'out', 'dfact');
+            const di = mi*3+d; // позиционный индекс в проекте
             const setDec = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? fmt(v) : '—'; };
-            setDec(`art-out-dplan-${ai}-${di}`,   op[di]  || 0);
+            setDec(`art-out-dplan-${ai}-${di}`,     op[di]  || 0);
             setDec(`art-out-dforecast-${ai}-${di}`, ofc[di] || 0);
-            setDec(`art-out-dfact-${ai}-${di}`,   oF[di]  || 0);
+            setDec(`art-out-dfact-${ai}-${di}`,     oF[di]  || 0);
           });
         });
       }
