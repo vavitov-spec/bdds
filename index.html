@@ -1159,22 +1159,20 @@ function renderDashboard() {
     // 3) «бюджет» | «план»
     const priorColspan = viewDashBudget ? 2 : 1;
     let thead = '<tr><th class="dash-sticky" rowspan="3" style="text-align:left;z-index:5">Проект</th>';
-    thead += `<th class="dash-dec-head" colspan="${priorColspan}" rowspan="3" style="background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;text-align:center;border-right:2px solid #c0c0d0;vertical-align:middle">Дек '${String(prevY).slice(-2)}</th>`;
+    thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;text-align:center;border-right:2px solid #c0c0d0">Дек '${String(prevY).slice(-2)}</th>`;
     for (let m = startMonth; m <= endMonth; m++) {
       thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="${viewDashBudget?6:3}">${MNAMES[m]}</th>`;
     }
     thead += '</tr><tr>';
-    // Row 2: placeholder for sticky "Проект" (colspan=1) + placeholder for prior col (colspan=1)
-    thead += `<th class="dash-sticky" style="background:#fafaf8;z-index:4"></th><th style="background:#ede8ff;border-right:2px solid #c0c0d0"></th>`;
-    // Second row: decade labels (only for visible decades)
+    // Строка 2: плейсхолдер для колонки «Дек пред.» (Проект уже rowspan=3)
+    thead += `<th colspan="${priorColspan}" style="background:#ede8ff;border-right:2px solid #c0c0d0"></th>`;
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
       const cm = d === curDecGlobal ? ' dash-cur-month' : '';
       thead += `<th class="dash-dec-head${cm}" colspan="${viewDashBudget?2:1}" style="text-align:center;border-right:2px solid #c0c0d0">${DEC_LABELS[d % 3]}</th>`;
     }
     thead += '</tr><tr>';
-    // Row 3: placeholder for sticky "Проект" + placeholder for prior col
-    thead += `<th class="dash-sticky" style="background:#fafaf8;z-index:4"></th><th style="background:#ede8ff;border-right:2px solid #c0c0d0"></th>`;
-    // Third row: budget/plan for visible decades
+    // Строка 3: плейсхолдер для колонки «Дек пред.»
+    thead += `<th colspan="${priorColspan}" style="background:#ede8ff;border-right:2px solid #c0c0d0"></th>`;
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
       const cm = d === curDecGlobal ? ' dash-cur-month' : '';
       if (viewDashBudget)
