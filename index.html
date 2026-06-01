@@ -728,39 +728,31 @@ function initFirebase() {
       if (!user) { resolve(false); return; }
       window.firebaseUid = user.uid;
       window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
+        console.log('[loadData] snap.exists=', snap.exists);
         if (snap.exists) {
           var d = snap.data();
-          if (d.projects && Array.isArray(d.projects) && d.budgets && typeof d.budgets === 'object') {
+          console.log('[loadData] projects=', d.projects, 'budgets keys=', d.budgets ? Object.keys(d.budgets) : null);
+          if (d.projects && Array.isArray(d.projects) && d.projects.length > 0) {
             projects       = d.projects;
-            budgets        = d.budgets;
+            budgets        = d.budgets || {};
             currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
             window.migrateData();
+            console.log('[loadData] loaded OK, projects:', projects.length);
             resolve(true);
             return;
           }
         }
+        console.warn('[loadData] no data found, will use demo');
         resolve(false);
-      }).catch(function() { resolve(false); });
+      }).catch(function(e) { console.error('[loadData] error:', e); resolve(false); });
     });
   };
   // One-time auth state listener for the initial page load only.
   window.auth.onAuthStateChanged(function(user) {
     if (user) {
       window.firebaseUid = user.uid;
-      window.loadData().then(function(loaded) {
-        if (!loaded) {
-          var demoY = new Date().getFullYear();
-          projects = [
-            { name: 'Проект А', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} },
-            { name: 'Проект Б', type: 'ПИР', start: {y:demoY,m:2}, end: {y:demoY,m:8} }
-          ];
-          currentProject = 0;
-          budgets = {
-            0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
-            1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
-          };
-          window.saveData();
-        }
+      window.loadData().then(function() {
+        // Если в Firebase данных нет — показываем пустое приложение, ничего не перезаписываем
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('main-layout').style.display = '';
         window.renderSidebarProjects();
@@ -794,12 +786,7 @@ function initFirebase() {
 
   // ── Migrate data ────────────────────────────────────────────────────────
   window.migrateData = function() {
-    projects.forEach(function(p) {
-      if (p.start && p.end && p.start.y !== p.end.y) {
-        p.end.y = p.start.y;
-        if (p.end.m < p.start.m) p.end.m = p.start.m;
-      }
-    });
+    // Миграция проектов — многолетние проекты разрешены, ничего не обрезаем
     Object.values(budgets).forEach(function(b) {
       (b.articles || []).forEach(function(a) {
         if (a.in !== undefined) {
@@ -936,7 +923,7 @@ let projectsOpen = true;
 let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
 let selectedType = null;
 
-const MONTHS_COUNT = 12;
+const MONTHS_COUNT = 60; // макс длина проекта в месяцах (5 лет)
 const DEC_COUNT    = 36;
 const MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 const MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -1011,22 +998,38 @@ function deleteProject(i) {
 
 /* ---- PAGES ---- */
 /* ---- DASHBOARD ---- */
+// Вспомогательная: строит список месяцев проекта pi для года dashY
+// Возвращает массив {calM, projIdx} — calM = 0-11, projIdx = позиция в проекте
+function _projectMonthsForYear(p, dashY) {
+  if (!p || !p.start || !p.end) return [];
+  const result = [];
+  let y = p.start.y, m = p.start.m;
+  const endKey = p.end.y * 12 + p.end.m;
+  let idx = 0;
+  while (y * 12 + m <= endKey && idx < MONTHS_COUNT) {
+    if (y === dashY) result.push({ calM: m, projIdx: idx });
+    m++; if (m > 11) { m = 0; y++; }
+    idx++;
+  }
+  return result;
+}
+
 function computeProjectNet12(pi, dashY) {
   const b = budgets[pi];
   const p = projects[pi];
-  if (!b || !b.articles) return Array(12).fill(null);
+  if (!b || !b.articles || !p || !p.start) return Array(12).fill(null);
   dashY = dashY ?? new Date().getFullYear();
-  if (!p || !p.start || p.start.y !== dashY) return Array(12).fill(null);
-  const startM = p.start.m ?? 0;
-  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
-  const net12  = Array(12).fill(null);
-  for (let m = startM; m <= endM; m++) net12[m] = 0;
+  // Проверяем что проект пересекается с dashY
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(12).fill(null);
+  const net12 = Array(12).fill(null);
+  projY.forEach(({calM}) => net12[calM] = 0);
   b.articles.forEach(a => {
     const ip = sectionSum(a, 'in',  'plan');
     const op = sectionSum(a, 'out', 'plan');
-    for (let m = startM; m <= endM; m++) {
-      net12[m] += (ip[m]||0) - (op[m]||0);
-    }
+    projY.forEach(({calM, projIdx}) => {
+      net12[calM] += (ip[projIdx]||0) - (op[projIdx]||0);
+    });
   });
   return net12;
 }
@@ -1034,19 +1037,18 @@ function computeProjectNet12(pi, dashY) {
 function computeProjectNet12Forecast(pi, dashY) {
   const b = budgets[pi];
   const p = projects[pi];
-  if (!b || !b.articles) return Array(12).fill(null);
+  if (!b || !b.articles || !p || !p.start) return Array(12).fill(null);
   dashY = dashY ?? new Date().getFullYear();
-  if (!p || !p.start || p.start.y !== dashY) return Array(12).fill(null);
-  const startM = p.start.m ?? 0;
-  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
-  const net12  = Array(12).fill(null);
-  for (let m = startM; m <= endM; m++) net12[m] = 0;
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(12).fill(null);
+  const net12 = Array(12).fill(null);
+  projY.forEach(({calM}) => net12[calM] = 0);
   b.articles.forEach(a => {
     const ip = sectionSum(a, 'in',  'forecast');
     const op = sectionSum(a, 'out', 'forecast');
-    for (let m = startM; m <= endM; m++) {
-      net12[m] += (ip[m]||0) - (op[m]||0);
-    }
+    projY.forEach(({calM, projIdx}) => {
+      net12[calM] += (ip[projIdx]||0) - (op[projIdx]||0);
+    });
   });
   return net12;
 }
@@ -1054,20 +1056,19 @@ function computeProjectNet12Forecast(pi, dashY) {
 function computeProjectNetDec36(pi, dashY) {
   const b = budgets[pi];
   const p = projects[pi];
-  if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
+  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT).fill(0);
   dashY = dashY ?? new Date().getFullYear();
-  if (!p || !p.start || p.start.y !== dashY) return Array(DEC_COUNT).fill(0);
-  const startM = p.start.m ?? 0;
-  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
-  const net36  = Array(DEC_COUNT).fill(0);
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(DEC_COUNT).fill(0);
+  const net36 = Array(DEC_COUNT).fill(0);
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dplan');
     const op36 = sectionSum36(a, 'out', 'dplan');
-    for (let m = startM; m <= endM; m++) {
+    projY.forEach(({calM, projIdx}) => {
       for (let d = 0; d < 3; d++) {
-        net36[m*3+d] += (ip36[m*3+d]||0) - (op36[m*3+d]||0);
+        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
       }
-    }
+    });
   });
   return net36;
 }
@@ -1075,20 +1076,19 @@ function computeProjectNetDec36(pi, dashY) {
 function computeProjectNetDec36Forecast(pi, dashY) {
   const b = budgets[pi];
   const p = projects[pi];
-  if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
+  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT).fill(0);
   dashY = dashY ?? new Date().getFullYear();
-  if (!p || !p.start || p.start.y !== dashY) return Array(DEC_COUNT).fill(0);
-  const startM = p.start.m ?? 0;
-  const endM   = (p.end && p.end.y === dashY) ? p.end.m : 11;
-  const net36  = Array(DEC_COUNT).fill(0);
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(DEC_COUNT).fill(0);
+  const net36 = Array(DEC_COUNT).fill(0);
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dforecast');
     const op36 = sectionSum36(a, 'out', 'dforecast');
-    for (let m = startM; m <= endM; m++) {
+    projY.forEach(({calM, projIdx}) => {
       for (let d = 0; d < 3; d++) {
-        net36[m*3+d] += (ip36[m*3+d]||0) - (op36[m*3+d]||0);
+        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
       }
-    }
+    });
   });
   return net36;
 }
@@ -1326,10 +1326,12 @@ function renderCumulChart(cumul, cumulFC, curM) {
     return (r.left + r.right) / 2 - canvas.getBoundingClientRect().left;
   });
 
-  const W = canvas.parentElement.clientWidth || 800;
+  // Берём ширину таблицы чтобы canvas совпадал с ней при скролле
+  const dashTbl = document.getElementById('dashboard-table');
+  const W = (dashTbl ? dashTbl.offsetWidth : canvas.parentElement.clientWidth) || 800;
   const H = 220;
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
 
@@ -1338,7 +1340,7 @@ function renderCumulChart(cumul, cumulFC, curM) {
   ctx.clearRect(0, 0, W, H);
 
   // Left pad = leftmost column centre, right edge = rightmost centre
-  const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
+  const PAD = { top: 24, right: 20, bottom: 16, left: 20 };
   const cH  = H - PAD.top - PAD.bottom;
 
   const vals   = cumul.map(v => v / 1000);
@@ -1553,10 +1555,12 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
     return (r.left + r.right) / 2 - canvas.getBoundingClientRect().left;
   });
 
-  const W = canvas.parentElement.clientWidth || 800;
+  // Берём ширину таблицы чтобы canvas совпадал с ней при скролле
+  const dashTbl = document.getElementById('dashboard-table');
+  const W = (dashTbl ? dashTbl.offsetWidth : canvas.parentElement.clientWidth) || 800;
   const H = 220;
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
 
@@ -1564,7 +1568,7 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, W, H);
 
-  const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
+  const PAD = { top: 24, right: 20, bottom: 16, left: 20 };
   const cH  = H - PAD.top - PAD.bottom;
 
   const validVals   = cumulArr.filter(v => v !== null).map(v => v / 1000);
@@ -1784,12 +1788,15 @@ function getProjectMonths() {
   const p = projects[currentProject];
   if (p && p.start && p.end &&
       p.start.m != null && p.end.m != null) {
-    const y = p.start.y;
-    const startM = p.start.m;
-    const endM = (p.end.y === y) ? p.end.m : 11;
-    if (startM <= endM) {
-      return Array.from({length: endM - startM + 1}, (_, i) => ({ y, m: startM + i }));
+    const months = [];
+    let y = p.start.y, m = p.start.m;
+    const endKey = p.end.y * 12 + p.end.m;
+    while (y * 12 + m <= endKey && months.length < MONTHS_COUNT) {
+      months.push({ y, m });
+      m++;
+      if (m > 11) { m = 0; y++; }
     }
+    if (months.length) return months;
   }
   return _allMonths();
 }
@@ -1803,12 +1810,14 @@ function computeGrandTotals(articles) {
   const months = getProjectMonths();
   const MC = months.length;
 
-  const grandIn12      = Array(12).fill(0);
-  const grandOut12    = Array(12).fill(0);
-  const grandForecastIn12  = Array(12).fill(0);
-  const grandForecastOut12 = Array(12).fill(0);
-  const grandFactIn12 = Array(12).fill(0);
-  const grandFactOut12= Array(12).fill(0);
+  // Индексируем по позиции в проекте (0..MC-1), а не по номеру месяца
+  // Это корректно работает и для однолетних и для многолетних проектов
+  const grandIn          = Array(MC).fill(0);
+  const grandOut         = Array(MC).fill(0);
+  const grandForecastIn  = Array(MC).fill(0);
+  const grandForecastOut = Array(MC).fill(0);
+  const grandFactIn      = Array(MC).fill(0);
+  const grandFactOut     = Array(MC).fill(0);
 
   articles.forEach(a => {
     const artInPlan      = sectionSumEff(a, 'in',  'plan');
@@ -1817,26 +1826,20 @@ function computeGrandTotals(articles) {
     const artOutForecast = sectionSumEff(a, 'out', 'forecast');
     const artInFact      = sectionSumEff(a, 'in',  'fact');
     const artOutFact     = sectionSumEff(a, 'out', 'fact');
-    months.forEach(({m}) => {
-      grandIn12[m]           += artInPlan[m]       || 0;
-      grandOut12[m]          += artOutPlan[m]      || 0;
-      grandForecastIn12[m]   += artInForecast[m]   || 0;
-      grandForecastOut12[m]  += artOutForecast[m]  || 0;
-      grandFactIn12[m]       += artInFact[m]       || 0;
-      grandFactOut12[m]      += artOutFact[m]      || 0;
+    // i = позиция в проекте (0..MC-1) = индекс в массивах plan/forecast/fact
+    months.forEach(({m}, i) => {
+      grandIn[i]          += artInPlan[i]       || 0;
+      grandOut[i]         += artOutPlan[i]      || 0;
+      grandForecastIn[i]  += artInForecast[i]   || 0;
+      grandForecastOut[i] += artOutForecast[i]  || 0;
+      grandFactIn[i]      += artInFact[i]       || 0;
+      grandFactOut[i]     += artOutFact[i]      || 0;
     });
   });
 
-  /* Extract project-month-sliced arrays for the table */
-  const grandIn           = months.map((_,i) => grandIn12[months[i].m]);
-  const grandOut          = months.map((_,i) => grandOut12[months[i].m]);
-  const grandForecastIn   = months.map((_,i) => grandForecastIn12[months[i].m]);
-  const grandForecastOut  = months.map((_,i) => grandForecastOut12[months[i].m]);
-  const grandFactIn       = months.map((_,i) => grandFactIn12[months[i].m]);
-  const grandFactOut      = months.map((_,i) => grandFactOut12[months[i].m]);
-  const grandNet          = grandIn.map((v,i)          => v - grandOut[i]);
-  const grandForecastNet  = grandForecastIn.map((v,i)  => v - grandForecastOut[i]);
-  const grandFactNet      = grandFactIn.map((v,i)      => v - grandFactOut[i]);
+  const grandNet         = grandIn.map((v,i)         => v - grandOut[i]);
+  const grandForecastNet = grandForecastIn.map((v,i) => v - grandForecastOut[i]);
+  const grandFactNet     = grandFactIn.map((v,i)     => v - grandFactOut[i]);
 
   const cumulP = [], cumulFC = [], cumulF = [];
   let runP = 0, runFC = 0, runF = 0;
@@ -2010,7 +2013,7 @@ function renderBudget() {
         const dpArr  = ensureDec(art[section + 'Dplan']);
         const dfcArr = ensureDec(art[section + 'Dforecast'] || []);
         const dfArr  = ensureDec(art[section + 'Dfact']);
-        const directCells = months.map(({m: mi}) => {
+        const directCells = months.map(({m, y}, mi) => {
           if (viewDecade) {
             return [0,1,2].map(d => {
               const di = mi*3+d;
@@ -2066,7 +2069,7 @@ function renderBudget() {
         </tr>`;
       } else {
         // ── LINES MODE: агрегирующая строка + подстроки ──
-        const sumCells = months.map(({m: mi}, mIdx) => {
+        const sumCells = months.map(({m, y}, mi) => {
           if (viewDecade) {
             const ip  = sectionSum36(art, section, 'dplan');
             const ifc = sectionSum36(art, section, 'dforecast');
@@ -2533,12 +2536,13 @@ function renderTotals() {
     const artInFact      = sumEff(art, 'in',  'fact');
     const artOutFact     = sumEff(art, 'out', 'fact');
     const s = (id, val) => { const el=document.getElementById(id); if(el) el.textContent = val ? fmt(val) : '—'; };
-    s(`art-total-in-${ai}`,      months.reduce((acc,{m}) => acc + (artInPlan[m]       || 0), 0));
-    s(`art-total-fcin-${ai}`,    months.reduce((acc,{m}) => acc + (artInForecast[m]   || 0), 0));
-    s(`art-total-out-${ai}`,     months.reduce((acc,{m}) => acc + (artOutPlan[m]      || 0), 0));
-    s(`art-total-fcout-${ai}`,   months.reduce((acc,{m}) => acc + (artOutForecast[m]  || 0), 0));
-    s(`art-total-factin-${ai}`,  months.reduce((acc,{m}) => acc + (artInFact[m]       || 0), 0));
-    s(`art-total-factout-${ai}`, months.reduce((acc,{m}) => acc + (artOutFact[m]      || 0), 0));
+    // Суммируем по позициям в проекте (i = 0..MC-1)
+    s(`art-total-in-${ai}`,      months.reduce((acc,_,i) => acc + (artInPlan[i]       || 0), 0));
+    s(`art-total-fcin-${ai}`,    months.reduce((acc,_,i) => acc + (artInForecast[i]   || 0), 0));
+    s(`art-total-out-${ai}`,     months.reduce((acc,_,i) => acc + (artOutPlan[i]      || 0), 0));
+    s(`art-total-fcout-${ai}`,   months.reduce((acc,_,i) => acc + (artOutForecast[i]  || 0), 0));
+    s(`art-total-factin-${ai}`,  months.reduce((acc,_,i) => acc + (artInFact[i]       || 0), 0));
+    s(`art-total-factout-${ai}`, months.reduce((acc,_,i) => acc + (artOutFact[i]      || 0), 0));
 
     if (viewDecade) {
       if (!art.inDirect && !art.inDeleted) {
@@ -2577,12 +2581,12 @@ function renderTotals() {
         const elOutP  = document.getElementById(`art-out-plan-${ai}-${mi}`);
         const elOutFC = document.getElementById(`art-out-forecast-${ai}-${mi}`);
         const elOutF  = document.getElementById(`art-out-fact-${ai}-${mi}`);
-        if (elInP)   elInP.textContent   = artInPlan[m]      ? fmt(artInPlan[m])       : '—';
-        if (elInFC)  elInFC.textContent  = artInForecast[m]  ? fmt(artInForecast[m])   : '—';
-        if (elInF)   elInF.textContent   = artInFact[m]      ? fmt(artInFact[m])        : '—';
-        if (elOutP)  elOutP.textContent  = artOutPlan[m]     ? fmt(artOutPlan[m])       : '—';
-        if (elOutFC) elOutFC.textContent = artOutForecast[m] ? fmt(artOutForecast[m])   : '—';
-        if (elOutF)  elOutF.textContent  = artOutFact[m]     ? fmt(artOutFact[m])       : '—';
+        if (elInP)   elInP.textContent   = artInPlan[mi]      ? fmt(artInPlan[mi])       : '—';
+        if (elInFC)  elInFC.textContent  = artInForecast[mi]  ? fmt(artInForecast[mi])   : '—';
+        if (elInF)   elInF.textContent   = artInFact[mi]      ? fmt(artInFact[mi])        : '—';
+        if (elOutP)  elOutP.textContent  = artOutPlan[mi]     ? fmt(artOutPlan[mi])       : '—';
+        if (elOutFC) elOutFC.textContent = artOutForecast[mi] ? fmt(artOutForecast[mi])   : '—';
+        if (elOutF)  elOutF.textContent  = artOutFact[mi]     ? fmt(artOutFact[mi])       : '—';
       });
     }
   });
@@ -2760,11 +2764,7 @@ function editProject(i) { openEditModal(i); }
 function confirmProjectModal() {
   const name = document.getElementById('modal-name').value.trim();
   if (!name) { document.getElementById('modal-name').focus(); return; }
-  if (pickerState.start.month != null && pickerState.end.month != null &&
-      pickerState.start.year !== pickerState.end.year) {
-    alert('Период проекта должен быть в пределах одного календарного года.');
-    return;
-  }
+  // Многолетние проекты разрешены
   const newData = {
     name,
     type: selectedType || null,
@@ -2832,6 +2832,7 @@ function handleLogin() {
         document.getElementById('main-layout').style.display = '';
         window.renderSidebarProjects();
         window.showPage('dashboard');
+        console.log('[login] rendered, projects:', projects.length, 'budgets:', Object.keys(budgets));
       });
     })
     .catch(error => {
