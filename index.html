@@ -1148,7 +1148,7 @@ function renderDashboard() {
     // 3) «бюджет» | «план»
     const priorColspan = viewDashBudget ? 4 : 2; // 2 cols per prior col header row
     let thead = '<tr><th class="dash-sticky" rowspan="4" style="text-align:left">Проект</th>';
-    thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;text-align:center;border-right:2px solid #c0c0d0">Дек '${String(prevY).slice(-2)}</th>`;
+    thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;text-align:center;border-right:2px solid #c0c0d0${viewDashBudget?'':';min-width:88px;max-width:88px'}">Дек '${String(prevY).slice(-2)}</th>`;
     for (let m = startMonth; m <= endMonth; m++) {
       thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="${viewDashBudget?6:3}">${MNAMES[m]}</th>`;
     }
@@ -1212,7 +1212,7 @@ function renderDashboard() {
 
     // Prior period cells for each project
     const priorCellDec = (pr) => {
-      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0';
+      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0' + (viewDashBudget ? '' : ';min-width:88px;max-width:88px');
       const cB = pr.budget===0?'dash-zero':(pr.budget>0?'dash-pos':'dash-neg');
       const cP = pr.forecast===0?'dash-zero':(pr.forecast>0?'dash-pos':'dash-neg');
       const budgetTd = viewDashBudget
@@ -1223,7 +1223,7 @@ function renderDashboard() {
 
     // Helper for total rows' prior column
     const priorCellDecTotal = (vB, vP) => {
-      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0' + (viewDashBudget ? '' : ';min-width:88px;max-width:88px');
       const budgetTd = viewDashBudget
         ? `<td class="dash-dec-cell" style="border-right:none;${style}">${fmtD(vB)}</td>`
         : '';
@@ -1281,7 +1281,7 @@ function renderDashboard() {
     let thead = '<tr><th class="dash-sticky" rowspan="2" style="text-align:left">Проект</th>';
     // Prior period column (December of previous year)
     const priorColspan = viewDashBudget ? 2 : 1;
-    thead += `<th colspan="${priorColspan}" style="text-align:center;border-right:2px solid #c0c0d0;background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;padding:3px 6px">Дек '${String(prevY).slice(-2)}</th>`;
+    thead += `<th colspan="${priorColspan}" style="text-align:center;border-right:2px solid #c0c0d0;background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;padding:3px 6px${viewDashBudget?'':';min-width:88px;max-width:88px'}">Дек '${String(prevY).slice(-2)}</th>`;
     for(let m=0;m<12;m++){
       const cm = m===curM?' class="dash-cur-month"':'';
       thead += `<th${cm} colspan="${cs}" style="text-align:center;border-right:2px solid #c0c0d0">${MNAMES[m]}</th>`;
@@ -1338,7 +1338,7 @@ function renderDashboard() {
     const priorCell = (vB, vP, idx) => {
       const cB = vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg');
       const cP = vP===0?'dash-zero':(vP>0?'dash-pos':'dash-neg');
-      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0';
+      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0' + (viewDashBudget ? '' : ';min-width:88px;max-width:88px');
       const budgetTd = viewDashBudget
         ? `<td class="${cB}" style="border-right:none;${style}">${fmtD(vB)}</td>`
         : '';
@@ -1347,7 +1347,7 @@ function renderDashboard() {
 
     // Helper to build prior period column for each row
     const priorCellTotal = (vB, vP) => {
-      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0' + (viewDashBudget ? '' : ';min-width:88px;max-width:88px');
       const budgetTd = viewDashBudget
         ? `<td style="border-right:none;${style}">${fmtD(vB)}</td>`
         : '';
