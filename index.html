@@ -1142,12 +1142,12 @@ function renderDashboard() {
     const curDecGlobal = curM * 3 + curDecLocal;
     const prevY = curY - 1;
 
-    // THEAD — 4 строки:
-    // 1) «Проект» rowspan=4 | «Дек пред.» | месяц colspan=6
+    // THEAD — 3 строки:
+    // 1) «Проект» rowspan=3 | «Дек пред.» | месяц colspan=6
     // 2) decade colspan=2
     // 3) «бюджет» | «план»
-    const priorColspan = viewDashBudget ? 4 : 2; // 2 cols per prior col header row
-    let thead = '<tr><th class="dash-sticky" rowspan="4" style="text-align:left">Проект</th>';
+    const priorColspan = viewDashBudget ? 2 : 1;
+    let thead = '<tr><th class="dash-sticky" rowspan="3" style="text-align:left">Проект</th>';
     thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;text-align:center;border-right:2px solid #c0c0d0${viewDashBudget?'':';min-width:88px;max-width:88px'}">Дек '${String(prevY).slice(-2)}</th>`;
     for (let m = startMonth; m <= endMonth; m++) {
       thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="${viewDashBudget?6:3}">${MNAMES[m]}</th>`;
