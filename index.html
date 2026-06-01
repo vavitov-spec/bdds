@@ -1093,6 +1093,28 @@ function computeProjectNetDec36Forecast(pi, dashY) {
   return net36;
 }
 
+// Compute cumulative net for December of previous year (prior period carryover)
+function computePriorPeriodCumul(pi) {
+  const b = budgets[pi];
+  const p = projects[pi];
+  if (!b || !b.articles || !p || !p.start) return { budget: 0, forecast: 0 };
+  const prevY = new Date().getFullYear() - 1;
+  const projPrevY = _projectMonthsForYear(p, prevY);
+  if (!projPrevY.length) return { budget: 0, forecast: 0 };
+  let sumB = 0, sumP = 0;
+  b.articles.forEach(a => {
+    const ip = sectionSum(a, 'in',  'plan');
+    const op = sectionSum(a, 'out', 'plan');
+    const ipF = sectionSum(a, 'in',  'forecast');
+    const opF = sectionSum(a, 'out', 'forecast');
+    projPrevY.forEach(({projIdx}) => {
+      sumB += (ip[projIdx]||0) - (op[projIdx]||0);
+      sumP += (ipF[projIdx]||0) - (opF[projIdx]||0);
+    });
+  });
+  return { budget: sumB, forecast: sumP };
+}
+
 function renderDashboard() {
   const curY = new Date().getFullYear();
   const curM = new Date().getMonth();
@@ -1118,25 +1140,30 @@ function renderDashboard() {
     const today        = new Date().getDate();
     const curDecLocal  = today <= 10 ? 0 : today <= 20 ? 1 : 2;
     const curDecGlobal = curM * 3 + curDecLocal;
+    const prevY = curY - 1;
 
-    // THEAD — 3 строки:
-    // 1) «Проект» rowspan=3 | месяц colspan=6 (3 декады × 2 col)
-    // 2) декада colspan=2
+    // THEAD — 4 строки:
+    // 1) «Проект» rowspan=4 | «Дек пред.» | месяц colspan=6
+    // 2) decade colspan=2
     // 3) «бюджет» | «план»
-    let thead = '<tr><th class="dash-sticky" rowspan="3" style="text-align:left">Проект</th>';
+    const priorColspan = viewDashBudget ? 4 : 2; // 2 cols per prior col header row
+    let thead = '<tr><th class="dash-sticky" rowspan="4" style="text-align:left">Проект</th>';
+    thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;text-align:center;border-right:2px solid #c0c0d0">Дек '${String(prevY).slice(-2)}</th>`;
     for (let m = startMonth; m <= endMonth; m++) {
       thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="${viewDashBudget?6:3}">${MNAMES[m]}</th>`;
     }
     thead += '</tr><tr>';
+    // Second row: decade labels (only for visible decades)
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
       const cm = d === curDecGlobal ? ' dash-cur-month' : '';
       thead += `<th class="dash-dec-head${cm}" colspan="${viewDashBudget?2:1}" style="text-align:center;border-right:2px solid #c0c0d0">${DEC_LABELS[d % 3]}</th>`;
     }
     thead += '</tr><tr>';
+    // Third row: budget/plan for visible decades
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
       const cm = d === curDecGlobal ? ' dash-cur-month' : '';
       if (viewDashBudget)
-        thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none">бюджет</th>`;
+        thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none">бдж</th>`;
       thead += `<th class="dash-dec-head${cm}" style="color:#7a6000;background:#fff8e0;font-size:9px;border-right:2px solid #c0c0d0">план</th>`;
     }
     thead += '</tr>';
@@ -1145,19 +1172,26 @@ function renderDashboard() {
     // DATA
     const nets36B  = projects.map((p, pi) => computeProjectNetDec36(pi, curY));
     const nets36P  = projects.map((p, pi) => computeProjectNetDec36Forecast(pi, curY));
+    // Prior period: cumulative of ALL 36 decades of previous year
+    const prior12  = projects.map((p, pi) => computePriorPeriodCumul(pi));
     const totB36   = Array(DEC_COUNT).fill(0);
     const totP36   = Array(DEC_COUNT).fill(0);
     nets36B.forEach(n => { for (let d=0;d<DEC_COUNT;d++) totB36[d] += n[d]||0; });
     nets36P.forEach(n => { for (let d=0;d<DEC_COUNT;d++) totP36[d] += n[d]||0; });
+    // Company prior period totals
+    let compPriorB = 0, compPriorP = 0;
+    prior12.forEach(p => { compPriorB += p.budget; compPriorP += p.forecast; });
 
-    // Накопительные
+    // Full cumulative arrays for current year (36 decades)
     const fullCB=[],fullCP=[];
     let rB=0,rP=0;
     for(let d=0;d<DEC_COUNT;d++){rB+=totB36[d]||0;fullCB[d]=rB;rP+=totP36[d]||0;fullCP[d]=rP;}
+    // Prior period value (cumulative before first shown decade)
     const befB = startDecIdx>0?(fullCB[startDecIdx-1]||0):0;
     const befP = startDecIdx>0?(fullCP[startDecIdx-1]||0):0;
+    // Cumulative with prior period carryover
     const cum9B=[],cum9P=[];
-    let rsB=befB,rsP=befP;
+    let rsB=compPriorB+befB, rsP=compPriorP+befP;
     for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++){
       rsB+=totB36[d]||0; cum9B.push(rsB);
       rsP+=totP36[d]||0; cum9P.push(rsP);
@@ -1176,17 +1210,41 @@ function renderDashboard() {
              `<td class="dash-dec-cell ${cP}${cm}" style="color:${colorPl(vP||0)};background:#fffce8;border-right:2px solid #c0c0d0">${vP===null?'':fmtD(vP)}</td>`;
     };
 
+    // Prior period cells for each project
+    const priorCellDec = (pr) => {
+      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0';
+      const cB = pr.budget===0?'dash-zero':(pr.budget>0?'dash-pos':'dash-neg');
+      const cP = pr.forecast===0?'dash-zero':(pr.forecast>0?'dash-pos':'dash-neg');
+      const budgetTd = viewDashBudget
+        ? `<td class="dash-dec-cell ${cB}" style="border-right:none;${style}">${fmtD(pr.budget)}</td>`
+        : '';
+      return budgetTd + `<td class="dash-dec-cell ${cP}" style="${style}">${fmtD(pr.forecast)}</td>`;
+    };
+
+    // Helper for total rows' prior column
+    const priorCellDecTotal = (vB, vP) => {
+      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td class="dash-dec-cell" style="border-right:none;${style}">${fmtD(vB)}</td>`
+        : '';
+      return budgetTd + `<td class="dash-dec-cell" style="${style}">${fmtD(vP)}</td>`;
+    };
+
     projects.forEach((p,pi) => {
       const nB=nets36B[pi], nP=nets36P[pi];
+      const pr=prior12[pi];
       const inYear = p.start && p.start.y === curY;
       const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
       tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      // Prior period column
+      tbody += priorCellDec(pr);
       for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++)
         tbody += pair(inYear ? (nB[d]||0) : null, inYear ? (nP[d]||0) : null, d===curDecGlobal);
       tbody += '</tr>';
     });
 
     tbody += '<tr class="dash-total"><td class="dash-sticky left">Денежный поток компании</td>';
+    tbody += priorCellDecTotal(compPriorB, compPriorP);
     for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++){
       const vB=totB36[d]||0, vP=totP36[d]||0, cur=d===curDecGlobal;
       const cm=cur?' dash-cur-month':'';
@@ -1197,6 +1255,8 @@ function renderDashboard() {
     tbody += '</tr>';
 
     tbody += '<tr class="dash-cumul"><td class="dash-sticky left">Накопительно</td>';
+    // Prior period cumulative carryover
+    tbody += priorCellDecTotal(compPriorB, compPriorP);
     for(let i=0;i<SHOWN_DEC;i++){
       const vB=cum9B[i]||0, vP=cum9P[i]||0, cur=(startDecIdx+i)===curDecGlobal;
       const cm=cur?' dash-cur-month':'';
@@ -1213,21 +1273,28 @@ function renderDashboard() {
 
   // ── MONTH VIEW ───────────────────────────────────────────────────────
   } else {
-
+    const prevY = curY - 1;
     // THEAD — 2 строки:
-    // 1) «Проект» rowspan=2 | месяц colspan=2
+    // 1) «Проект» rowspan=2 | «Дек пред.» | месяц colspan=2
     // 2) «бюджет» | «план»
+    const cs = viewDashBudget ? 2 : 1;
     let thead = '<tr><th class="dash-sticky" rowspan="2" style="text-align:left">Проект</th>';
+    // Prior period column (December of previous year)
+    const priorColspan = viewDashBudget ? 2 : 1;
+    thead += `<th colspan="${priorColspan}" style="text-align:center;border-right:2px solid #c0c0d0;background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;padding:3px 6px">Дек '${String(prevY).slice(-2)}</th>`;
     for(let m=0;m<12;m++){
       const cm = m===curM?' class="dash-cur-month"':'';
-      const cs = viewDashBudget ? 2 : 1;
       thead += `<th${cm} colspan="${cs}" style="text-align:center;border-right:2px solid #c0c0d0">${MNAMES[m]}</th>`;
     }
     thead += '</tr><tr>';
+    // Prior period subheaders
+    if (viewDashBudget)
+      thead += `<th style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бдж</th>`;
+    thead += `<th style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
     for(let m=0;m<12;m++){
       const cm = m===curM?' class="dash-cur-month"':'';
       if (viewDashBudget)
-        thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бюджет</th>`;
+        thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бдж</th>`;
       thead += `<th${cm} style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
     }
     thead += '</tr>';
@@ -1236,13 +1303,18 @@ function renderDashboard() {
     // DATA
     const nets12B  = projects.map((p,pi) => computeProjectNet12(pi, curY));
     const nets12P  = projects.map((p,pi) => computeProjectNet12Forecast(pi, curY));
+    // Prior period cumulative for each project
+    const prior12  = projects.map((p,pi) => computePriorPeriodCumul(pi));
     const totB     = Array(12).fill(null);
     const totP     = Array(12).fill(null);
+    // Company totals for prior period
+    let compPriorB = 0, compPriorP = 0;
+    prior12.forEach(p => { compPriorB += p.budget; compPriorP += p.forecast; });
     nets12B.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totB[m] = (totB[m] ?? 0) + n[m]; });
     nets12P.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totP[m] = (totP[m] ?? 0) + n[m]; });
 
     const cumB=[],cumP=[];
-    let rB=0,rP=0;
+    let rB=compPriorB, rP=compPriorP;
     for(let m=0;m<12;m++){
       if (totB[m] !== null) { rB += totB[m]; cumB.push(rB); } else cumB.push(null);
       if (totP[m] !== null) { rP += totP[m]; cumP.push(rP); } else cumP.push(null);
@@ -1262,16 +1334,41 @@ function renderDashboard() {
       return budgetTd + planTd;
     };
 
+    // Prior period cell (column before January)
+    const priorCell = (vB, vP, idx) => {
+      const cB = vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg');
+      const cP = vP===0?'dash-zero':(vP>0?'dash-pos':'dash-neg');
+      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td class="${cB}" style="border-right:none;${style}">${fmtD(vB)}</td>`
+        : '';
+      return budgetTd + `<td class="${cP}" style="${style}">${fmtD(vP)}</td>`;
+    };
+
+    // Helper to build prior period column for each row
+    const priorCellTotal = (vB, vP) => {
+      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td style="border-right:none;${style}">${fmtD(vB)}</td>`
+        : '';
+      return budgetTd + `<td style="${style}">${fmtD(vP)}</td>`;
+    };
+
     projects.forEach((p,pi) => {
       const nB=nets12B[pi], nP=nets12P[pi];
+      const pr=prior12[pi];
       const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
       tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      // Prior period column
+      tbody += priorCell(pr.budget, pr.forecast, pi);
       for(let m=0;m<12;m++)
         tbody += pair(nB[m], nP[m], nB[m]===null, nP[m]===null, m===curM);
       tbody += '</tr>';
     });
 
+    // Company totals row
     tbody += '<tr class="dash-total"><td class="dash-sticky left">Денежный поток компании</td>';
+    tbody += priorCellTotal(compPriorB, compPriorP);
     for(let m=0;m<12;m++){
       const vB=totB[m], vP=totP[m], cur=m===curM;
       const cm=cur?' dash-cur-month':'';
@@ -1281,7 +1378,14 @@ function renderDashboard() {
     }
     tbody += '</tr>';
 
+    // Cumulative row — starts from prior period values
     tbody += '<tr class="dash-cumul"><td class="dash-sticky left">Накопительно</td>';
+    // Prior period cumulative: just show the carryover value
+    const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+    const budgetPriorCumul = viewDashBudget
+      ? `<td style="border-right:none;${style}">${fmtD(compPriorB)}</td>`
+      : '';
+    tbody += budgetPriorCumul + `<td style="${style}">${fmtD(compPriorP)}</td>`;
     for(let m=0;m<12;m++){
       const vB=cumB[m], vP=cumP[m], cur=m===curM;
       const cm=cur?' dash-cur-month':'';
@@ -1315,8 +1419,8 @@ function renderCumulChart(cumul, cumulFC, curM) {
   // Берём только первую строку thead — там месячные группы
   const firstRow = thead ? thead.querySelector('tr') : null;
   const hCells   = firstRow ? Array.from(firstRow.querySelectorAll('th')) : [];
-  // First th is the sticky «Проект», остальные — месяцы (colspan=2)
-  const monthThs = hCells.slice(1); // 12 cells
+  // First th is the sticky «Проект», second is the prior period column, rest are 12 months
+  const monthThs = hCells.slice(2); // skip sticky + prior period
   if (monthThs.length !== 12) return; // table not yet rendered
 
   // x positions of month columns — используем offsetLeft чтобы не зависеть от скролла
@@ -1544,9 +1648,10 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   if (tbl) canvas.style.width = tbl.offsetWidth + 'px';
 
   const thead = document.getElementById('dashboard-thead');
-  // Берём 2-ю строку thead (декады с colspan=2), не 3-ю (бюджет/план)
+  // Берём 2-ю строку thead (декады с colspan=2), skip 1st row which has sticky + prior
   const theadRows = thead ? Array.from(thead.querySelectorAll('tr')) : [];
-  const decRow    = theadRows[1] || null; // 0=месяцы, 1=декады, 2=бюджет/план
+  // Row 1 has sticky + prior (not decade cells), row 2 has decade labels
+  const decRow    = theadRows.length > 1 ? theadRows[1] : null; // decade labels row
   const decThs    = decRow ? Array.from(decRow.querySelectorAll('th.dash-dec-head')) : [];
   if (decThs.length < shown) return;
 
