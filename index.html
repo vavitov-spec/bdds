@@ -2028,13 +2028,25 @@ function computeGrandDecTotals(articles, months) {
   let grandOutFCDec36   = Array(DEC_COUNT).fill(0);
   let grandInFDec36     = Array(DEC_COUNT).fill(0);
   let grandOutFDec36    = Array(DEC_COUNT).fill(0);
+  // Применяет месячные данные как фолбэк для декад, где все три декады нулевые.
+  // Это обеспечивает консистентность декадного и месячного представлений.
+  function applyMonthlyFallback(dec36, monthly) {
+    for (let mi = 0; mi < monthly.length && mi < MONTHS_COUNT; mi++) {
+      const base = mi * 3;
+      const mv = monthly[mi] || 0;
+      if (mv !== 0 && (dec36[base]||0) === 0 && (dec36[base+1]||0) === 0 && (dec36[base+2]||0) === 0) {
+        dec36[base] = mv;
+      }
+    }
+    return dec36;
+  }
   articles.forEach(a => {
-    const ip   = sectionSum36(a, 'in',  'dplan');
-    const op   = sectionSum36(a, 'out', 'dplan');
-    const ifc  = sectionSum36(a, 'in',  'dforecast');
-    const ofc  = sectionSum36(a, 'out', 'dforecast');
-    const inf  = sectionSum36(a, 'in',  'dfact');
-    const outf = sectionSum36(a, 'out', 'dfact');
+    const ip   = applyMonthlyFallback(sectionSum36(a, 'in',  'dplan'),     sectionSum(a, 'in',  'plan'));
+    const op   = applyMonthlyFallback(sectionSum36(a, 'out', 'dplan'),     sectionSum(a, 'out', 'plan'));
+    const ifc  = applyMonthlyFallback(sectionSum36(a, 'in',  'dforecast'), sectionSum(a, 'in',  'forecast'));
+    const ofc  = applyMonthlyFallback(sectionSum36(a, 'out', 'dforecast'), sectionSum(a, 'out', 'forecast'));
+    const inf  = applyMonthlyFallback(sectionSum36(a, 'in',  'dfact'),     sectionSum(a, 'in',  'fact'));
+    const outf = applyMonthlyFallback(sectionSum36(a, 'out', 'dfact'),     sectionSum(a, 'out', 'fact'));
     for (let i = 0; i < DEC_COUNT; i++) {
       grandInDec36[i]    += ip[i]   || 0;
       grandOutDec36[i]   += op[i]   || 0;
