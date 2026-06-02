@@ -2141,7 +2141,7 @@ function renderBudget() {
   });
 
   const FIXED_COLS = `
-    <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья</th>
+    <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья <button class="collapse-art-btn" title="Свернуть все подстроки" onclick="collapseAllArticles()">↑</button></th>
     <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">бюджет</small></th>
     <th class="sticky-tot-fc" style="background:#fff0c0;color:#7a6000;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">план</small></th>
     <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">факт</small></th>`;
@@ -2174,12 +2174,10 @@ function renderBudget() {
     const factOutTotal= months.reduce((s,_,i) => s + (artOutFact[i] || 0), 0);
 
     // ---- Article header row ----
-    const hasOpenSections = (!art.inDirect && art.inOpen) || (!art.outDirect && art.outOpen);
     html += `<tr class="article-header" data-article="${ai}">
       <td class="left sticky-name" colspan="1">
         <span class="drag-handle" title="Перетащить статью">⠿</span>
         <input class="row-name-input" value="${esc(art.name)}" onchange="renameArticle(${ai},this.value)">
-        ${hasOpenSections ? `<button class="collapse-art-btn" title="Свернуть подстроки" onclick="collapseArticle(${ai})">↑</button>` : ''}
         <button class="delete-btn" style="margin-left:6px" onclick="deleteArticle(${ai})">✕</button>
       </td>
       <td class="sticky-tot-p"></td>
@@ -2695,10 +2693,11 @@ function toggleSection(ai, section) {
   renderBudget();
 }
 
-function collapseArticle(ai) {
-  const art = getBudget().articles[ai];
-  if (!art.inDirect)  art.inOpen  = false;
-  if (!art.outDirect) art.outOpen = false;
+function collapseAllArticles() {
+  getBudget().articles.forEach(art => {
+    if (!art.inDirect)  art.inOpen  = false;
+    if (!art.outDirect) art.outOpen = false;
+  });
   saveData();
   renderBudget();
 }
