@@ -1906,6 +1906,8 @@ function showPage(name) {
   } else {
     document.getElementById('page-project').classList.add('active');
     document.getElementById('nav-projects').classList.add('active');
+    viewFact = false;
+    document.getElementById('view-btn-fact').classList.remove('active');
     renderSidebarProjects();
     renderBudget();
   }
