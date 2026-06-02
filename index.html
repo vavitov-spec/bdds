@@ -737,6 +737,7 @@ function initFirebase() {
             budgets        = d.budgets || {};
             currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
             window.migrateData();
+            window.saveData(); // сохраняем мигрированные декадные данные
             console.log('[loadData] loaded OK, projects:', projects.length);
             resolve(true);
             return;
@@ -786,6 +787,20 @@ function initFirebase() {
   };
   window.addEventListener('beforeunload', function() { window.flushSaveData(); });
 
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  // Для многолетних проектов данные в позициях 36+ декадного массива раньше
+  // не записывались (старый DEC_COUNT=36). Копируем месячные значения в первую
+  // декаду месяца, если все три декады нулевые, но месячное значение ненулевое.
+  function _syncMonthlyToDec(monthly, dec) {
+    if (!Array.isArray(monthly) || !Array.isArray(dec)) return;
+    for (var mi = 0; mi < monthly.length && mi < MONTHS_COUNT; mi++) {
+      var v = monthly[mi] || 0;
+      if (v !== 0 && (dec[mi*3]||0) === 0 && (dec[mi*3+1]||0) === 0 && (dec[mi*3+2]||0) === 0) {
+        dec[mi*3] = v;
+      }
+    }
+  }
+
   // ── Migrate data ────────────────────────────────────────────────────────
   window.migrateData = function() {
     // Миграция проектов — многолетние проекты разрешены, ничего не обрезаем
@@ -815,17 +830,31 @@ function initFirebase() {
         a.outDforecast = ensureDec(a.outDforecast);
         if (!Array.isArray(a.inForecast)   || a.inForecast.length   !== MONTHS_COUNT) a.inForecast   = Array(MONTHS_COUNT).fill(0);
         if (!Array.isArray(a.outForecast)  || a.outForecast.length  !== MONTHS_COUNT) a.outForecast  = Array(MONTHS_COUNT).fill(0);
+        // Синхронизация: для многолетних проектов месячные данные 2-го+ года ранее не попадали
+        // в декадные массивы (позиции 36+), т.к. старый DEC_COUNT=36. Восстанавливаем.
+        _syncMonthlyToDec(a.inForecast,   a.inDforecast);
+        _syncMonthlyToDec(a.outForecast,  a.outDforecast);
+        _syncMonthlyToDec(a.inPlan,       a.inDplan);
+        _syncMonthlyToDec(a.outPlan,      a.outDplan);
+        _syncMonthlyToDec(a.inFact,       a.inDfact);
+        _syncMonthlyToDec(a.outFact,      a.outDfact);
         (a.inLines  || []).forEach(function(l) {
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
           if (!Array.isArray(l.forecast) || l.forecast.length !== MONTHS_COUNT) l.forecast = Array(MONTHS_COUNT).fill(0);
+          _syncMonthlyToDec(l.forecast, l.dforecast);
+          _syncMonthlyToDec(l.plan,     l.dplan);
+          _syncMonthlyToDec(l.fact,     l.dfact);
         });
         (a.outLines || []).forEach(function(l) {
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
           if (!Array.isArray(l.forecast) || l.forecast.length !== MONTHS_COUNT) l.forecast = Array(MONTHS_COUNT).fill(0);
+          _syncMonthlyToDec(l.forecast, l.dforecast);
+          _syncMonthlyToDec(l.plan,     l.dplan);
+          _syncMonthlyToDec(l.fact,     l.dfact);
         });
       });
     });
@@ -1074,10 +1103,20 @@ function computeProjectNetDec36(pi, dashY) {
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dplan');
     const op36 = sectionSum36(a, 'out', 'dplan');
+    // Месячные данные — источник истины при отсутствии декадной разбивки
+    const ipM  = sectionSum(a, 'in',  'plan');
+    const opM  = sectionSum(a, 'out', 'plan');
     projY.forEach(({calM, projIdx}) => {
-      for (let d = 0; d < 3; d++) {
-        // calM = позиция в году (0-11), projIdx = позиция в проекте (0..N)
-        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
+      const base = projIdx * 3;
+      const hasDecData = (ip36[base]||0) || (ip36[base+1]||0) || (ip36[base+2]||0)
+                       || (op36[base]||0) || (op36[base+1]||0) || (op36[base+2]||0);
+      if (hasDecData) {
+        for (let d = 0; d < 3; d++) {
+          net36[calM*3+d] += (ip36[base+d]||0) - (op36[base+d]||0);
+        }
+      } else {
+        // Декадных данных нет — используем месячное значение в первой декаде
+        net36[calM*3] += (ipM[projIdx]||0) - (opM[projIdx]||0);
       }
     });
   });
@@ -1095,9 +1134,20 @@ function computeProjectNetDec36Forecast(pi, dashY) {
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dforecast');
     const op36 = sectionSum36(a, 'out', 'dforecast');
+    // Месячные данные — источник истины при отсутствии декадной разбивки
+    const ipM  = sectionSum(a, 'in',  'forecast');
+    const opM  = sectionSum(a, 'out', 'forecast');
     projY.forEach(({calM, projIdx}) => {
-      for (let d = 0; d < 3; d++) {
-        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
+      const base = projIdx * 3;
+      const hasDecData = (ip36[base]||0) || (ip36[base+1]||0) || (ip36[base+2]||0)
+                       || (op36[base]||0) || (op36[base+1]||0) || (op36[base+2]||0);
+      if (hasDecData) {
+        for (let d = 0; d < 3; d++) {
+          net36[calM*3+d] += (ip36[base+d]||0) - (op36[base+d]||0);
+        }
+      } else {
+        // Декадных данных нет — используем месячное значение в первой декаде
+        net36[calM*3] += (ipM[projIdx]||0) - (opM[projIdx]||0);
       }
     });
   });
@@ -1159,7 +1209,7 @@ function renderDashboard() {
     // 3) «бюджет» | «план»
     const priorColspan = viewDashBudget ? 2 : 1;
     let thead = '<tr><th class="dash-sticky" rowspan="3" style="text-align:left;z-index:5">Проект</th>';
-    thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;text-align:center;border-right:2px solid #c0c0d0">Дек '${String(prevY).slice(-2)}</th>`;
+    thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-weight:600;text-align:center;border-right:2px solid #c0c0d0;white-space:normal;line-height:1.3">Дек<br>'${String(prevY).slice(-2)}</th>`;
     for (let m = startMonth; m <= endMonth; m++) {
       thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="${viewDashBudget?6:3}">${MNAMES[m]}</th>`;
     }
@@ -1624,26 +1674,24 @@ function renderCumulChart(cumul, cumulFC, curM) {
     }
   }
 
-  // ── Value labels бюджет ──────────────────────────────────────
+  // ── Value labels: бюджет и план — без наложения ─────────────
+  // Та линия, что выше в данной точке → метка сверху; ниже → снизу
   ctx.textAlign = 'center';
   ctx.font = '10px system-ui,sans-serif';
   for (let m = 0; m < 12; m++) {
-    const v = vals[m];
-    if (v === 0) continue;
-    const cx = toX(m), cy = toY(v);
-    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
-    ctx.fillText(String(Math.round(v)), cx, v >= 0 ? cy - 8 : cy + 15);
-  }
-
-  // ── Value labels план ────────────────────────────────────────
-  if (cumulFC) {
-    ctx.font = '10px system-ui,sans-serif';
-    for (let m = 0; m < 12; m++) {
-      const v = valsFC[m];
-      if (v === 0) continue;
-      const cx = toX(m), cy = toY(v);
+    const vB = vals[m];
+    const vP = cumulFC ? valsFC[m] : null;
+    // bAbove=true → бюджет выше (или план отсутствует)
+    const bAbove = vP === null || vB >= vP;
+    if (vB !== 0) {
+      const cx = toX(m), cy = toY(vB);
+      ctx.fillStyle = vB >= 0 ? '#0a6e4e' : '#c0392b';
+      ctx.fillText(String(Math.round(vB)), cx, bAbove ? cy - 8 : cy + 15);
+    }
+    if (vP !== null && vP !== 0) {
+      const cx = toX(m), cy = toY(vP);
       ctx.fillStyle = '#c8a000';
-      ctx.fillText(String(Math.round(v)), cx, v >= 0 ? cy - 20 : cy + 27);
+      ctx.fillText(String(Math.round(vP)), cx, bAbove ? cy + 15 : cy - 8);
     }
   }
 }
@@ -1856,26 +1904,25 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
       ctx.stroke();
     }
 
-    // Value labels план
-    ctx.textAlign = 'center';
-    ctx.font = '10px system-ui,sans-serif';
-    for (let d = 0; d < shown; d++) {
-      if (!cumulArrFC[d]) continue;
-      const v = valsFC[d], cx = toX(d), cy = toY(v);
-      ctx.fillStyle = '#c8a000';
-      ctx.fillText(String(Math.round(v)), cx, v >= 0 ? cy - 20 : cy + 27);
-    }
   }
 
-  // ── Value labels бюджет ─────────────────────────────────────
+  // ── Value labels: бюджет и план — без наложения ─────────────
   ctx.textAlign = 'center';
+  ctx.font = '10px system-ui,sans-serif';
   for (let d = 0; d < shown; d++) {
-    if (cumulArr[d] === null || cumulArr[d] === 0) continue;
-    const v = valsScaled[d], cx = toX(d), cy = toY(v);
-    const lbl = String(Math.round(v));
-    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
-    ctx.font = '10px system-ui,sans-serif';
-    ctx.fillText(lbl, cx, v >= 0 ? cy - 8 : cy + 15);
+    const vB = (cumulArr[d] !== null && cumulArr[d] !== 0) ? valsScaled[d] : null;
+    const vP = (cumulArrFC && cumulArrFC[d]) ? valsFC[d] : null;
+    const bAbove = vP === null || (vB !== null && vB >= vP);
+    if (vB !== null) {
+      const cx = toX(d), cy = toY(vB);
+      ctx.fillStyle = vB >= 0 ? '#0a6e4e' : '#c0392b';
+      ctx.fillText(String(Math.round(vB)), cx, bAbove ? cy - 8 : cy + 15);
+    }
+    if (vP !== null) {
+      const cx = toX(d), cy = toY(vP);
+      ctx.fillStyle = '#c8a000';
+      ctx.fillText(String(Math.round(vP)), cx, bAbove ? cy + 15 : cy - 8);
+    }
   }
 }
 
