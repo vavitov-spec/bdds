@@ -152,6 +152,8 @@ tr.dragging-article td{opacity:0.35}
 .proj-drag-handle:active{cursor:grabbing}
 .delete-subline-btn{font-size:10px;padding:1px 5px;cursor:pointer;border-radius:4px;background:none;border:none;color:#ccc;font-family:inherit}
 .delete-subline-btn:hover{color:#c0392b;background:#fdf0f0}
+.collapse-art-btn{font-size:11px;padding:1px 6px;cursor:pointer;border-radius:4px;background:none;border:1px solid #d0d0c8;color:#888;font-family:inherit;margin-left:6px;line-height:1.4;transition:all .15s}
+.collapse-art-btn:hover{border-color:#999;color:#333;background:#f0f0ec}
 
 /* Total rows */
 tr.total-row td{font-weight:600;border-top:2px solid #d8d8d0;background:#fafaf8;color:#555}
@@ -2172,10 +2174,12 @@ function renderBudget() {
     const factOutTotal= months.reduce((s,_,i) => s + (artOutFact[i] || 0), 0);
 
     // ---- Article header row ----
+    const hasOpenSections = (!art.inDirect && art.inOpen) || (!art.outDirect && art.outOpen);
     html += `<tr class="article-header" data-article="${ai}">
       <td class="left sticky-name" colspan="1">
         <span class="drag-handle" title="Перетащить статью">⠿</span>
         <input class="row-name-input" value="${esc(art.name)}" onchange="renameArticle(${ai},this.value)">
+        ${hasOpenSections ? `<button class="collapse-art-btn" title="Свернуть подстроки" onclick="collapseArticle(${ai})">↑</button>` : ''}
         <button class="delete-btn" style="margin-left:6px" onclick="deleteArticle(${ai})">✕</button>
       </td>
       <td class="sticky-tot-p"></td>
@@ -2687,6 +2691,14 @@ function toggleSection(ai, section) {
   const art = getBudget().articles[ai];
   const key = section + 'Open';
   art[key] = !art[key];
+  saveData();
+  renderBudget();
+}
+
+function collapseArticle(ai) {
+  const art = getBudget().articles[ai];
+  if (!art.inDirect)  art.inOpen  = false;
+  if (!art.outDirect) art.outOpen = false;
   saveData();
   renderBudget();
 }
