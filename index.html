@@ -1249,9 +1249,17 @@ function renderDashboard() {
     const fullCB=[],fullCP=[];
     let rB=0,rP=0;
     for(let d=0;d<DEC_COUNT_YEAR;d++){rB+=totB36[d]||0;fullCB[d]=rB;rP+=totP36[d]||0;fullCP[d]=rP;}
-    // Prior period value (cumulative before first shown decade)
-    const befB = startDecIdx>0?(fullCB[startDecIdx-1]||0):0;
-    const befP = startDecIdx>0?(fullCP[startDecIdx-1]||0):0;
+    // Prior period value — считаем из МЕСЯЧНЫХ данных, чтобы совпадало с месячным видом
+    // (декадные данные до startMonth могут расходиться с месячными при неполном вводе)
+    let befB = 0, befP = 0;
+    if (startMonth > 0) {
+      const nets12B_ = projects.map((p, pi) => computeProjectNet12(pi, curY));
+      const nets12P_ = projects.map((p, pi) => computeProjectNet12Forecast(pi, curY));
+      for (let m = 0; m < startMonth; m++) {
+        nets12B_.forEach(n => { befB += n[m]||0; });
+        nets12P_.forEach(n => { befP += n[m]||0; });
+      }
+    }
     // Cumulative with prior period carryover
     const cum9B=[],cum9P=[];
     let rsB=compPriorB+befB, rsP=compPriorP+befP;
