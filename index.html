@@ -512,12 +512,12 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 
     <div class="field" style="margin-bottom:16px">
       <label style="display:block;font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Email</label>
-      <input type="email" id="login-email" placeholder="your@email.com" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
+      <input type="email" id="login-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
     </div>
 
     <div class="field" style="margin-bottom:24px">
       <label style="display:block;font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Пароль</label>
-      <input type="password" id="login-password" placeholder="••••••••" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
     </div>
 
     <button onclick="handleLogin()" style="width:100%;padding:10px;border:none;background:#1a1a18;color:#fff;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:12px">Войти</button>
@@ -788,10 +788,9 @@ function initFirebase() {
   window.addEventListener('beforeunload', function() { window.flushSaveData(); });
 
   // ── Helpers ─────────────────────────────────────────────────────────────
-  // Для многолетних проектов данные в позициях 36+ декадного массива раньше
-  // не записывались (старый DEC_COUNT=36). Копируем месячные значения в первую
-  // декаду месяца, если все три декады нулевые, но месячное значение ненулевое.
-  function _syncMonthlyToDec(monthly, dec) {
+  // Одноразовая миграция: если месячные данные есть, а декадные нет —
+  // копируем месячное значение в первую декаду (D1). Декадные данные — главные.
+  function _migrateMonthlyToDec(monthly, dec) {
     if (!Array.isArray(monthly) || !Array.isArray(dec)) return;
     for (var mi = 0; mi < monthly.length && mi < MONTHS_COUNT; mi++) {
       var v = monthly[mi] || 0;
@@ -803,11 +802,10 @@ function initFirebase() {
 
   // ── Migrate data ────────────────────────────────────────────────────────
   window.migrateData = function() {
-    // Миграция проектов — многолетние проекты разрешены, ничего не обрезаем
     Object.values(budgets).forEach(function(b) {
       (b.articles || []).forEach(function(a) {
+        // Старый формат (поле a.in) → конвертируем в lines
         if (a.in !== undefined) {
-          // Migrate old format: preserve dplan/dfact if they existed on the article
           var inDplan  = (Array.isArray(a.inDplan)  && a.inDplan.length  === DEC_COUNT) ? a.inDplan  : Array(DEC_COUNT).fill(0);
           var inDfact  = (Array.isArray(a.inDfact)  && a.inDfact.length  === DEC_COUNT) ? a.inDfact  : Array(DEC_COUNT).fill(0);
           var outDplan = (Array.isArray(a.outDplan) && a.outDplan.length === DEC_COUNT) ? a.outDplan : Array(DEC_COUNT).fill(0);
@@ -816,45 +814,41 @@ function initFirebase() {
           a.outLines = [{ name: 'Выплата 1',     plan: a.out, fact: a.factOut || Array(MONTHS_COUNT).fill(0), dplan: outDplan, dfact: outDfact }];
           delete a.in; delete a.out; delete a.factIn; delete a.factOut;
         }
-        if (a.inDirect === undefined) a.inDirect = true;
+        if (a.inDirect  === undefined) a.inDirect  = true;
         if (a.outDirect === undefined) a.outDirect = true;
-        if (a.inOpen  === undefined) a.inOpen  = true;
-        if (a.outOpen === undefined) a.outOpen = true;
-        // ensureDec сохраняет старые данные и расширяет до DEC_COUNT (теперь 180)
+        if (a.inOpen    === undefined) a.inOpen    = true;
+        if (a.outOpen   === undefined) a.outOpen   = true;
+        if (a.inDeleted === undefined) a.inDeleted = false;
+        // Расширяем декадные массивы до DEC_COUNT
         a.inDplan      = ensureDec(a.inDplan);
+        a.inDforecast  = ensureDec(a.inDforecast);
         a.inDfact      = ensureDec(a.inDfact);
         a.outDplan     = ensureDec(a.outDplan);
-        a.outDfact     = ensureDec(a.outDfact);
-        if (a.inDeleted === undefined) a.inDeleted = false;
-        a.inDforecast  = ensureDec(a.inDforecast);
         a.outDforecast = ensureDec(a.outDforecast);
-        if (!Array.isArray(a.inForecast)   || a.inForecast.length   !== MONTHS_COUNT) a.inForecast   = Array(MONTHS_COUNT).fill(0);
-        if (!Array.isArray(a.outForecast)  || a.outForecast.length  !== MONTHS_COUNT) a.outForecast  = Array(MONTHS_COUNT).fill(0);
-        // Синхронизация: для многолетних проектов месячные данные 2-го+ года ранее не попадали
-        // в декадные массивы (позиции 36+), т.к. старый DEC_COUNT=36. Восстанавливаем.
-        _syncMonthlyToDec(a.inForecast,   a.inDforecast);
-        _syncMonthlyToDec(a.outForecast,  a.outDforecast);
-        _syncMonthlyToDec(a.inPlan,       a.inDplan);
-        _syncMonthlyToDec(a.outPlan,      a.outDplan);
-        _syncMonthlyToDec(a.inFact,       a.inDfact);
-        _syncMonthlyToDec(a.outFact,      a.outDfact);
-        (a.inLines  || []).forEach(function(l) {
+        a.outDfact     = ensureDec(a.outDfact);
+        // Миграция: старые месячные данные → D1 декадных массивов (если декад нет)
+        _migrateMonthlyToDec(a.inForecast,  a.inDforecast);
+        _migrateMonthlyToDec(a.outForecast, a.outDforecast);
+        _migrateMonthlyToDec(a.inPlan,      a.inDplan);
+        _migrateMonthlyToDec(a.outPlan,     a.outDplan);
+        _migrateMonthlyToDec(a.inFact,      a.inDfact);
+        _migrateMonthlyToDec(a.outFact,     a.outDfact);
+        // Строки (lines): расширяем декадные массивы и мигрируем месячные
+        (a.inLines || []).forEach(function(l) {
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
-          if (!Array.isArray(l.forecast) || l.forecast.length !== MONTHS_COUNT) l.forecast = Array(MONTHS_COUNT).fill(0);
-          _syncMonthlyToDec(l.forecast, l.dforecast);
-          _syncMonthlyToDec(l.plan,     l.dplan);
-          _syncMonthlyToDec(l.fact,     l.dfact);
+          _migrateMonthlyToDec(l.plan,     l.dplan);
+          _migrateMonthlyToDec(l.forecast, l.dforecast);
+          _migrateMonthlyToDec(l.fact,     l.dfact);
         });
         (a.outLines || []).forEach(function(l) {
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
-          if (!Array.isArray(l.forecast) || l.forecast.length !== MONTHS_COUNT) l.forecast = Array(MONTHS_COUNT).fill(0);
-          _syncMonthlyToDec(l.forecast, l.dforecast);
-          _syncMonthlyToDec(l.plan,     l.dplan);
-          _syncMonthlyToDec(l.fact,     l.dfact);
+          _migrateMonthlyToDec(l.plan,     l.dplan);
+          _migrateMonthlyToDec(l.forecast, l.dforecast);
+          _migrateMonthlyToDec(l.fact,     l.dfact);
         });
       });
     });
@@ -919,22 +913,16 @@ function sectionSum36(art, section, field) {
   });
   return res;
 }
-// Вернуть суммарный массив [12] для секции (direct или lines)
+// Вернуть суммарный массив [MONTHS_COUNT] для секции.
+// Декадные массивы — единственный источник истины.
 // field = 'plan', 'forecast', или 'fact' (строчные)
 function sectionSum(art, section, field) {
-  if (art[section + 'Direct']) {
-    const key = section + field.charAt(0).toUpperCase() + field.slice(1);
-    const arr = art[key];
-    return Array.isArray(arr) ? arr.slice() : Array(MONTHS_COUNT).fill(0);
-  }
-  return sumLines(art[section + 'Lines'], field);
-}
-// sectionSumEffective: если включён режим декад — возвращает суммы из декадных массивов
-function sectionSumEff(art, section, field) {
-  if (!viewDecade) return sectionSum(art, section, field);
-  // decade field mapping: plan→dplan, forecast→dforecast, fact→dfact
   const df = field === 'plan' ? 'dplan' : (field === 'forecast' ? 'dforecast' : 'dfact');
   return decToMonthly(sectionSum36(art, section, df));
+}
+// sectionSumEff теперь эквивалентен sectionSum (оставлен для обратной совместимости)
+function sectionSumEff(art, section, field) {
+  return sectionSum(art, section, field);
 }
 // Суммировать подстроки в массив по 12 месяцам
 function sumLines(lines, field) {
@@ -1103,20 +1091,9 @@ function computeProjectNetDec36(pi, dashY) {
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dplan');
     const op36 = sectionSum36(a, 'out', 'dplan');
-    // Месячные данные — источник истины при отсутствии декадной разбивки
-    const ipM  = sectionSum(a, 'in',  'plan');
-    const opM  = sectionSum(a, 'out', 'plan');
     projY.forEach(({calM, projIdx}) => {
-      const base = projIdx * 3;
-      const hasDecData = (ip36[base]||0) || (ip36[base+1]||0) || (ip36[base+2]||0)
-                       || (op36[base]||0) || (op36[base+1]||0) || (op36[base+2]||0);
-      if (hasDecData) {
-        for (let d = 0; d < 3; d++) {
-          net36[calM*3+d] += (ip36[base+d]||0) - (op36[base+d]||0);
-        }
-      } else {
-        // Декадных данных нет — используем месячное значение в первой декаде
-        net36[calM*3] += (ipM[projIdx]||0) - (opM[projIdx]||0);
+      for (let d = 0; d < 3; d++) {
+        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
       }
     });
   });
@@ -1130,24 +1107,13 @@ function computeProjectNetDec36Forecast(pi, dashY) {
   dashY = dashY ?? new Date().getFullYear();
   const projY = _projectMonthsForYear(p, dashY);
   if (!projY.length) return Array(DEC_COUNT_YEAR).fill(0);
-  const net36 = Array(DEC_COUNT_YEAR).fill(0); // годовой массив (0-35 = Jan.d1..Dec.d3)
+  const net36 = Array(DEC_COUNT_YEAR).fill(0);
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dforecast');
     const op36 = sectionSum36(a, 'out', 'dforecast');
-    // Месячные данные — источник истины при отсутствии декадной разбивки
-    const ipM  = sectionSum(a, 'in',  'forecast');
-    const opM  = sectionSum(a, 'out', 'forecast');
     projY.forEach(({calM, projIdx}) => {
-      const base = projIdx * 3;
-      const hasDecData = (ip36[base]||0) || (ip36[base+1]||0) || (ip36[base+2]||0)
-                       || (op36[base]||0) || (op36[base+1]||0) || (op36[base+2]||0);
-      if (hasDecData) {
-        for (let d = 0; d < 3; d++) {
-          net36[calM*3+d] += (ip36[base+d]||0) - (op36[base+d]||0);
-        }
-      } else {
-        // Декадных данных нет — используем месячное значение в первой декаде
-        net36[calM*3] += (ipM[projIdx]||0) - (opM[projIdx]||0);
+      for (let d = 0; d < 3; d++) {
+        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
       }
     });
   });
@@ -1249,17 +1215,9 @@ function renderDashboard() {
     const fullCB=[],fullCP=[];
     let rB=0,rP=0;
     for(let d=0;d<DEC_COUNT_YEAR;d++){rB+=totB36[d]||0;fullCB[d]=rB;rP+=totP36[d]||0;fullCP[d]=rP;}
-    // Prior period value — считаем из МЕСЯЧНЫХ данных, чтобы совпадало с месячным видом
-    // (декадные данные до startMonth могут расходиться с месячными при неполном вводе)
-    let befB = 0, befP = 0;
-    if (startMonth > 0) {
-      const nets12B_ = projects.map((p, pi) => computeProjectNet12(pi, curY));
-      const nets12P_ = projects.map((p, pi) => computeProjectNet12Forecast(pi, curY));
-      for (let m = 0; m < startMonth; m++) {
-        nets12B_.forEach(n => { befB += n[m]||0; });
-        nets12P_.forEach(n => { befP += n[m]||0; });
-      }
-    }
+    // Prior period value (cumulative before first shown decade)
+    const befB = startDecIdx>0?(fullCB[startDecIdx-1]||0):0;
+    const befP = startDecIdx>0?(fullCP[startDecIdx-1]||0):0;
     // Cumulative with prior period carryover
     const cum9B=[],cum9P=[];
     let rsB=compPriorB+befB, rsP=compPriorP+befP;
@@ -1807,6 +1765,7 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
 
   // ── Filled areas ────────────────────────────────────────────
   const valsScaled = cumulArr.map(v => v === null ? null : v / 1000);
+  const valsFC = cumulArrFC ? cumulArrFC.map(v => v === null ? null : v / 1000) : null;
   function drawFill(color, isAbove) {
     ctx.save();
     if (isAbove) ctx.rect(xLeft, PAD.top, xRight - xLeft, zeroY - PAD.top);
@@ -1883,7 +1842,6 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
 
   // ── Линия план (пунктир) ──────────────────────────────────
   if (cumulArrFC) {
-    const valsFC = cumulArrFC.map(v => v === null ? null : v / 1000);
     ctx.save();
     ctx.setLineDash([5, 4]);
     ctx.strokeStyle = '#c8a000';
@@ -2036,25 +1994,13 @@ function computeGrandDecTotals(articles, months) {
   let grandOutFCDec36   = Array(DEC_COUNT).fill(0);
   let grandInFDec36     = Array(DEC_COUNT).fill(0);
   let grandOutFDec36    = Array(DEC_COUNT).fill(0);
-  // Применяет месячные данные как фолбэк для декад, где все три декады нулевые.
-  // Это обеспечивает консистентность декадного и месячного представлений.
-  function applyMonthlyFallback(dec36, monthly) {
-    for (let mi = 0; mi < monthly.length && mi < MONTHS_COUNT; mi++) {
-      const base = mi * 3;
-      const mv = monthly[mi] || 0;
-      if (mv !== 0 && (dec36[base]||0) === 0 && (dec36[base+1]||0) === 0 && (dec36[base+2]||0) === 0) {
-        dec36[base] = mv;
-      }
-    }
-    return dec36;
-  }
   articles.forEach(a => {
-    const ip   = applyMonthlyFallback(sectionSum36(a, 'in',  'dplan'),     sectionSum(a, 'in',  'plan'));
-    const op   = applyMonthlyFallback(sectionSum36(a, 'out', 'dplan'),     sectionSum(a, 'out', 'plan'));
-    const ifc  = applyMonthlyFallback(sectionSum36(a, 'in',  'dforecast'), sectionSum(a, 'in',  'forecast'));
-    const ofc  = applyMonthlyFallback(sectionSum36(a, 'out', 'dforecast'), sectionSum(a, 'out', 'forecast'));
-    const inf  = applyMonthlyFallback(sectionSum36(a, 'in',  'dfact'),     sectionSum(a, 'in',  'fact'));
-    const outf = applyMonthlyFallback(sectionSum36(a, 'out', 'dfact'),     sectionSum(a, 'out', 'fact'));
+    const ip   = sectionSum36(a, 'in',  'dplan');
+    const op   = sectionSum36(a, 'out', 'dplan');
+    const ifc  = sectionSum36(a, 'in',  'dforecast');
+    const ofc  = sectionSum36(a, 'out', 'dforecast');
+    const inf  = sectionSum36(a, 'in',  'dfact');
+    const outf = sectionSum36(a, 'out', 'dfact');
     for (let i = 0; i < DEC_COUNT; i++) {
       grandInDec36[i]    += ip[i]   || 0;
       grandOutDec36[i]   += op[i]   || 0;
@@ -2220,7 +2166,7 @@ function renderBudget() {
                 oninput="decDirectInput(${ai},'${section}','dfact',${di},this.value)"></td>`;
             }).join('');
           } else {
-            const vp = art[section+'Plan'][mi]||0, vfc = (art[section+'Forecast']||[])[mi]||0, vf = art[section+'Fact'][mi]||0;
+            const vp = decSum(dpArr, mi), vfc = decSum(dfcArr, mi), vf = decSum(dfArr, mi);
             return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
                 value="${vp?fmt(vp):''}" placeholder="0"
                 onfocus="inputFocus(this)"
@@ -2461,10 +2407,14 @@ function inputFocus(el) {
 
 function parseInput(val) { return parseFloat(val.replace(/\s/g,'').replace(',','.')) || 0; }
 
-/* Прямой ввод (direct mode) */
+/* Прямой ввод (direct mode) — пишем в d1 декадного массива */
 function directInput(ai, section, field, mi, val) {
   const art = getBudget().articles[ai];
-  art[section + field.charAt(0).toUpperCase() + field.slice(1)][mi] = parseInput(val);
+  const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
+  const KEY = section + df.charAt(0).toUpperCase() + df.slice(1);
+  if (!Array.isArray(art[KEY]) || art[KEY].length !== DEC_COUNT) art[KEY] = Array(DEC_COUNT).fill(0);
+  if (hasExtraDecData(art[KEY], mi)) return; // D2/D3 заняты — не трогаем
+  art[KEY][mi*3] = parseInput(val);
   renderTotals();
 }
 function directKeydown(event, el, ai, section, field, mi) {
@@ -2477,27 +2427,25 @@ function directKeydown(event, el, ai, section, field, mi) {
   }
 }
 
-/* Подстрока: ввод */
+/* Подстрока: ввод — пишем в d1 декадного массива */
 function sublineInput(ai, section, li, field, mi, val) {
-  const art = getBudget().articles[ai];
-  art[section+'Lines'][li][field][mi] = parseInput(val);
+  const line = getBudget().articles[ai][section+'Lines'][li];
+  const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
+  if (!Array.isArray(line[df]) || line[df].length !== DEC_COUNT) line[df] = Array(DEC_COUNT).fill(0);
+  if (hasExtraDecData(line[df], mi)) return; // D2/D3 заняты — не трогаем
+  line[df][mi*3] = parseInput(val);
   renderTotals();
 }
 function sublineBlur(el, ai, section, li, field, mi) {
   const num = parseInput(el.value);
   const line = getBudget().articles[ai][section+'Lines'][li];
-  // Check if extra decades have data
   const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
-  const dArr = ensureDec(line[df]);
-  if (field !== 'forecast' && hasExtraDecData(dArr, mi)) {
-    el.value = fmt(line[field][mi]||0) || '';
-    showToast('Требуется планирование в формате 10 дней');
+  if (!Array.isArray(line[df]) || line[df].length !== DEC_COUNT) line[df] = Array(DEC_COUNT).fill(0);
+  if (hasExtraDecData(line[df], mi)) {
+    el.value = fmt(decSum(line[df], mi)) || '';
+    showToast('Нельзя изменить месяц — в нём уже есть декадное планирование');
     return;
   }
-  if (!Array.isArray(line[field])||line[field].length!==MONTHS_COUNT) line[field]=Array(MONTHS_COUNT).fill(0);
-  line[field][mi] = num;
-  // sync to first decade slot
-  if (!Array.isArray(line[df])||line[df].length!==DEC_COUNT) line[df]=Array(DEC_COUNT).fill(0);
   line[df][mi*3] = num;
   el.value = num ? fmt(num) : '';
   saveData();
@@ -2516,7 +2464,9 @@ function sublineKeydown(event, el, ai, section, li, field, mi) {
 /* Decade direct input handlers */
 function decDirectInput(ai, section, field, di, val) {
   const art = getBudget().articles[ai];
-  ensureDec(art[section+field.charAt(0).toUpperCase()+field.slice(1)])[di] = parseInput(val);
+  const KEY = section + field.charAt(0).toUpperCase() + field.slice(1);
+  if (!Array.isArray(art[KEY]) || art[KEY].length !== DEC_COUNT) art[KEY] = Array(DEC_COUNT).fill(0);
+  art[KEY][di] = parseInput(val);
   // Monthly totals are recalculated only on blur — no need to re-render on every keystroke
 }
 function decDirectBlur(el, ai, section, field, di) {
@@ -2525,9 +2475,6 @@ function decDirectBlur(el, ai, section, field, di) {
   const KEY = section + field.charAt(0).toUpperCase()+field.slice(1);
   if (!Array.isArray(art[KEY]) || art[KEY].length!==DEC_COUNT) art[KEY]=Array(DEC_COUNT).fill(0);
   art[KEY][di] = num;
-  const m = Math.floor(di/3);
-  const capF = field==='dplan'?'Plan':(field==='dforecast'?'Forecast':'Fact');
-  art[section+capF][m] = decSum(art[KEY], m);
   el.value = num ? fmt(num) : '';
   saveData(); renderTotals();
 }
@@ -2535,10 +2482,6 @@ function decSublineInput(ai, section, li, field, di, val) {
   const line = getBudget().articles[ai][section+'Lines'][li];
   if (!Array.isArray(line[field])||line[field].length!==DEC_COUNT) line[field]=Array(DEC_COUNT).fill(0);
   line[field][di] = parseInput(val);
-  const m = Math.floor(di/3);
-  const mf = field==='dplan'?'plan':(field==='dforecast'?'forecast':'fact');
-  line[mf][m] = decSum(line[field], m);
-  // Update aggregate cells in DOM (no full re-render)
   updateAggregateCell(ai, section, field, di, line);
 }
 function decSublineBlur(el, ai, section, li, field, di) {
@@ -2546,9 +2489,6 @@ function decSublineBlur(el, ai, section, li, field, di) {
   const line = getBudget().articles[ai][section+'Lines'][li];
   if (!Array.isArray(line[field])||line[field].length!==DEC_COUNT) line[field]=Array(DEC_COUNT).fill(0);
   line[field][di] = num;
-  const m = Math.floor(di/3);
-  const mf = field==='dplan'?'plan':(field==='dforecast'?'forecast':'fact');
-  line[mf][m] = decSum(line[field], m);
   el.value = num ? fmt(num) : '';
   updateAggregateCell(ai, section, field, di, line);
   saveData(); renderTotals();
@@ -2585,19 +2525,14 @@ function showToast(msg) {
 function directBlur(el, ai, section, field, mi) {
   const num = parseInput(el.value);
   const art = getBudget().articles[ai];
-  const capF = field.charAt(0).toUpperCase()+field.slice(1);
-  // Check if extra decades have data
   const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
-  const dfKey = section + df.charAt(0).toUpperCase()+df.slice(1);
-  const dArr = ensureDec(art[dfKey]);
-  if (hasExtraDecData(dArr, mi)) {
-    el.value = fmt(art[section+capF][mi]||0) || '';
-    showToast('Требуется планирование в формате 10 дней');
+  const dfKey = section + df.charAt(0).toUpperCase() + df.slice(1);
+  if (!Array.isArray(art[dfKey]) || art[dfKey].length !== DEC_COUNT) art[dfKey] = Array(DEC_COUNT).fill(0);
+  if (hasExtraDecData(art[dfKey], mi)) {
+    el.value = fmt(decSum(art[dfKey], mi)) || '';
+    showToast('Нельзя изменить месяц — в нём уже есть декадное планирование');
     return;
   }
-  art[section+capF][mi] = num;
-  // sync to first decade slot
-  if (!Array.isArray(art[dfKey])||art[dfKey].length!==DEC_COUNT) art[dfKey]=Array(DEC_COUNT).fill(0);
   art[dfKey][mi*3] = num;
   el.value = num ? fmt(num) : '';
   saveData(); renderTotals();
@@ -2711,7 +2646,7 @@ function renderTotals() {
           grandNet, grandForecastNet, grandFactNet,
           cumulP, cumulFC, cumulF, runP, runFC, runF, months } = computeGrandTotals(articles);
 
-  const sumEff = (art, sec, fld) => viewDecade ? sectionSumEff(art, sec, fld) : sectionSum(art, sec, fld);
+  const sumEff = sectionSum; // декадные массивы — единственный источник
 
   articles.forEach((art, ai) => {
     const artInPlan      = sumEff(art, 'in',  'plan');
@@ -2822,9 +2757,9 @@ function renderTotals() {
     const flatOutP = [], flatOutFC = [], flatOutF = [];
     const flatNetP = [], flatNetFC = [], flatNetF = [];
     const flatCumP = [], flatCumFC = [], flatCumF = [];
-    months.forEach(({m}) => {
+    months.forEach(({m}, i) => {
       [0,1,2].forEach(d => {
-        const di = m*3+d;
+        const di = i*3+d;
         flatInP.push(dec.grandInDec36[di]||0);
         flatInFC.push(dec.grandInFCDec36[di]||0);
         flatInF.push(dec.grandInFDec36[di]||0);

@@ -61,9 +61,17 @@ td.sticky-tot-p {
   border-right:1px solid #c5d8ee;
   text-align:right;
 }
+.sticky-tot-fc,
+td.sticky-tot-fc {
+  position:sticky; left:var(--sticky-tot-fc-left, 288px); z-index:3;
+  background:#fff8e8;
+  min-width:88px; width:88px;
+  border-right:1px solid #e8d8a0;
+  text-align:right;
+}
 .sticky-tot-f,
 td.sticky-tot-f {
-  position:sticky; left:288px; z-index:3;
+  position:sticky; left:var(--sticky-tot-f-left, 376px); z-index:3;
   background:#eaf8f2;
   min-width:88px; width:88px;
   border-right:2px solid #b0d8c0;
@@ -73,25 +81,31 @@ td.sticky-tot-f {
 /* Sticky header bumps z-index so it stays above body sticky cells */
 thead th.sticky-name{ z-index:5; background:#fafaf8; }
 thead th.sticky-tot-p{ z-index:5; background:#daeeff; }
+thead th.sticky-tot-fc{ z-index:5; background:#fff0c0; }
 thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; }
 thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
 
 /* Row-specific overrides for sticky cols */
 tr.article-header td.sticky-name { background:#f7f7f4; }
 tr.article-header td.sticky-tot-p { background:#e2eefa; }
+tr.article-header td.sticky-tot-fc { background:#fdf5d8; }
 tr.article-header td.sticky-tot-f { background:#dcf2ea; }
 tr.sub-in td.sticky-name { background:#f6fcfa; }
 tr.sub-in td.sticky-tot-p { background:#e8f4ff; }
+tr.sub-in td.sticky-tot-fc { background:#fef8e0; }
 tr.sub-in td.sticky-tot-f { background:#e4f8f0; }
 tr.sub-out td.sticky-name { background:#fdf8f6; }
 tr.sub-out td.sticky-tot-p { background:#f2eeff; }
+tr.sub-out td.sticky-tot-fc { background:#fef8e0; }
 tr.sub-out td.sticky-tot-f { background:#fef2ec; }
 tr.total-row td.sticky-name { background:#fafaf8; }
 tr.total-row td.sticky-tot-p { background:#daeeff; }
+tr.total-row td.sticky-tot-fc { background:#fff0c0; }
 tr.total-row td.sticky-tot-f { background:#d6f2e6; }
 
-/* plan/fact cell tint */
+/* plan/fact/forecast cell tint */
 td.cell-plan { background:#f5f9ff; }
+td.cell-forecast { background:#fffbea; border-right:1px solid #f0e8c0; }
 td.cell-fact { background:#fff8f6; border-right:1px solid #f0e8e4; }
 
 /* Article header row */
@@ -111,8 +125,10 @@ tr.subline-in td{background:#f0faf6}
 tr.subline-out td{background:#fef5f2}
 tr.subline-in td.sticky-name,tr.subline-out td.sticky-name{border-right:2px solid #d8d8d0}
 tr.subline-in td.sticky-tot-p{background:#e8f4ff}
+tr.subline-in td.sticky-tot-fc{background:#fef8e0}
 tr.subline-in td.sticky-tot-f{background:#e0f5eb}
 tr.subline-out td.sticky-tot-p{background:#f2eeff}
+tr.subline-out td.sticky-tot-fc{background:#fef8e0}
 tr.subline-out td.sticky-tot-f{background:#fef2ec}
 td.subline-label{padding-left:52px;color:#555;font-size:12px}
 .subline-name-input{border:none;background:none;font-size:12px;width:120px;color:#555;font-family:inherit;padding:2px 0}
@@ -143,8 +159,10 @@ tr.net-row td{
 tr.net-row td.left { color:#555; font-size:13px; font-weight:600; text-transform:none; letter-spacing:normal; }
 tr.net-row td.sticky-name { background:#fafaf8; color:#555; }
 tr.net-row td.sticky-tot-p { background:#eaf4ff; border-top:2px solid #d8d8d0; color:#1a5fa3; }
+tr.net-row td.sticky-tot-fc { background:#fff8d0; border-top:2px solid #d8d8d0; color:#7a6000; }
 tr.net-row td.sticky-tot-f { background:#e4f8f0; border-top:2px solid #d8d8d0; color:#0a6e4e; }
 tr.net-row td.cell-plan { background:#f5f9ff; border-top:2px solid #d8d8d0; }
+tr.net-row td.cell-forecast { background:#fffbea; border-top:2px solid #d8d8d0; }
 tr.net-row td.cell-fact { background:#f5fdf9; border-top:2px solid #d8d8d0; }
 
 /* Накопительный поток */
@@ -159,8 +177,10 @@ tr.cumul-row td {
 }
 tr.cumul-row td.sticky-name { background:#ede8ff; color:#3d1a8a; font-size:12px; text-transform:uppercase; letter-spacing:0.02em; font-weight:700; }
 tr.cumul-row td.sticky-tot-p { background:#e0d8ff; border-top:1px solid #ddd8f5; color:#3d1a8a; }
+tr.cumul-row td.sticky-tot-fc { background:#fff8c8; border-top:1px solid #ddd8f5; color:#5a4000; }
 tr.cumul-row td.sticky-tot-f { background:#d8f0e8; border-top:1px solid #ddd8f5; color:#0a4e30; }
 tr.cumul-row td.cell-plan { background:#f5f0ff; border-top:1px solid #ddd8f5; }
+tr.cumul-row td.cell-forecast { background:#fffce0; border-top:1px solid #ddd8f5; }
 tr.cumul-row td.cell-fact { background:#eef8f4; border-top:1px solid #ddd8f5; }
 
 .month-input{width:90px;text-align:right;font-size:13px;padding:2px 5px;border:1px solid #e0e0d8;border-radius:5px;background:transparent;color:#1a1a18;font-family:inherit}
@@ -230,6 +250,11 @@ table.hide-plan td.sticky-tot-p,
 table.hide-plan th.decade-sub-head.month-plan-head,
 table.hide-plan td.cell-dplan { display:none }
 
+table.hide-forecast th.month-forecast-head,
+table.hide-forecast td.cell-forecast,
+table.hide-forecast th.sticky-tot-fc,
+table.hide-forecast td.sticky-tot-fc { display:none }
+
 table.hide-fact th.month-fact-head,
 table.hide-fact td.cell-fact,
 table.hide-fact th.sticky-tot-f,
@@ -238,11 +263,13 @@ table.hide-fact th.decade-sub-head.month-fact-head,
 table.hide-fact td.cell-dfact { display:none }
 
 /* DASHBOARD TABLE */
-#dashboard-table { width:100%; }
-#dashboard-table th { text-align:right; font-weight:500; color:#888; padding:5px 8px; border-bottom:2px solid #e5e5e0; font-size:12px; white-space:nowrap; }
+#dash-scroll-wrap { overflow-x:auto; overflow-y:visible; }
+#dashboard-table { width:auto; min-width:100%; table-layout:auto; }
+#cumul-chart { display:block; min-width:100%; }
+#dashboard-table th { text-align:right; font-weight:500; color:#888; padding:4px 4px; border-bottom:2px solid #e5e5e0; font-size:11px; white-space:nowrap; }
 #dashboard-table th.left { text-align:left; }
 #dashboard-table th.dash-cur-month { background:#fffbe6; color:#7a6000; }
-#dashboard-table td { text-align:right; padding:3px 8px; border-bottom:1px solid #f0f0ec; font-size:13px; white-space:nowrap; }
+#dashboard-table td { text-align:right; padding:3px 4px; border-bottom:1px solid #f0f0ec; font-size:11px; white-space:nowrap; }
 #dashboard-table td.left { text-align:left; }
 #dashboard-table td.dash-zero { color:#ccc; }
 #dashboard-table td.dash-pos { color:#0a6e4e; }
@@ -253,7 +280,7 @@ table.hide-fact td.cell-dfact { display:none }
 #dashboard-table th.dash-sticky,
 #dashboard-table td.dash-sticky {
   position:sticky; left:0; z-index:3;
-  background:#fff; width:210px; min-width:210px; max-width:210px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  background:#fff; width:160px; min-width:160px; max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   border-right:2px solid #d8d8d0; text-align:left;
 }
 #dashboard-table thead th.dash-sticky { background:#fafaf8; z-index:5; }
@@ -261,11 +288,11 @@ table.hide-fact td.cell-dfact { display:none }
 /* Dashboard decade cells */
 #dashboard-table th.dash-dec-group { font-size:11px; font-weight:600; color:#555; background:#f0f0ec; text-align:center; white-space:nowrap; padding:4px 2px; border-right:2px solid #c0c0d0; }
 #dashboard-table th.dash-dec-group.dash-cur-month { background:#fff4cc; color:#7a6000; border-right-color:#e8c800; }
-#dashboard-table th.dash-dec-head { font-size:10px; font-weight:500; color:#6677aa; background:#f0f2ff; white-space:nowrap; padding:3px 4px; border-right:2px solid #c8c8e0; }
+#dashboard-table th.dash-dec-head { font-size:9px; font-weight:500; color:#6677aa; background:#f0f2ff; white-space:nowrap; padding:3px 3px; border-right:2px solid #c8c8e0; }
 #dashboard-table th.dash-dec-head:nth-child(3n+2) { border-right:1px solid #d8d8e8; }
 #dashboard-table th.dash-dec-head.dash-cur-month { background:#fff8e0; color:#7a6000; }
 #dashboard-table th.dash-dec-head:last-of-type { border-right:none !important; }
-#dashboard-table td.dash-dec-cell { font-size:13px; white-space:nowrap; padding:3px 8px; border-bottom:1px solid #f0f0ec; border-right:1px solid #e8e8f0; }
+#dashboard-table td.dash-dec-cell { font-size:11px; white-space:nowrap; padding:3px 4px; border-bottom:1px solid #f0f0ec; border-right:1px solid #e8e8f0; }
 #dashboard-table td.dash-dec-cell:nth-child(3n+4) { border-right:2px solid #b8b8d0; }
 #dashboard-table tr:last-child td.dash-dec-cell { border-bottom:none; }
 #dashboard-table td.dash-dec-cell.dash-zero { color:#ccc; }
@@ -485,12 +512,12 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 
     <div class="field" style="margin-bottom:16px">
       <label style="display:block;font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Email</label>
-      <input type="email" id="login-email" placeholder="your@email.com" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
+      <input type="email" id="login-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
     </div>
 
     <div class="field" style="margin-bottom:24px">
       <label style="display:block;font-size:12px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Пароль</label>
-      <input type="password" id="login-password" placeholder="••••••••" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
     </div>
 
     <button onclick="handleLogin()" style="width:100%;padding:10px;border:none;background:#1a1a18;color:#fff;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:12px">Войти</button>
@@ -535,14 +562,28 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <div style="display:flex;align-items:flex-end;gap:40px;margin-bottom:20px">
         <div><div style="font-size:20px;font-weight:500;margin-bottom:4px">Дашборд</div><div style="font-size:13px;color:#aaa" id="dashboard-year-label"></div></div>
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Детализация:</span>
+          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
+          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+            <button id="dash-btn-budget" class="view-btn" onclick="toggleDashView('budget')">Бюджет</button>
+            <button id="dash-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
+          </div>
+          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:16px">Детализация:</span>
           <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
             <button id="dash-btn-month" class="view-btn active" onclick="toggleDashDecadeView('month')">Месяц</button>
             <button id="dash-btn-decade" class="view-btn" onclick="toggleDashDecadeView('decade')">10 дней</button>
           </div>
         </div>
       </div>
-      <div class="section"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам — план</div><div class="table-wrap"><table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table></div></div><div class="section" style="margin-top:0"><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Накопительный денежный поток — план</div><canvas id="cumul-chart" style="width:100%;display:block"></canvas></div>
+      <div class="section">
+  <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам (в тыс. руб)</div>
+  <div id="dash-scroll-wrap" style="overflow-x:auto;overflow-y:visible">
+    <table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table>
+    <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-top:24px;margin-bottom:14px;position:sticky;left:0">Накопительный денежный поток (в тыс. руб)</div>
+    <div id="dash-chart-wrap" style="position:relative">
+      <canvas id="cumul-chart" style="display:block"></canvas>
+    </div>
+  </div>
+</div>
     </div>
 
     <div class="page" id="page-project">
@@ -555,7 +596,8 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
           <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
-            <button id="view-btn-plan" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
+            <button id="view-btn-plan" class="view-btn active" onclick="toggleView('plan')">Бюджет</button>
+            <button id="view-btn-forecast" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
             <button id="view-btn-fact" class="view-btn active" onclick="toggleView('fact')">Факт</button>
           </div>
           <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:4px">Детализация:</span>
@@ -686,38 +728,34 @@ function initFirebase() {
       if (!user) { resolve(false); return; }
       window.firebaseUid = user.uid;
       window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
+        console.log('[loadData] snap.exists=', snap.exists);
         if (snap.exists) {
           var d = snap.data();
-          if (d.projects && d.budgets) {
+          console.log('[loadData] projects=', d.projects, 'budgets keys=', d.budgets ? Object.keys(d.budgets) : null);
+          if (d.projects && Array.isArray(d.projects) && d.projects.length > 0) {
             projects       = d.projects;
-            budgets        = d.budgets;
-            currentProject = d.currentProject || 0;
+            budgets        = d.budgets || {};
+            currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
             window.migrateData();
+            window.saveData(); // сохраняем мигрированные декадные данные
+            console.log('[loadData] loaded OK, projects:', projects.length);
             resolve(true);
             return;
           }
         }
+        console.warn('[loadData] no data found, will use demo');
         resolve(false);
-      }).catch(function() { resolve(false); });
+      }).catch(function(e) { console.error('[loadData] error:', e); resolve(false); });
     });
   };
   // One-time auth state listener for the initial page load only.
-  window.auth.onAuthStateChanged(function(user) {
+  // Firebase Compat SDK не поддерживает {once:true} — отписываемся вручную.
+  var _unsubAuth = window.auth.onAuthStateChanged(function(user) {
+    _unsubAuth(); // сразу отписаться, чтобы сработало ровно один раз
     if (user) {
       window.firebaseUid = user.uid;
-      window.loadData().then(function(loaded) {
-        if (!loaded) {
-          projects = [
-            { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
-            { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
-          ];
-          currentProject = 0;
-          budgets = {
-            0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
-            1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
-          };
-          window.saveData();
-        }
+      window.loadData().then(function() {
+        // Если в Firebase данных нет — показываем пустое приложение, ничего не перезаписываем
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('main-layout').style.display = '';
         window.renderSidebarProjects();
@@ -728,22 +766,46 @@ function initFirebase() {
       document.getElementById('login-page').style.display = 'flex';
       document.getElementById('main-layout').style.display = 'none';
     }
-  }, { once: true }); // fired only once on page load
+  });
 
-  // ── Save to Firestore (fire-and-forget) ─────────────────────────────────
-  window.saveData = function() {
+  // ── Save to Firestore (debounced) ───────────────────────────────────────
+  var _saveTimer = null;
+  window.persistDataNow = function() {
     if (!window.firebaseUid) return;
     window.db.doc('bdds/' + window.firebaseUid).set(
       { projects: projects, budgets: budgets, currentProject: currentProject }
     ).catch(function(e) { console.error('Save error:', e); });
   };
+  window.flushSaveData = function() {
+    clearTimeout(_saveTimer);
+    _saveTimer = null;
+    window.persistDataNow();
+  };
+  window.saveData = function() {
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(window.persistDataNow, 500);
+  };
+  window.addEventListener('beforeunload', function() { window.flushSaveData(); });
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  // Одноразовая миграция: если месячные данные есть, а декадные нет —
+  // копируем месячное значение в первую декаду (D1). Декадные данные — главные.
+  function _migrateMonthlyToDec(monthly, dec) {
+    if (!Array.isArray(monthly) || !Array.isArray(dec)) return;
+    for (var mi = 0; mi < monthly.length && mi < MONTHS_COUNT; mi++) {
+      var v = monthly[mi] || 0;
+      if (v !== 0 && (dec[mi*3]||0) === 0 && (dec[mi*3+1]||0) === 0 && (dec[mi*3+2]||0) === 0) {
+        dec[mi*3] = v;
+      }
+    }
+  }
 
   // ── Migrate data ────────────────────────────────────────────────────────
   window.migrateData = function() {
     Object.values(budgets).forEach(function(b) {
       (b.articles || []).forEach(function(a) {
+        // Старый формат (поле a.in) → конвертируем в lines
         if (a.in !== undefined) {
-          // Migrate old format: preserve dplan/dfact if they existed on the article
           var inDplan  = (Array.isArray(a.inDplan)  && a.inDplan.length  === DEC_COUNT) ? a.inDplan  : Array(DEC_COUNT).fill(0);
           var inDfact  = (Array.isArray(a.inDfact)  && a.inDfact.length  === DEC_COUNT) ? a.inDfact  : Array(DEC_COUNT).fill(0);
           var outDplan = (Array.isArray(a.outDplan) && a.outDplan.length === DEC_COUNT) ? a.outDplan : Array(DEC_COUNT).fill(0);
@@ -752,22 +814,41 @@ function initFirebase() {
           a.outLines = [{ name: 'Выплата 1',     plan: a.out, fact: a.factOut || Array(MONTHS_COUNT).fill(0), dplan: outDplan, dfact: outDfact }];
           delete a.in; delete a.out; delete a.factIn; delete a.factOut;
         }
-        if (a.inDirect === undefined) a.inDirect = true;
+        if (a.inDirect  === undefined) a.inDirect  = true;
         if (a.outDirect === undefined) a.outDirect = true;
-        if (a.inOpen  === undefined) a.inOpen  = true;
-        if (a.outOpen === undefined) a.outOpen = true;
-        if (!Array.isArray(a.inDplan)  || a.inDplan.length  !== DEC_COUNT) a.inDplan  = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.inDfact)  || a.inDfact.length  !== DEC_COUNT) a.inDfact  = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.outDplan) || a.outDplan.length !== DEC_COUNT) a.outDplan = Array(DEC_COUNT).fill(0);
-        if (!Array.isArray(a.outDfact) || a.outDfact.length !== DEC_COUNT) a.outDfact = Array(DEC_COUNT).fill(0);
-        if (!a.inDeleted) a.inDeleted = false;
-        (a.inLines  || []).forEach(function(l) {
-          if (!Array.isArray(l.dplan) || l.dplan.length !== DEC_COUNT) l.dplan = Array(DEC_COUNT).fill(0);
-          if (!Array.isArray(l.dfact) || l.dfact.length !== DEC_COUNT) l.dfact = Array(DEC_COUNT).fill(0);
+        if (a.inOpen    === undefined) a.inOpen    = true;
+        if (a.outOpen   === undefined) a.outOpen   = true;
+        if (a.inDeleted === undefined) a.inDeleted = false;
+        // Расширяем декадные массивы до DEC_COUNT
+        a.inDplan      = ensureDec(a.inDplan);
+        a.inDforecast  = ensureDec(a.inDforecast);
+        a.inDfact      = ensureDec(a.inDfact);
+        a.outDplan     = ensureDec(a.outDplan);
+        a.outDforecast = ensureDec(a.outDforecast);
+        a.outDfact     = ensureDec(a.outDfact);
+        // Миграция: старые месячные данные → D1 декадных массивов (если декад нет)
+        _migrateMonthlyToDec(a.inForecast,  a.inDforecast);
+        _migrateMonthlyToDec(a.outForecast, a.outDforecast);
+        _migrateMonthlyToDec(a.inPlan,      a.inDplan);
+        _migrateMonthlyToDec(a.outPlan,     a.outDplan);
+        _migrateMonthlyToDec(a.inFact,      a.inDfact);
+        _migrateMonthlyToDec(a.outFact,     a.outDfact);
+        // Строки (lines): расширяем декадные массивы и мигрируем месячные
+        (a.inLines || []).forEach(function(l) {
+          l.dplan     = ensureDec(l.dplan);
+          l.dforecast = ensureDec(l.dforecast);
+          l.dfact     = ensureDec(l.dfact);
+          _migrateMonthlyToDec(l.plan,     l.dplan);
+          _migrateMonthlyToDec(l.forecast, l.dforecast);
+          _migrateMonthlyToDec(l.fact,     l.dfact);
         });
         (a.outLines || []).forEach(function(l) {
-          if (!Array.isArray(l.dplan) || l.dplan.length !== DEC_COUNT) l.dplan = Array(DEC_COUNT).fill(0);
-          if (!Array.isArray(l.dfact) || l.dfact.length !== DEC_COUNT) l.dfact = Array(DEC_COUNT).fill(0);
+          l.dplan     = ensureDec(l.dplan);
+          l.dforecast = ensureDec(l.dforecast);
+          l.dfact     = ensureDec(l.dfact);
+          _migrateMonthlyToDec(l.plan,     l.dplan);
+          _migrateMonthlyToDec(l.forecast, l.dforecast);
+          _migrateMonthlyToDec(l.fact,     l.dfact);
         });
       });
     });
@@ -785,8 +866,8 @@ function initFirebase() {
 function newLine(name) {
   return {
     name: name || '',
-    plan: Array(MONTHS_COUNT).fill(0), fact: Array(MONTHS_COUNT).fill(0),
-    dplan: Array(DEC_COUNT).fill(0),   dfact: Array(DEC_COUNT).fill(0)
+    plan: Array(MONTHS_COUNT).fill(0), forecast: Array(MONTHS_COUNT).fill(0), fact: Array(MONTHS_COUNT).fill(0),
+    dplan: Array(DEC_COUNT).fill(0),   dforecast: Array(DEC_COUNT).fill(0),   dfact: Array(DEC_COUNT).fill(0)
   };
 }
 function newArticle(name) {
@@ -794,18 +875,24 @@ function newArticle(name) {
     name: name || 'Новая статья',
     inDirect: true,  outDirect: true,
     inOpen:   true,  outOpen:   true,
-    inPlan:   Array(MONTHS_COUNT).fill(0), inFact:   Array(MONTHS_COUNT).fill(0),
-    outPlan:  Array(MONTHS_COUNT).fill(0), outFact:  Array(MONTHS_COUNT).fill(0),
-    inDplan:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
-    outDplan: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
+    inPlan:   Array(MONTHS_COUNT).fill(0), inForecast:   Array(MONTHS_COUNT).fill(0), inFact:   Array(MONTHS_COUNT).fill(0),
+    outPlan:  Array(MONTHS_COUNT).fill(0), outForecast:  Array(MONTHS_COUNT).fill(0), outFact:  Array(MONTHS_COUNT).fill(0),
+    inDplan:  Array(DEC_COUNT).fill(0),   inDforecast:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
+    outDplan: Array(DEC_COUNT).fill(0),   outDforecast: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
     inLines:  [],
     outLines: []
   };
 }
 // Helpers for decade arrays
-function ensureDec(arr) { return Array.isArray(arr) && arr.length === DEC_COUNT ? arr : Array(DEC_COUNT).fill(0); }
-// Sum three decades of month m from a [36] array → monthly value
-function decSum(arr36, m) { return (arr36[m*3]||0)+(arr36[m*3+1]||0)+(arr36[m*3+2]||0); }
+function ensureDec(arr) {
+  if (Array.isArray(arr) && arr.length === DEC_COUNT) return arr;
+  // Сохраняем существующие данные при смене размера (например при миграции со старых 36-слотных массивов)
+  const base = Array.isArray(arr) ? arr.slice(0, DEC_COUNT) : [];
+  while (base.length < DEC_COUNT) base.push(0);
+  return base;
+}
+// Sum three decades of month m (position in project) from a decade array → monthly value
+function decSum(arr, m) { return (arr[m*3]||0)+(arr[m*3+1]||0)+(arr[m*3+2]||0); }
 // Does month m have data in decade 1 or 2?
 function hasExtraDecData(arr36, m) { return (arr36[m*3+1]||0)!==0 || (arr36[m*3+2]||0)!==0; }
 // Build monthly [12] array from direct decade [36], summing the three decades
@@ -814,10 +901,10 @@ function decToMonthly(arr36) {
 }
 // sectionSum36: like sectionSum but returns [36] for decade arrays
 function sectionSum36(art, section, field) {
-  // field = 'dplan' or 'dfact'; section = 'in' or 'out'
-  const CAP = field.charAt(0).toUpperCase() + field.slice(1); // 'Dplan' or 'Dfact'
+  // field = 'dplan', 'dforecast', or 'dfact'; section = 'in' or 'out'
+  const CAP = field.charAt(0).toUpperCase() + field.slice(1); // 'Dplan', 'Dforecast', or 'Dfact'
   if (art[section + 'Direct']) {
-    return ensureDec(art[section + CAP]); // e.g. art.inDplan, art.outDfact
+    return ensureDec(art[section + CAP]); // e.g. art.inDplan, art.outDforecast, art.inDfact
   }
   const res = Array(DEC_COUNT).fill(0);
   (art[section + 'Lines'] || []).forEach(l => {
@@ -826,27 +913,24 @@ function sectionSum36(art, section, field) {
   });
   return res;
 }
-// Вернуть суммарный массив [12] для секции (direct или lines)
-// field = 'plan' или 'fact' (строчные)
+// Вернуть суммарный массив [MONTHS_COUNT] для секции.
+// Декадные массивы — единственный источник истины.
+// field = 'plan', 'forecast', или 'fact' (строчные)
 function sectionSum(art, section, field) {
-  if (art[section + 'Direct']) {
-    const key = section + field.charAt(0).toUpperCase() + field.slice(1);
-    const arr = art[key];
-    return Array.isArray(arr) ? arr.slice() : Array(MONTHS_COUNT).fill(0);
-  }
-  return sumLines(art[section + 'Lines'], field);
-}
-// sectionSumEffective: если включён режим декад — возвращает суммы из декадных массивов
-function sectionSumEff(art, section, field) {
-  if (!viewDecade) return sectionSum(art, section, field);
-  // decade field mapping: plan→dplan, fact→dfact
-  const df = field === 'plan' ? 'dplan' : 'dfact';
+  const df = field === 'plan' ? 'dplan' : (field === 'forecast' ? 'dforecast' : 'dfact');
   return decToMonthly(sectionSum36(art, section, df));
+}
+// sectionSumEff теперь эквивалентен sectionSum (оставлен для обратной совместимости)
+function sectionSumEff(art, section, field) {
+  return sectionSum(art, section, field);
 }
 // Суммировать подстроки в массив по 12 месяцам
 function sumLines(lines, field) {
   const res = Array(MONTHS_COUNT).fill(0);
-  lines.forEach(l => l[field].forEach((v,i) => res[i] += v || 0));
+  lines.forEach(l => {
+    const arr = l[field];
+    if (Array.isArray(arr)) arr.forEach((v,i) => res[i] += v || 0);
+  });
   return res;
 }
 
@@ -856,15 +940,18 @@ function sumLines(lines, field) {
 
 let projects = [], budgets = {}, currentProject = 0;
 
-// Заглушка — Firebase перезапишет window.saveData после инициализации
+// Заглушки — Firebase перезапишет после инициализации
 window.saveData = function() {};
+window.flushSaveData = function() {};
+window.persistDataNow = function() {};
 
 let projectsOpen = true;
 let pickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
 let selectedType = null;
 
-const MONTHS_COUNT = 12;
-const DEC_COUNT    = 36;
+const MONTHS_COUNT   = 60; // макс длина проекта в месяцах (5 лет)
+const DEC_COUNT      = MONTHS_COUNT * 3; // 180 — декадные массивы по проекту (5 лет × 3 декады)
+const DEC_COUNT_YEAR = 36; // 12 мес × 3 декады — для годового дашборда
 const MONTH_NAMES      = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 const MONTH_NAMES_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
@@ -884,7 +971,7 @@ function renderSidebarProjects() {
     <div class="nav-sub-item${i===currentProject?' active':''}" onclick="selectProject(${i})">
       <span class="dot"></span>
       <span style="flex:1">${esc(p.name)}</span>
-      ${p.type ? `<span class="proj-type-badge">${p.type}</span>` : ''}
+      ${p.type ? `<span class="proj-type-badge">${esc(p.type)}</span>` : ''}
       <button class="delete-btn" onclick="event.stopPropagation();deleteProject(${i})">✕</button>
     </div>`).join('');
   document.getElementById('projects-submenu').style.display = projectsOpen ? '' : 'none';
@@ -922,7 +1009,7 @@ function toggleProjectsMenu() {
   renderSidebarProjects();
 }
 
-function selectProject(i) { currentProject = i; showPage('project'); }
+function selectProject(i) { currentProject = i; flushSaveData(); showPage('project'); }
 
 function deleteProject(i) {
   if (projects.length <= 1) { alert('Должен быть хотя бы один проект.'); return; }
@@ -938,81 +1025,121 @@ function deleteProject(i) {
 
 /* ---- PAGES ---- */
 /* ---- DASHBOARD ---- */
-function computeProjectNet12(pi) {
-  // Returns array[12] of net plan for calendar months 0-11 for project pi
-  const b = budgets[pi];
-  if (!b || !b.articles) return Array(12).fill(0);
-  const net12 = Array(12).fill(0);
-  b.articles.forEach(a => {
-    // Check if decade data has any non-zero values
-    const ip36 = sectionSum36(a, 'in',  'dplan');
-    const op36 = sectionSum36(a, 'out', 'dplan');
-    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
-    if (hasDecData) {
-      // Use decade data
-      for (let d = 0; d < DEC_COUNT; d++) {
-        net12[Math.floor(d / 3)] += (ip36[d]||0) - (op36[d]||0);
-      }
-    } else {
-      // Fall back to monthly plan data
-      const ip = sectionSum(a, 'in',  'plan');
-      const op = sectionSum(a, 'out', 'plan');
-      for (let m = 0; m < MONTHS_COUNT; m++) {
-        net12[m] += (ip[m]||0) - (op[m]||0);
-      }
-    }
-  });
-  // Zero out months outside project range using the dashboard year
-  const p = projects[pi];
-  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
-    const startKey = p.start.y * 12 + p.start.m;
-    const endKey   = p.end.y   * 12 + p.end.m;
-    // Dashboard always shows calendar months 0-11 of the project's start year
-    const dashY = p.start.y;
-    for (let m = 0; m < 12; m++) {
-      const mKey = dashY * 12 + m;
-      if (mKey < startKey || mKey > endKey) net12[m] = null;
-    }
+// Вспомогательная: строит список месяцев проекта pi для года dashY
+// Возвращает массив {calM, projIdx} — calM = 0-11, projIdx = позиция в проекте
+function _projectMonthsForYear(p, dashY) {
+  if (!p || !p.start || !p.end) return [];
+  const result = [];
+  let y = p.start.y, m = p.start.m;
+  const endKey = p.end.y * 12 + p.end.m;
+  let idx = 0;
+  while (y * 12 + m <= endKey && idx < MONTHS_COUNT) {
+    if (y === dashY) result.push({ calM: m, projIdx: idx });
+    m++; if (m > 11) { m = 0; y++; }
+    idx++;
   }
+  return result;
+}
+
+function computeProjectNet12(pi, dashY) {
+  const b = budgets[pi];
+  const p = projects[pi];
+  if (!b || !b.articles || !p || !p.start) return Array(12).fill(null);
+  dashY = dashY ?? new Date().getFullYear();
+  // Проверяем что проект пересекается с dashY
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(12).fill(null);
+  const net12 = Array(12).fill(null);
+  projY.forEach(({calM}) => net12[calM] = 0);
+  b.articles.forEach(a => {
+    const ip = sectionSum(a, 'in',  'plan');
+    const op = sectionSum(a, 'out', 'plan');
+    projY.forEach(({calM, projIdx}) => {
+      net12[calM] += (ip[projIdx]||0) - (op[projIdx]||0);
+    });
+  });
   return net12;
 }
 
-function computeProjectNetDec36(pi) {
-  // Returns array[36] of net plan per decade for project pi
+function computeProjectNet12Forecast(pi, dashY) {
   const b = budgets[pi];
-  if (!b || !b.articles) return Array(DEC_COUNT).fill(0);
-  const net36 = Array(DEC_COUNT).fill(0);
+  const p = projects[pi];
+  if (!b || !b.articles || !p || !p.start) return Array(12).fill(null);
+  dashY = dashY ?? new Date().getFullYear();
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(12).fill(null);
+  const net12 = Array(12).fill(null);
+  projY.forEach(({calM}) => net12[calM] = 0);
+  b.articles.forEach(a => {
+    const ip = sectionSum(a, 'in',  'forecast');
+    const op = sectionSum(a, 'out', 'forecast');
+    projY.forEach(({calM, projIdx}) => {
+      net12[calM] += (ip[projIdx]||0) - (op[projIdx]||0);
+    });
+  });
+  return net12;
+}
+
+function computeProjectNetDec36(pi, dashY) {
+  const b = budgets[pi];
+  const p = projects[pi];
+  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT).fill(0);
+  dashY = dashY ?? new Date().getFullYear();
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(DEC_COUNT_YEAR).fill(0);
+  const net36 = Array(DEC_COUNT_YEAR).fill(0); // годовой массив (0-35 = Jan.d1..Dec.d3)
   b.articles.forEach(a => {
     const ip36 = sectionSum36(a, 'in',  'dplan');
     const op36 = sectionSum36(a, 'out', 'dplan');
-    const hasDecData = ip36.some(v => v !== 0) || op36.some(v => v !== 0);
-    if (hasDecData) {
-      for (let i = 0; i < DEC_COUNT; i++) {
-        net36[i] += (ip36[i]||0) - (op36[i]||0);
+    projY.forEach(({calM, projIdx}) => {
+      for (let d = 0; d < 3; d++) {
+        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
       }
-    } else {
-      // Fall back to monthly plan data, spread evenly across 3 decades
-      const ip = sectionSum(a, 'in',  'plan');
-      const op = sectionSum(a, 'out', 'plan');
-      for (let m = 0; m < MONTHS_COUNT; m++) {
-        const net = (ip[m]||0) - (op[m]||0);
-        for (let d = 0; d < 3; d++) net36[m*3+d] += net / 3;
-      }
-    }
+    });
   });
-  // Zero out decades outside project range using the project's start year
-  const p = projects[pi];
-  if (p && p.start && p.end && p.start.m != null && p.end.m != null) {
-    const startKey = p.start.y * 12 + p.start.m;
-    const endKey   = p.end.y   * 12 + p.end.m;
-    const dashY = p.start.y;
-    for (let d = 0; d < DEC_COUNT; d++) {
-      const m = Math.floor(d / 3);
-      const mKey = dashY * 12 + m;
-      if (mKey < startKey || mKey > endKey) net36[d] = 0;
-    }
-  }
   return net36;
+}
+
+function computeProjectNetDec36Forecast(pi, dashY) {
+  const b = budgets[pi];
+  const p = projects[pi];
+  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT_YEAR).fill(0);
+  dashY = dashY ?? new Date().getFullYear();
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return Array(DEC_COUNT_YEAR).fill(0);
+  const net36 = Array(DEC_COUNT_YEAR).fill(0);
+  b.articles.forEach(a => {
+    const ip36 = sectionSum36(a, 'in',  'dforecast');
+    const op36 = sectionSum36(a, 'out', 'dforecast');
+    projY.forEach(({calM, projIdx}) => {
+      for (let d = 0; d < 3; d++) {
+        net36[calM*3+d] += (ip36[projIdx*3+d]||0) - (op36[projIdx*3+d]||0);
+      }
+    });
+  });
+  return net36;
+}
+
+// Compute cumulative net for December of previous year (prior period carryover)
+function computePriorPeriodCumul(pi) {
+  const b = budgets[pi];
+  const p = projects[pi];
+  if (!b || !b.articles || !p || !p.start) return { budget: 0, forecast: 0 };
+  const prevY = new Date().getFullYear() - 1;
+  const projPrevY = _projectMonthsForYear(p, prevY);
+  if (!projPrevY.length) return { budget: 0, forecast: 0 };
+  let sumB = 0, sumP = 0;
+  b.articles.forEach(a => {
+    const ip = sectionSum(a, 'in',  'plan');
+    const op = sectionSum(a, 'out', 'plan');
+    const ipF = sectionSum(a, 'in',  'forecast');
+    const opF = sectionSum(a, 'out', 'forecast');
+    projPrevY.forEach(({projIdx}) => {
+      sumB += (ip[projIdx]||0) - (op[projIdx]||0);
+      sumP += (ipF[projIdx]||0) - (opF[projIdx]||0);
+    });
+  });
+  return { budget: sumB, forecast: sumP };
 }
 
 function renderDashboard() {
@@ -1020,209 +1147,324 @@ function renderDashboard() {
   const curM = new Date().getMonth();
   const DEC_LABELS = ['1–10','11–20','21–31'];
   document.getElementById('dashboard-year-label').textContent = curY + ' год';
-
   const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
-  // Build header
-  let thead = '<tr>';
-  thead += '<th class="dash-sticky">Проект</th>';
-
-  if (viewDashDecade) {
-    // Show 9 decades: starting from current decade of current month
-    const startDecIdx = curM * 3; // first decade of current month
-    const SHOWN_DEC = 9;
-    const startMonth = curM;
-    const endMonth = Math.min(curM + 2, 11); // up to 2 more months = 9 decades max
-
-    // Month group header: 3 decades per month, label centered via colspan
-    for (let m = startMonth; m <= endMonth; m++) {
-      const isCurM = (m === curM);
-      thead += `<th class="dash-dec-group${isCurM?' dash-cur-month':''}" colspan="3">${MNAMES[m]}</th>`;
-    }
-    thead += '</tr><tr><th class="dash-sticky"></th>';
-    const today = new Date().getDate();
-    const curDecIdx = today <= 10 ? 0 : today <= 20 ? 1 : 2;
-    const curDecGlobal = curM * 3 + curDecIdx;
-    for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-      const isCurDec = (d === curDecGlobal);
-      thead += `<th class="dash-dec-head${isCurDec?' dash-cur-month':''}" style="text-align:center">${DEC_LABELS[d % 3]}</th>`;
-    }
-  } else {
-    for (let m = 0; m < 12; m++) {
-      thead += `<th${m === curM ? ' class="dash-cur-month"' : ''}>${MNAMES[m]}</th>`;
-    }
-  }
-  thead += '</tr>';
-  document.getElementById('dashboard-thead').innerHTML = thead;
-
-  const fmtD = (v) => v === null ? '' : (v === 0 ? '—' : (Math.round(v / 1000)).toLocaleString('ru-RU'));
-  const cellClass = (v, outRange, isCurM) => {
-    const cls = [];
-    if (outRange) { cls.push('dash-out-range'); }
-    else if (v === null || v === 0) { cls.push('dash-zero'); }
-    else if (v > 0) { cls.push('dash-pos'); }
-    else { cls.push('dash-neg'); }
-    if (isCurM) cls.push('dash-cur-month');
-    return cls.join(' ');
+  const fmtD = (v) => {
+    if (v === null) return '';
+    if (v === 0) return '—';
+    const k = Math.round(v / 1000);
+    return k.toLocaleString('ru-RU');
   };
+  const colorB  = (v) => v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
+  const colorPl = (v) => v > 0 ? '#7a6000' : v < 0 ? '#a33020' : '#999';
 
-  let tbody = '';
-
+  // ── DECADE VIEW ──────────────────────────────────────────────────────
   if (viewDashDecade) {
-    // Show 9 decades starting from current month
-    const startDecIdx = curM * 3;
-    const SHOWN_DEC = 9;
-    const today = new Date().getDate();
-    const curDecIdx = today <= 10 ? 0 : today <= 20 ? 1 : 2;
-    const curDecGlobal = curM * 3 + curDecIdx;
+    const SHOWN_DEC    = 9;
+    const startDecIdx  = Math.min(curM * 3, DEC_COUNT_YEAR - SHOWN_DEC);
+    const startMonth   = Math.floor(startDecIdx / 3);
+    const endMonth     = Math.min(Math.floor((startDecIdx + SHOWN_DEC - 1) / 3), 11);
+    const today        = new Date().getDate();
+    const curDecLocal  = today <= 10 ? 0 : today <= 20 ? 1 : 2;
+    const curDecGlobal = curM * 3 + curDecLocal;
+    const prevY = curY - 1;
 
-    const projectNets36 = projects.map((p, pi) => computeProjectNetDec36(pi));
-
-    // Company totals per decade (decades outside project range = 0)
-    const companyNet36 = Array(DEC_COUNT).fill(0);
-    projectNets36.forEach((net36, pi) => {
-      for (let d = 0; d < DEC_COUNT; d++) {
-        companyNet36[d] += net36[d] || 0;
-      }
-    });
-
-    // Cumulative over the full year (dec 0..35)
-    const fullCumul = [];
-    let run = 0;
-    for (let d = 0; d < DEC_COUNT; d++) {
-      run += companyNet36[d] || 0;
-      fullCumul[d] = run;
+    // THEAD — 3 строки:
+    // 1) «Проект» rowspan=3 | «Дек пред.» | месяц colspan=6
+    // 2) decade colspan=2
+    // 3) «бюджет» | «план»
+    const priorColspan = viewDashBudget ? 2 : 1;
+    let thead = '<tr><th class="dash-sticky" rowspan="3" style="text-align:left;z-index:5">Проект</th>';
+    thead += `<th class="dash-dec-head" colspan="${priorColspan}" style="background:#ede8ff;color:#3d1a8a;font-weight:600;text-align:center;border-right:2px solid #c0c0d0;white-space:normal;line-height:1.3">Дек<br>'${String(prevY).slice(-2)}</th>`;
+    for (let m = startMonth; m <= endMonth; m++) {
+      thead += `<th class="dash-dec-group${m===curM?' dash-cur-month':''}" colspan="${viewDashBudget?6:3}">${MNAMES[m]}</th>`;
     }
-    // Value that was accumulated BEFORE the first shown decade (dec 0 = Jan 1-10)
-    const cumulBeforeStart = startDecIdx > 0 ? (fullCumul[startDecIdx - 1] || 0) : 0;
-    // For 9 shown decades: start from cumulBeforeStart, add each shown decade
-    const cumul9 = [];
-    let runShown = cumulBeforeStart;
+    thead += '</tr><tr>';
+    // Строка 2: плейсхолдер для колонки «Дек пред.» (Проект уже rowspan=3)
+    thead += `<th colspan="${priorColspan}" style="background:#ede8ff;border-right:2px solid #c0c0d0"></th>`;
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-      runShown += companyNet36[d] || 0;
-      cumul9.push(runShown);
+      const cm = d === curDecGlobal ? ' dash-cur-month' : '';
+      thead += `<th class="dash-dec-head${cm}" colspan="${viewDashBudget?2:1}" style="text-align:center;border-right:2px solid #c0c0d0">${DEC_LABELS[d % 3]}</th>`;
+    }
+    thead += '</tr><tr>';
+    // Строка 3: плейсхолдер для колонки «Дек пред.»
+    thead += `<th colspan="${priorColspan}" style="background:#ede8ff;border-right:2px solid #c0c0d0"></th>`;
+    for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
+      const cm = d === curDecGlobal ? ' dash-cur-month' : '';
+      if (viewDashBudget)
+        thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none">бдж</th>`;
+      thead += `<th class="dash-dec-head${cm}" style="color:#7a6000;background:#fff8e0;font-size:9px;border-right:2px solid #c0c0d0">план</th>`;
+    }
+    thead += '</tr>';
+    document.getElementById('dashboard-thead').innerHTML = thead;
+
+    // DATA
+    const nets36B  = projects.map((p, pi) => computeProjectNetDec36(pi, curY));
+    const nets36P  = projects.map((p, pi) => computeProjectNetDec36Forecast(pi, curY));
+    // Prior period: cumulative of ALL 36 decades of previous year
+    const prior12  = projects.map((p, pi) => computePriorPeriodCumul(pi));
+    const totB36   = Array(DEC_COUNT_YEAR).fill(0);
+    const totP36   = Array(DEC_COUNT_YEAR).fill(0);
+    nets36B.forEach(n => { for (let d=0;d<DEC_COUNT_YEAR;d++) totB36[d] += n[d]||0; });
+    nets36P.forEach(n => { for (let d=0;d<DEC_COUNT_YEAR;d++) totP36[d] += n[d]||0; });
+    // Company prior period totals
+    let compPriorB = 0, compPriorP = 0;
+    prior12.forEach(p => { compPriorB += p.budget; compPriorP += p.forecast; });
+
+    // Full cumulative arrays for current year (DEC_COUNT_YEAR = 36 decades)
+    const fullCB=[],fullCP=[];
+    let rB=0,rP=0;
+    for(let d=0;d<DEC_COUNT_YEAR;d++){rB+=totB36[d]||0;fullCB[d]=rB;rP+=totP36[d]||0;fullCP[d]=rP;}
+    // Prior period value (cumulative before first shown decade)
+    const befB = startDecIdx>0?(fullCB[startDecIdx-1]||0):0;
+    const befP = startDecIdx>0?(fullCP[startDecIdx-1]||0):0;
+    // Cumulative with prior period carryover
+    const cum9B=[],cum9P=[];
+    let rsB=compPriorB+befB, rsP=compPriorP+befP;
+    for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++){
+      rsB+=totB36[d]||0; cum9B.push(rsB);
+      rsP+=totP36[d]||0; cum9P.push(rsP);
     }
 
-    projects.forEach((p, pi) => {
-      const net36 = projectNets36[pi];
-      tbody += '<tr>';
-      const badge = p.type ? `<span class="proj-badge">${p.type}</span>` : '';
-      tbody += `<td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
-      for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-        const v = net36[d] || 0;
-        const isCurDec = (d === curDecGlobal);
-        const colorCls = v === 0 ? 'dash-zero' : (v > 0 ? 'dash-pos' : 'dash-neg');
-        tbody += `<td class="dash-dec-cell ${colorCls}${isCurDec?' dash-cur-month':''}">${fmtD(v)}</td>`;
-      }
+    // TBODY
+    let tbody = '';
+    const pair = (vB,vP,cur) => {
+      const cm = cur?' dash-cur-month':'';
+      const cB = vB===null||vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg');
+      const cP = vP===null||vP===0?'dash-zero':(vP>0?'dash-pos':'dash-neg');
+      const budgetTd = viewDashBudget
+        ? `<td class="dash-dec-cell ${cB}${cm}" style="border-right:none">${vB===null?'':fmtD(vB)}</td>`
+        : '';
+      return budgetTd +
+             `<td class="dash-dec-cell ${cP}${cm}" style="color:${colorPl(vP||0)};background:#fffce8;border-right:2px solid #c0c0d0">${vP===null?'':fmtD(vP)}</td>`;
+    };
+
+    // Prior period cells for each project
+    const priorCellDec = (pr) => {
+      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0';
+      const cB = pr.budget===0?'dash-zero':(pr.budget>0?'dash-pos':'dash-neg');
+      const cP = pr.forecast===0?'dash-zero':(pr.forecast>0?'dash-pos':'dash-neg');
+      const budgetTd = viewDashBudget
+        ? `<td class="dash-dec-cell ${cB}" style="border-right:none;${style}">${fmtD(pr.budget)}</td>`
+        : '';
+      return budgetTd + `<td class="dash-dec-cell ${cP}" style="${style}">${fmtD(pr.forecast)}</td>`;
+    };
+
+    // Helper for total rows' prior column
+    const priorCellDecTotal = (vB, vP) => {
+      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td class="dash-dec-cell" style="border-right:none;${style}">${fmtD(vB)}</td>`
+        : '';
+      return budgetTd + `<td class="dash-dec-cell" style="${style}">${fmtD(vP)}</td>`;
+    };
+
+    projects.forEach((p,pi) => {
+      const nB=nets36B[pi], nP=nets36P[pi];
+      const pr=prior12[pi];
+      const inYear = _projectMonthsForYear(p, curY).length > 0;
+      const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
+      tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      // Prior period column
+      tbody += priorCellDec(pr);
+      for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++)
+        tbody += pair(inYear ? (nB[d]||0) : null, inYear ? (nP[d]||0) : null, d===curDecGlobal);
       tbody += '</tr>';
     });
 
-    // Company total row
-    tbody += '<tr class="dash-total">';
-    tbody += '<td class="dash-sticky left">Денежный поток компании</td>';
-    for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
-      const v = companyNet36[d] || 0;
-      const isCurDec = (d === curDecGlobal);
-      const color = v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="dash-dec-cell${isCurDec?' dash-cur-month':''}" style="color:${color}">${fmtD(v)}</td>`;
+    tbody += '<tr class="dash-total"><td class="dash-sticky left">Денежный поток компании</td>';
+    tbody += priorCellDecTotal(compPriorB, compPriorP);
+    for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++){
+      const vB=totB36[d]||0, vP=totP36[d]||0, cur=d===curDecGlobal;
+      const cm=cur?' dash-cur-month':'';
+      if (viewDashBudget)
+        tbody += `<td class="dash-dec-cell${cm}" style="color:${colorB(vB)};border-right:none">${fmtD(vB)}</td>`;
+      tbody += `<td class="dash-dec-cell${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
-    // Cumulative row
-    tbody += '<tr class="dash-cumul">';
-    tbody += '<td class="dash-sticky left">Накопительно</td>';
-    for (let d = 0; d < SHOWN_DEC; d++) {
-      const v = cumul9[d] || 0;
-      const isCurDec = (d === curDecIdx);
-      const color = v > 0 ? '#3d1a8a' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="dash-dec-cell${isCurDec?' dash-cur-month':''}" style="color:${color}">${fmtD(v)}</td>`;
+    tbody += '<tr class="dash-cumul"><td class="dash-sticky left">Накопительно</td>';
+    // Prior period cumulative carryover
+    tbody += priorCellDecTotal(compPriorB, compPriorP);
+    for(let i=0;i<SHOWN_DEC;i++){
+      const vB=cum9B[i]||0, vP=cum9P[i]||0, cur=(startDecIdx+i)===curDecGlobal;
+      const cm=cur?' dash-cur-month':'';
+      const cB=vB>0?'#3d1a8a':vB<0?'#a33020':'#999';
+      const cP=vP>0?'#5a4000':vP<0?'#a33020':'#999';
+      if (viewDashBudget)
+        tbody += `<td class="dash-dec-cell${cm}" style="color:${cB};border-right:none">${fmtD(vB)}</td>`;
+      tbody += `<td class="dash-dec-cell${cm}" style="color:${colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
-    
+
     document.getElementById('dashboard-body').innerHTML = tbody;
-    // Build sliced cumul36 for chart (9 values)
-    const cumul36Slice = cumul9.slice(0, SHOWN_DEC);
-    requestAnimationFrame(() => renderCumulChartDec(cumul36Slice, SHOWN_DEC));
+    requestAnimationFrame(() => renderCumulChartDec(cum9B, cum9P, SHOWN_DEC));
+
+  // ── MONTH VIEW ───────────────────────────────────────────────────────
   } else {
-    // Month view
-    const projectNets12 = projects.map((p, pi) => computeProjectNet12(pi));
+    const prevY = curY - 1;
+    // THEAD — 2 строки:
+    // 1) «Проект» rowspan=2 | «Дек пред.» | месяц colspan=2
+    // 2) «бюджет» | «план»
+    const cs = viewDashBudget ? 2 : 1;
+    let thead = '<tr><th class="dash-sticky" rowspan="2" style="text-align:left">Проект</th>';
+    // Prior period column (December of previous year)
+    const priorColspan = viewDashBudget ? 2 : 1;
+    thead += `<th colspan="${priorColspan}" style="text-align:center;border-right:2px solid #c0c0d0;background:#ede8ff;color:#3d1a8a;font-size:10px;font-weight:600;padding:3px 6px">Дек '${String(prevY).slice(-2)}</th>`;
+    for(let m=0;m<12;m++){
+      const cm = m===curM?' class="dash-cur-month"':'';
+      thead += `<th${cm} colspan="${cs}" style="text-align:center;border-right:2px solid #c0c0d0">${MNAMES[m]}</th>`;
+    }
+    thead += '</tr><tr>';
+    // Prior period subheaders: бдж only if budget, always план
+    if (viewDashBudget)
+      thead += `<th style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бдж</th>`;
+    thead += `<th style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
+    for(let m=0;m<12;m++){
+      const cm = m===curM?' class="dash-cur-month"':'';
+      if (viewDashBudget)
+        thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бдж</th>`;
+      thead += `<th${cm} style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
+    }
+    thead += '</tr>';
+    document.getElementById('dashboard-thead').innerHTML = thead;
 
-    const companyNet = Array(12).fill(0);
-    projectNets12.forEach(net12 => {
-      for (let m = 0; m < 12; m++) {
-        companyNet[m] += net12[m] || 0;
-      }
-    });
+    // DATA
+    const nets12B  = projects.map((p,pi) => computeProjectNet12(pi, curY));
+    const nets12P  = projects.map((p,pi) => computeProjectNet12Forecast(pi, curY));
+    // Prior period cumulative for each project
+    const prior12  = projects.map((p,pi) => computePriorPeriodCumul(pi));
+    const totB     = Array(12).fill(null);
+    const totP     = Array(12).fill(null);
+    // Company totals for prior period
+    let compPriorB = 0, compPriorP = 0;
+    prior12.forEach(p => { compPriorB += p.budget; compPriorP += p.forecast; });
+    nets12B.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totB[m] = (totB[m] ?? 0) + n[m]; });
+    nets12P.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totP[m] = (totP[m] ?? 0) + n[m]; });
 
-    const cumul = [];
-    let run = 0;
-    for (let m = 0; m < 12; m++) {
-      run += companyNet[m];
-      cumul.push(run);
+    const cumB=[],cumP=[];
+    let rB=compPriorB, rP=compPriorP;
+    for(let m=0;m<12;m++){
+      if (totB[m] !== null) { rB += totB[m]; cumB.push(rB); } else cumB.push(null);
+      if (totP[m] !== null) { rP += totP[m]; cumP.push(rP); } else cumP.push(null);
     }
 
-    projects.forEach((p, pi) => {
-      const net12 = projectNets12[pi];
-      tbody += '<tr>';
-      const badge = p.type ? `<span class="proj-badge">${p.type}</span>` : '';
-      tbody += `<td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
-      for (let m = 0; m < 12; m++) {
-        const v = net12[m];
-        const outRange = v === null;
-        tbody += `<td class="${cellClass(v, outRange, m === curM)}">${outRange ? '' : fmtD(v)}</td>`;
-      }
+    // TBODY
+    let tbody = '';
+
+    const pair = (vB, vP, outB, outP, cur) => {
+      const cm = cur?' dash-cur-month':'';
+      const cB = outB?'dash-out-range':(vB===null||vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg'));
+      const planBorder = 'border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td class="${cB}${cm}" style="border-right:none">${outB?'':fmtD(vB)}</td>`
+        : '';
+      const planTd = `<td class="${outP?'dash-out-range':cm}" style="${outP?'':('color:'+colorPl(vP||0)+';background:#fffce8')};${planBorder}">${outP?'':fmtD(vP)}</td>`;
+      return budgetTd + planTd;
+    };
+
+    // Prior period cell (column before January)
+    const priorCell = (vB, vP, idx) => {
+      const cB = vB===0?'dash-zero':(vB>0?'dash-pos':'dash-neg');
+      const cP = vP===0?'dash-zero':(vP>0?'dash-pos':'dash-neg');
+      const style = 'background:#ede8ff;color:#3d1a8a;border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td class="${cB}" style="border-right:none;${style}">${fmtD(vB)}</td>`
+        : '';
+      return budgetTd + `<td class="${cP}" style="${style}">${fmtD(vP)}</td>`;
+    };
+
+    // Helper to build prior period column for each row
+    const priorCellTotal = (vB, vP) => {
+      const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+      const budgetTd = viewDashBudget
+        ? `<td style="border-right:none;${style}">${fmtD(vB)}</td>`
+        : '';
+      return budgetTd + `<td style="${style}">${fmtD(vP)}</td>`;
+    };
+
+    projects.forEach((p,pi) => {
+      const nB=nets12B[pi], nP=nets12P[pi];
+      const pr=prior12[pi];
+      const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
+      tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      // Prior period column
+      tbody += priorCell(pr.budget, pr.forecast, pi);
+      for(let m=0;m<12;m++)
+        tbody += pair(nB[m], nP[m], nB[m]===null, nP[m]===null, m===curM);
       tbody += '</tr>';
     });
 
-    tbody += '<tr class="dash-total">';
-    tbody += '<td class="dash-sticky left">Денежный поток компании</td>';
-    for (let m = 0; m < 12; m++) {
-      const v = companyNet[m];
-      const color = v > 0 ? '#0a6e4e' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="${m === curM ? 'dash-cur-month' : ''}" style="color:${color}">${fmtD(v)}</td>`;
+    // Company totals row
+    tbody += '<tr class="dash-total"><td class="dash-sticky left">Денежный поток компании</td>';
+    tbody += priorCellTotal(compPriorB, compPriorP);
+    for(let m=0;m<12;m++){
+      const vB=totB[m], vP=totP[m], cur=m===curM;
+      const cm=cur?' dash-cur-month':'';
+      if (viewDashBudget)
+        tbody += `<td class="${cm}" style="color:${vB===null?'#999':colorB(vB)};border-right:none">${vB===null?'':fmtD(vB)}</td>`;
+      tbody += `<td class="${cm}" style="color:${vP===null?'#999':colorPl(vP)};background:#fffce8;border-right:2px solid #c0c0d0">${vP===null?'':fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
-    tbody += '<tr class="dash-cumul">';
-    tbody += '<td class="dash-sticky left">Накопительно</td>';
-    for (let m = 0; m < 12; m++) {
-      const v = cumul[m];
-      const color = v > 0 ? '#3d1a8a' : v < 0 ? '#a33020' : '#999';
-      tbody += `<td class="${m === curM ? 'dash-cur-month' : ''}" style="color:${color}">${fmtD(v)}</td>`;
+    // Cumulative row — starts from prior period values
+    tbody += '<tr class="dash-cumul"><td class="dash-sticky left">Накопительно</td>';
+    // Prior period cumulative: just show the carryover value
+    const style = 'background:#d8d0f5;color:#3d1a8a;font-weight:600;border-right:2px solid #c0c0d0';
+    const budgetPriorCumul = viewDashBudget
+      ? `<td style="border-right:none;${style}">${fmtD(compPriorB)}</td>`
+      : '';
+    tbody += budgetPriorCumul + `<td style="${style}">${fmtD(compPriorP)}</td>`;
+    for(let m=0;m<12;m++){
+      const vB=cumB[m], vP=cumP[m], cur=m===curM;
+      const cm=cur?' dash-cur-month':'';
+      const cB=vB===null?'#999':(vB>0?'#3d1a8a':vB<0?'#a33020':'#999');
+      const cP=vP===null?'#999':(vP>0?'#5a4000':vP<0?'#a33020':'#999');
+      if (viewDashBudget)
+        tbody += `<td class="${cm}" style="color:${cB};border-right:none">${vB===null?'':fmtD(vB)}</td>`;
+      tbody += `<td class="${cm}" style="color:${colorPl(vP||0)};background:#fffce8;border-right:2px solid #c0c0d0">${vP===null?'':fmtD(vP)}</td>`;
     }
     tbody += '</tr>';
 
     document.getElementById('dashboard-body').innerHTML = tbody;
-    requestAnimationFrame(() => renderCumulChart(cumul, curM));
+    requestAnimationFrame(() => renderCumulChart(cumB, cumP, curM));
   }
 }
 
 
 /* ---- CUMULATIVE CHART ---- */
-function renderCumulChart(cumul, curM) {
+function renderCumulChart(cumul, cumulFC, curM) {
   const canvas = document.getElementById('cumul-chart');
   if (!canvas) return;
 
   const dpr = window.devicePixelRatio || 1;
 
+  // Синхронизируем ширину canvas с таблицей
+  const tbl = document.getElementById('dashboard-table');
+  if (tbl) canvas.style.width = tbl.offsetWidth + 'px';
+
   // ── Read column X-centres from the actual table header cells ──
   const thead = document.getElementById('dashboard-thead');
-  const hCells = thead ? Array.from(thead.querySelectorAll('th')) : [];
-  // First th is the sticky "Проект" col, then 12 month ths
-  const monthThs = hCells.slice(1); // 12 cells
+  // Берём только первую строку thead — там месячные группы
+  const firstRow = thead ? thead.querySelector('tr') : null;
+  const hCells   = firstRow ? Array.from(firstRow.querySelectorAll('th')) : [];
+  // First th is the sticky «Проект», second is the prior period column, rest are 12 months
+  const monthThs = hCells.slice(2); // skip sticky + prior period
   if (monthThs.length !== 12) return; // table not yet rendered
 
-  const canvasRect = canvas.getBoundingClientRect();
-  // x positions of month columns relative to canvas left edge
+  // x positions of month columns — используем offsetLeft чтобы не зависеть от скролла
+  const tableOffsetLeft = tbl ? tbl.getBoundingClientRect().left - canvas.getBoundingClientRect().left : 0;
   const colX = monthThs.map(th => {
     const r = th.getBoundingClientRect();
-    return (r.left + r.right) / 2 - canvasRect.left;
+    return (r.left + r.right) / 2 - canvas.getBoundingClientRect().left;
   });
 
-  const W = canvas.parentElement.clientWidth || 800;
+  // Берём ширину таблицы чтобы canvas совпадал с ней при скролле
+  const dashTbl = document.getElementById('dashboard-table');
+  const W = (dashTbl ? dashTbl.offsetWidth : canvas.parentElement.clientWidth) || 800;
   const H = 220;
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
 
@@ -1231,12 +1473,13 @@ function renderCumulChart(cumul, curM) {
   ctx.clearRect(0, 0, W, H);
 
   // Left pad = leftmost column centre, right edge = rightmost centre
-  const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
+  const PAD = { top: 24, right: 20, bottom: 16, left: 20 };
   const cH  = H - PAD.top - PAD.bottom;
 
-  const vals = cumul.map(v => v / 1000);
-  const minVal = Math.min(0, ...vals);
-  const maxVal = Math.max(0, ...vals);
+  const vals   = cumul.map(v => v / 1000);
+  const valsFC = cumulFC ? cumulFC.map(v => v / 1000) : vals;
+  const minVal = Math.min(0, ...vals, ...valsFC);
+  const maxVal = Math.max(0, ...vals, ...valsFC);
   const range  = maxVal - minVal || 1;
   const pad    = range * 0.12;
   const vMin   = minVal - pad;
@@ -1354,7 +1597,24 @@ function renderCumulChart(cumul, curM) {
     ctx.restore();
   }
 
-  // ── Dots ─────────────────────────────────────────────────────
+  // ── Forecast (план) line — dashed ───────────────────────────
+  if (cumulFC) {
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    for (let m = 0; m < 12; m++) {
+      const v = valsFC[m];
+      if (m === 0) ctx.moveTo(toX(m), toY(v));
+      else         ctx.lineTo(toX(m), toY(v));
+    }
+    ctx.strokeStyle = '#c8a000';
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Dots бюджет ───────────────────────────────────────────────
   for (let m = 0; m < 12; m++) {
     const v = vals[m], cx = toX(m), cy = toY(v);
     ctx.beginPath();
@@ -1366,41 +1626,73 @@ function renderCumulChart(cumul, curM) {
     ctx.stroke();
   }
 
-  // ── Value labels ─────────────────────────────────────────────
+  // ── Dots план ────────────────────────────────────────────────
+  if (cumulFC) {
+    for (let m = 0; m < 12; m++) {
+      const v = valsFC[m], cx = toX(m), cy = toY(v);
+      ctx.beginPath();
+      ctx.arc(cx, cy, m === curM ? 4 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#c8a000';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // ── Value labels: бюджет и план — без наложения ─────────────
+  // Та линия, что выше в данной точке → метка сверху; ниже → снизу
   ctx.textAlign = 'center';
+  ctx.font = '10px system-ui,sans-serif';
   for (let m = 0; m < 12; m++) {
-    const v = vals[m];
-    if (v === 0) continue;
-    const cx = toX(m), cy = toY(v);
-    const lbl = String(Math.round(v));
-    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
-    ctx.font = '10px system-ui,sans-serif';
-    ctx.fillText(lbl, cx, v >= 0 ? cy - 8 : cy + 15);
+    const vB = vals[m];
+    const vP = cumulFC ? valsFC[m] : null;
+    // bAbove=true → бюджет выше (или план отсутствует)
+    const bAbove = vP === null || vB >= vP;
+    if (vB !== 0) {
+      const cx = toX(m), cy = toY(vB);
+      ctx.fillStyle = vB >= 0 ? '#0a6e4e' : '#c0392b';
+      ctx.fillText(String(Math.round(vB)), cx, bAbove ? cy - 8 : cy + 15);
+    }
+    if (vP !== null && vP !== 0) {
+      const cx = toX(m), cy = toY(vP);
+      ctx.fillStyle = '#c8a000';
+      ctx.fillText(String(Math.round(vP)), cx, bAbove ? cy + 15 : cy - 8);
+    }
   }
 }
 
 /* ---- DECADE CHART (dashboard) ---- */
-function renderCumulChartDec(cumulArr, shownDec) {
+function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   const shown = shownDec || cumulArr.length;
   const canvas = document.getElementById('cumul-chart');
   if (!canvas) return;
 
   const dpr = window.devicePixelRatio || 1;
 
+  // Синхронизируем ширину canvas с таблицей
+  const tbl = document.getElementById('dashboard-table');
+  if (tbl) canvas.style.width = tbl.offsetWidth + 'px';
+
   const thead = document.getElementById('dashboard-thead');
-  const decThs = thead ? Array.from(thead.querySelectorAll('th.dash-dec-head')) : [];
+  // Берём 2-ю строку thead (декады с colspan=2), skip 1st row which has sticky + prior
+  const theadRows = thead ? Array.from(thead.querySelectorAll('tr')) : [];
+  // Row 1 has sticky + prior (not decade cells), row 2 has decade labels
+  const decRow    = theadRows.length > 1 ? theadRows[1] : null; // decade labels row
+  const decThs    = decRow ? Array.from(decRow.querySelectorAll('th.dash-dec-head')) : [];
   if (decThs.length < shown) return;
 
-  const canvasRect = canvas.getBoundingClientRect();
   const colX = decThs.map(th => {
     const r = th.getBoundingClientRect();
-    return (r.left + r.right) / 2 - canvasRect.left;
+    return (r.left + r.right) / 2 - canvas.getBoundingClientRect().left;
   });
 
-  const W = canvas.parentElement.clientWidth || 800;
+  // Берём ширину таблицы чтобы canvas совпадал с ней при скролле
+  const dashTbl = document.getElementById('dashboard-table');
+  const W = (dashTbl ? dashTbl.offsetWidth : canvas.parentElement.clientWidth) || 800;
   const H = 220;
-  canvas.width  = W * dpr;
-  canvas.height = H * dpr;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
 
@@ -1408,12 +1700,13 @@ function renderCumulChartDec(cumulArr, shownDec) {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, W, H);
 
-  const PAD = { top: 24, right: 0, bottom: 16, left: 0 };
+  const PAD = { top: 24, right: 20, bottom: 16, left: 20 };
   const cH  = H - PAD.top - PAD.bottom;
 
-  const validVals = cumulArr.filter(v => v !== null).map(v => v / 1000);
-  const minVal = validVals.length ? Math.min(0, ...validVals) : 0;
-  const maxVal = validVals.length ? Math.max(0, ...validVals) : 1;
+  const validVals   = cumulArr.filter(v => v !== null).map(v => v / 1000);
+  const validValsFC = cumulArrFC ? cumulArrFC.filter(v => v !== null).map(v => v / 1000) : [];
+  const minVal = Math.min(0, ...(validVals.length ? validVals : [0]), ...(validValsFC.length ? validValsFC : [0]));
+  const maxVal = Math.max(0, ...(validVals.length ? validVals : [1]), ...(validValsFC.length ? validValsFC : [1]));
   const pad    = (maxVal - minVal) * 0.12 || 1;
   const vMin   = minVal - pad;
   const vMax   = maxVal + pad;
@@ -1472,6 +1765,7 @@ function renderCumulChartDec(cumulArr, shownDec) {
 
   // ── Filled areas ────────────────────────────────────────────
   const valsScaled = cumulArr.map(v => v === null ? null : v / 1000);
+  const valsFC = cumulArrFC ? cumulArrFC.map(v => v === null ? null : v / 1000) : null;
   function drawFill(color, isAbove) {
     ctx.save();
     if (isAbove) ctx.rect(xLeft, PAD.top, xRight - xLeft, zeroY - PAD.top);
@@ -1546,15 +1840,55 @@ function renderCumulChartDec(cumulArr, shownDec) {
     ctx.stroke();
   }
 
-  // ── Value labels ───────────────────────────────────────────
+  // ── Линия план (пунктир) ──────────────────────────────────
+  if (cumulArrFC) {
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = '#c8a000';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    let firstFC = true;
+    for (let d = 0; d < shown; d++) {
+      if (valsFC[d] === null) { firstFC = true; continue; }
+      if (firstFC) { ctx.moveTo(toX(d), toY(valsFC[d])); firstFC = false; }
+      else          ctx.lineTo(toX(d), toY(valsFC[d]));
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Dots план
+    for (let d = 0; d < shown; d++) {
+      if (cumulArrFC[d] === null) continue;
+      const v = valsFC[d], cx = toX(d), cy = toY(v);
+      ctx.beginPath();
+      ctx.arc(cx, cy, d === 0 ? 4 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#c8a000';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+  }
+
+  // ── Value labels: бюджет и план — без наложения ─────────────
   ctx.textAlign = 'center';
+  ctx.font = '10px system-ui,sans-serif';
   for (let d = 0; d < shown; d++) {
-    if (cumulArr[d] === null || cumulArr[d] === 0) continue;
-    const v = valsScaled[d], cx = toX(d), cy = toY(v);
-    const lbl = String(Math.round(v));
-    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
-    ctx.font = '10px system-ui,sans-serif';
-    ctx.fillText(lbl, cx, v >= 0 ? cy - 8 : cy + 15);
+    const vB = (cumulArr[d] !== null && cumulArr[d] !== 0) ? valsScaled[d] : null;
+    const vP = (cumulArrFC && cumulArrFC[d]) ? valsFC[d] : null;
+    const bAbove = vP === null || (vB !== null && vB >= vP);
+    if (vB !== null) {
+      const cx = toX(d), cy = toY(vB);
+      ctx.fillStyle = vB >= 0 ? '#0a6e4e' : '#c0392b';
+      ctx.fillText(String(Math.round(vB)), cx, bAbove ? cy - 8 : cy + 15);
+    }
+    if (vP !== null) {
+      const cx = toX(d), cy = toY(vP);
+      ctx.fillStyle = '#c8a000';
+      ctx.fillText(String(Math.round(vP)), cx, bAbove ? cy + 15 : cy - 8);
+    }
   }
 }
 
@@ -1588,12 +1922,12 @@ function getProjectMonths() {
     const months = [];
     let y = p.start.y, m = p.start.m;
     const endKey = p.end.y * 12 + p.end.m;
-    while (y * 12 + m <= endKey) {
+    while (y * 12 + m <= endKey && months.length < MONTHS_COUNT) {
       months.push({ y, m });
       m++;
       if (m > 11) { m = 0; y++; }
     }
-    return months.length ? months : _allMonths();
+    if (months.length) return months;
   }
   return _allMonths();
 }
@@ -1607,46 +1941,96 @@ function computeGrandTotals(articles) {
   const months = getProjectMonths();
   const MC = months.length;
 
-  /* Build a lookup: pos12[m] = index in months[] for calendar month m (0-11) */
-  const pos12 = Array(12).fill(null);
-  months.forEach(({m}, i) => { pos12[m] = i; });
-
-  const grandIn12      = Array(12).fill(0);
-  const grandOut12    = Array(12).fill(0);
-  const grandFactIn12 = Array(12).fill(0);
-  const grandFactOut12= Array(12).fill(0);
+  // Индексируем по позиции в проекте (0..MC-1), а не по номеру месяца
+  // Это корректно работает и для однолетних и для многолетних проектов
+  const grandIn          = Array(MC).fill(0);
+  const grandOut         = Array(MC).fill(0);
+  const grandForecastIn  = Array(MC).fill(0);
+  const grandForecastOut = Array(MC).fill(0);
+  const grandFactIn      = Array(MC).fill(0);
+  const grandFactOut     = Array(MC).fill(0);
 
   articles.forEach(a => {
-    const artInPlan   = sectionSumEff(a, 'in',  'plan');
-    const artOutPlan  = sectionSumEff(a, 'out', 'plan');
-    const artInFact   = sectionSumEff(a, 'in',  'fact');
-    const artOutFact  = sectionSumEff(a, 'out', 'fact');
-    months.forEach(({m}) => {
-      const p = pos12[m]; // position (0..MC-1)
-      grandIn12[m]       += artInPlan[m]  || 0;
-      grandOut12[m]      += artOutPlan[m] || 0;
-      grandFactIn12[m]   += artInFact[m]  || 0;
-      grandFactOut12[m]  += artOutFact[m] || 0;
+    const artInPlan      = sectionSumEff(a, 'in',  'plan');
+    const artOutPlan     = sectionSumEff(a, 'out', 'plan');
+    const artInForecast  = sectionSumEff(a, 'in',  'forecast');
+    const artOutForecast = sectionSumEff(a, 'out', 'forecast');
+    const artInFact      = sectionSumEff(a, 'in',  'fact');
+    const artOutFact     = sectionSumEff(a, 'out', 'fact');
+    // i = позиция в проекте (0..MC-1) = индекс в массивах plan/forecast/fact
+    months.forEach(({m}, i) => {
+      grandIn[i]          += artInPlan[i]       || 0;
+      grandOut[i]         += artOutPlan[i]      || 0;
+      grandForecastIn[i]  += artInForecast[i]   || 0;
+      grandForecastOut[i] += artOutForecast[i]  || 0;
+      grandFactIn[i]      += artInFact[i]       || 0;
+      grandFactOut[i]     += artOutFact[i]      || 0;
     });
   });
 
-  /* Extract project-month-sliced arrays for the table */
-  const grandIn      = months.map((_,i) => grandIn12[months[i].m]);
-  const grandOut     = months.map((_,i) => grandOut12[months[i].m]);
-  const grandFactIn  = months.map((_,i) => grandFactIn12[months[i].m]);
-  const grandFactOut = months.map((_,i) => grandFactOut12[months[i].m]);
-  const grandNet     = grandIn.map((v,i)   => v - grandOut[i]);
-  const grandFactNet = grandFactIn.map((v,i)=> v - grandFactOut[i]);
+  const grandNet         = grandIn.map((v,i)         => v - grandOut[i]);
+  const grandForecastNet = grandForecastIn.map((v,i) => v - grandForecastOut[i]);
+  const grandFactNet     = grandFactIn.map((v,i)     => v - grandFactOut[i]);
 
-  const cumulP = [], cumulF = [];
-  let runP = 0, runF = 0;
+  const cumulP = [], cumulFC = [], cumulF = [];
+  let runP = 0, runFC = 0, runF = 0;
   for (let i = 0; i < MC; i++) {
-    runP += grandNet[i];
-    runF += grandFactNet[i];
+    runP  += grandNet[i];
+    runFC += grandForecastNet[i];
+    runF  += grandFactNet[i];
     cumulP.push(runP);
+    cumulFC.push(runFC);
     cumulF.push(runF);
   }
-  return { grandIn, grandOut, grandFactIn, grandFactOut, grandNet, grandFactNet, cumulP, cumulF, runP, runF, months, MC };
+  return { grandIn, grandOut, grandForecastIn, grandForecastOut, grandFactIn, grandFactOut,
+           grandNet, grandForecastNet, grandFactNet,
+           cumulP, cumulFC, cumulF, runP, runFC, runF, months, MC };
+}
+
+function computeGrandDecTotals(articles, months) {
+  let grandInDec36      = Array(DEC_COUNT).fill(0);
+  let grandOutDec36     = Array(DEC_COUNT).fill(0);
+  let grandInFCDec36    = Array(DEC_COUNT).fill(0);
+  let grandOutFCDec36   = Array(DEC_COUNT).fill(0);
+  let grandInFDec36     = Array(DEC_COUNT).fill(0);
+  let grandOutFDec36    = Array(DEC_COUNT).fill(0);
+  articles.forEach(a => {
+    const ip   = sectionSum36(a, 'in',  'dplan');
+    const op   = sectionSum36(a, 'out', 'dplan');
+    const ifc  = sectionSum36(a, 'in',  'dforecast');
+    const ofc  = sectionSum36(a, 'out', 'dforecast');
+    const inf  = sectionSum36(a, 'in',  'dfact');
+    const outf = sectionSum36(a, 'out', 'dfact');
+    for (let i = 0; i < DEC_COUNT; i++) {
+      grandInDec36[i]    += ip[i]   || 0;
+      grandOutDec36[i]   += op[i]   || 0;
+      grandInFCDec36[i]  += ifc[i]  || 0;
+      grandOutFCDec36[i] += ofc[i]  || 0;
+      grandInFDec36[i]   += inf[i]  || 0;
+      grandOutFDec36[i]  += outf[i] || 0;
+    }
+  });
+  const grandNetDec36   = grandInDec36.map((v,i)   => v - (grandOutDec36[i]  ||0));
+  const grandNetFCDec36 = grandInFCDec36.map((v,i) => v - (grandOutFCDec36[i]||0));
+  const grandNetFDec36  = grandInFDec36.map((v,i)  => v - (grandOutFDec36[i] ||0));
+
+  const cumulDec36   = Array(DEC_COUNT).fill(0);
+  const cumulFCDec36 = Array(DEC_COUNT).fill(0);
+  const cumulFDec36  = Array(DEC_COUNT).fill(0);
+  let run = 0, runFC = 0, runF = 0;
+  months.forEach(({m}, i) => {
+    [0,1,2].forEach(d => {
+      const di = i*3+d; // позиция в проекте (не календарный месяц — без коллизий по годам)
+      run   += grandNetDec36[di]   || 0;
+      runFC += grandNetFCDec36[di] || 0;
+      runF  += grandNetFDec36[di]  || 0;
+      cumulDec36[di]   = run;
+      cumulFCDec36[di] = runFC;
+      cumulFDec36[di]  = runF;
+    });
+  });
+  return { grandInDec36, grandOutDec36, grandInFCDec36, grandOutFCDec36, grandInFDec36, grandOutFDec36,
+           grandNetDec36, grandNetFCDec36, grandNetFDec36, cumulDec36, cumulFCDec36, cumulFDec36 };
 }
 
 /* ---- BUDGET TABLE ---- */
@@ -1662,35 +2046,39 @@ function renderBudget() {
   const articles = b.articles;
 
   // Compute grand totals (includes months/MC)
-  const { grandIn, grandOut, grandFactIn, grandFactOut, grandNet, grandFactNet,
-          cumulP, cumulF, runP, runF, months, MC } = computeGrandTotals(articles);
+  const { grandIn, grandOut, grandForecastIn, grandForecastOut, grandFactIn, grandFactOut,
+          grandNet, grandForecastNet, grandFactNet,
+          cumulP, cumulFC, cumulF, runP, runFC, runF, months, MC } = computeGrandTotals(articles);
 
   // ---- RENDER THEAD ----
   const DEC_LABELS = ['1–10','11–20','21–31'];
-  const colsPerMonth = viewDecade ? 6 : 2; // 3 dec × (plan+fact) or just plan+fact
+  const visPerDec   = (viewPlan ? 1 : 0) + (viewForecast ? 1 : 0) + (viewFact ? 1 : 0); // plan + forecast + fact
+  const colsPerMonth = viewDecade ? 3 * visPerDec : visPerDec;
 
   let row1 = '', row2 = '', row3 = '';
-  // Actual visible columns per decade/month depend on viewFact
-  const visPerDec   = viewFact ? 2 : 1;   // plan+fact or plan only
-  const visPerMonth = viewDecade ? visPerDec * 3 : (viewFact ? 2 : 1);
 
   months.forEach(({y, m}) => {
+    const colspan = viewDecade ? visPerDec * 3 : visPerDec;
     if (viewDecade) {
-      row1 += `<th class="month-group" colspan="${visPerDec * 3}">${MONTH_NAMES[m]} <small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
+      row1 += `<th class="month-group" colspan="${colspan}">${MONTH_NAMES[m]} <small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
       DEC_LABELS.forEach(lbl => {
         row2 += `<th class="decade-group" colspan="${visPerDec}" style="text-align:center">${lbl}</th>`;
       });
-      row3 += `<th class="decade-sub-head month-plan-head">пл</th>${viewFact ? '<th class="decade-sub-head month-fact-head">фк</th>' : ''}`.repeat(3);
+      row3 += ((viewPlan     ? `<th class="decade-sub-head month-plan-head">бдж</th>` : '') +
+               (viewForecast ? `<th class="decade-sub-head month-forecast-head">пл</th>` : '') +
+               (viewFact     ? `<th class="decade-sub-head month-fact-head">фк</th>` : '')).repeat(3);
     } else {
-      row1 += `<th class="month-group" colspan="${viewFact ? 2 : 1}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
-      row2 += `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">план</th>` +
-              (viewFact ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6">факт</th>` : '');
+      row1 += `<th class="month-group" colspan="${colspan}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
+      row2 += (viewPlan     ? `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">бюджет</th>` : '') +
+              (viewForecast ? `<th class="month-forecast-head" style="color:#7a6000;font-size:10px;background:#fff8e0">план</th>` : '') +
+              (viewFact     ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6">факт</th>` : '');
     }
   });
 
   const FIXED_COLS = `
     <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья</th>
-    <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">план</small></th>
+    <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">бюджет</small></th>
+    <th class="sticky-tot-fc" style="background:#fff0c0;color:#7a6000;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">план</small></th>
     <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">факт</small></th>`;
 
   if (viewDecade) {
@@ -1701,9 +2089,11 @@ function renderBudget() {
       `<tr>${FIXED_COLS}${row1}</tr><tr>${row2}</tr>`;
   }
 
-  // Apply hide-fact class (colspans already correct from thead generation above)
+  // Apply hide classes (colspans already correct from thead generation above)
   const tbl = document.getElementById('main-table');
-  tbl.classList.toggle('hide-fact', !viewFact);
+  tbl.classList.toggle('hide-plan',     !viewPlan);
+  tbl.classList.toggle('hide-forecast', !viewForecast);
+  tbl.classList.toggle('hide-fact',     !viewFact);
 
   let html = '';
 
@@ -1713,10 +2103,10 @@ function renderBudget() {
     const artOutPlan = sectionSumEff(art, 'out', 'plan');
     const artInFact  = sectionSumEff(art, 'in',  'fact');
     const artOutFact = sectionSumEff(art, 'out', 'fact');
-    const inTotal     = months.reduce((s,{m}) => s + (artInPlan[m]  || 0), 0);
-    const outTotal    = months.reduce((s,{m}) => s + (artOutPlan[m] || 0), 0);
-    const factInTotal = months.reduce((s,{m}) => s + (artInFact[m]  || 0), 0);
-    const factOutTotal= months.reduce((s,{m}) => s + (artOutFact[m] || 0), 0);
+    const inTotal     = months.reduce((s,_,i) => s + (artInPlan[i]  || 0), 0);
+    const outTotal    = months.reduce((s,_,i) => s + (artOutPlan[i] || 0), 0);
+    const factInTotal = months.reduce((s,_,i) => s + (artInFact[i]  || 0), 0);
+    const factOutTotal= months.reduce((s,_,i) => s + (artOutFact[i] || 0), 0);
 
     // ---- Article header row ----
     html += `<tr class="article-header" data-article="${ai}">
@@ -1726,6 +2116,7 @@ function renderBudget() {
         <button class="delete-btn" style="margin-left:6px" onclick="deleteArticle(${ai})">✕</button>
       </td>
       <td class="sticky-tot-p"></td>
+      <td class="sticky-tot-fc"></td>
       <td class="sticky-tot-f"></td>
       <td colspan="${MC * colsPerMonth}"></td>
     </tr>`;
@@ -1734,33 +2125,40 @@ function renderBudget() {
     const renderSection = (section) => {
       const isIn   = section === 'in';
       if (isIn && art.inDeleted) return; // скрытая строка поступлений
-      const direct = art[section + 'Direct'];
-      const plan   = isIn ? artInPlan  : artOutPlan;
-      const fact   = isIn ? artInFact  : artOutFact;
-      const total  = isIn ? inTotal    : outTotal;
-      const fTotal = isIn ? factInTotal: factOutTotal;
-      const colorP = isIn ? '#0a6e4e'  : '#a33020';
-      const tagCls = isIn ? 'tag-in'   : 'tag-out';
-      const tagTxt = isIn ? '▲ Поступление' : '▼ Выплата';
-      const subCls = isIn ? 'sub-in'   : 'sub-out';
-      const bgAdd  = isIn ? '#f6fcfa'  : '#fdf8f6';
-      const btnTxt = isIn ? '+ подстроку поступления' : '+ подстроку выплаты';
+      const direct   = art[section + 'Direct'];
+      const plan     = isIn ? artInPlan       : artOutPlan;
+      const forecast = isIn ? sectionSumEff(art, 'in', 'forecast') : sectionSumEff(art, 'out', 'forecast');
+      const fact     = isIn ? artInFact       : artOutFact;
+      const total    = isIn ? inTotal         : outTotal;
+      const fcTotal  = months.reduce((s,_,i) => s + (forecast[i] || 0), 0);
+      const fTotal   = isIn ? factInTotal     : factOutTotal;
+      const colorP   = isIn ? '#0a6e4e'       : '#a33020';
+      const tagCls   = isIn ? 'tag-in'        : 'tag-out';
+      const tagTxt   = isIn ? '▲ Поступление' : '▼ Выплата';
+      const subCls   = isIn ? 'sub-in'        : 'sub-out';
+      const bgAdd    = isIn ? '#f6fcfa'        : '#fdf8f6';
+      const btnTxt   = isIn ? '+ подстроку поступления' : '+ подстроку выплаты';
 
       if (direct) {
         // ── DIRECT MODE ──
-        const dpArr = ensureDec(art[section + 'Dplan']);
-        const dfArr = ensureDec(art[section + 'Dfact']);
-        const directCells = months.map(({m: mi}) => {
+        const dpArr  = ensureDec(art[section + 'Dplan']);
+        const dfcArr = ensureDec(art[section + 'Dforecast'] || []);
+        const dfArr  = ensureDec(art[section + 'Dfact']);
+        const directCells = months.map(({m, y}, mi) => {
           if (viewDecade) {
-            // 3 decade columns × plan+fact
             return [0,1,2].map(d => {
               const di = mi*3+d;
-              const vp = dpArr[di]||0, vf = dfArr[di]||0;
+              const vp = dpArr[di]||0, vfc = dfcArr[di]||0, vf = dfArr[di]||0;
               return `<td class="cell-dplan cell-plan"><input class="month-input" type="text" inputmode="numeric"
                 value="${vp?fmt(vp):''}" placeholder="0"
                 onfocus="inputFocus(this)"
                 onblur="decDirectBlur(this,${ai},'${section}','dplan',${di})"
                 oninput="decDirectInput(${ai},'${section}','dplan',${di},this.value)"></td>` +
+              `<td class="cell-forecast"><input class="month-input" type="text" inputmode="numeric"
+                value="${vfc?fmt(vfc):''}" placeholder="0" style="color:#7a6000"
+                onfocus="inputFocus(this)"
+                onblur="decDirectBlur(this,${ai},'${section}','dforecast',${di})"
+                oninput="decDirectInput(${ai},'${section}','dforecast',${di},this.value)"></td>` +
               `<td class="cell-dfact cell-fact"><input class="month-input" type="text" inputmode="numeric"
                 value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
                 onfocus="inputFocus(this)"
@@ -1768,13 +2166,19 @@ function renderBudget() {
                 oninput="decDirectInput(${ai},'${section}','dfact',${di},this.value)"></td>`;
             }).join('');
           } else {
-            const vp = art[section+'Plan'][mi]||0, vf = art[section+'Fact'][mi]||0;
+            const vp = decSum(dpArr, mi), vfc = decSum(dfcArr, mi), vf = decSum(dfArr, mi);
             return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
                 value="${vp?fmt(vp):''}" placeholder="0"
                 onfocus="inputFocus(this)"
                 onblur="directBlur(this,${ai},'${section}','plan',${mi})"
                 onkeydown="directKeydown(event,this,${ai},'${section}','plan',${mi})"
                 oninput="directInput(${ai},'${section}','plan',${mi},this.value)"></td>` +
+              `<td class="cell-forecast"><input class="month-input" type="text" inputmode="numeric"
+                value="${vfc?fmt(vfc):''}" placeholder="0" style="color:#7a6000"
+                onfocus="inputFocus(this)"
+                onblur="directBlur(this,${ai},'${section}','forecast',${mi})"
+                onkeydown="directKeydown(event,this,${ai},'${section}','forecast',${mi})"
+                oninput="directInput(${ai},'${section}','forecast',${mi},this.value)"></td>` +
               `<td class="cell-fact"><input class="month-input" type="text" inputmode="numeric"
                 value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
                 onfocus="inputFocus(this)"
@@ -1790,25 +2194,29 @@ function renderBudget() {
             <button class="add-subline-btn" style="margin-left:8px" onclick="addSubline(${ai},'${section}')" title="Разбить на подстроки">+ подстроки</button>
           </td>
           <td class="sticky-tot-p total-cell" style="color:${colorP}" id="art-total-${isIn?'in':'out'}-${ai}">${total ? fmt(total) : '—'}</td>
+          <td class="sticky-tot-fc total-cell" style="color:#7a6000" id="art-total-${isIn?'fcin':'fcout'}-${ai}">${fcTotal ? fmt(fcTotal) : '—'}</td>
           <td class="sticky-tot-f total-cell" style="color:${colorP}" id="art-total-${isIn?'factin':'factout'}-${ai}">${fTotal ? fmt(fTotal) : '—'}</td>
           ${directCells}
         </tr>`;
       } else {
         // ── LINES MODE: агрегирующая строка + подстроки ──
-        const sumCells = months.map(({m: mi}, mIdx) => {
+        const sumCells = months.map(({m, y}, mi) => {
           if (viewDecade) {
-            const ip   = sectionSum36(art, section, 'dplan');
-            const iF   = sectionSum36(art, section, 'dfact');
+            const ip  = sectionSum36(art, section, 'dplan');
+            const ifc = sectionSum36(art, section, 'dforecast');
+            const iF  = sectionSum36(art, section, 'dfact');
             return [0,1,2].map(d => {
               const di = mi*3+d;
-              const vp = ip[di]||0, vf = iF[di]||0;
+              const vp = ip[di]||0, vfc = ifc[di]||0, vf = iF[di]||0;
               return `<td class="total-cell cell-dplan cell-plan" style="color:${colorP}" id="art-${isIn?'in':'out'}-dplan-${ai}-${di}">${vp ? fmt(vp) : '—'}</td>` +
+                     `<td class="total-cell cell-forecast" style="color:#7a6000" id="art-${isIn?'in':'out'}-dforecast-${ai}-${di}">${vfc ? fmt(vfc) : '—'}</td>` +
                      `<td class="total-cell cell-dfact cell-fact" style="color:${colorP}" id="art-${isIn?'in':'out'}-dfact-${ai}-${di}">${vf ? fmt(vf) : '—'}</td>`;
             }).join('');
           }
-          const vp = plan[mi] || 0, vf = fact[mi] || 0;
-          return `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mIdx}">${vp ? fmt(vp) : '—'}</td>` +
-                 `<td class="cell-fact total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-fact-${ai}-${mIdx}">${vf ? fmt(vf) : '—'}</td>`;
+          const vp = plan[mi] || 0, vfc = forecast[mi] || 0, vf = fact[mi] || 0;
+          return `<td class="cell-plan total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-plan-${ai}-${mi}">${vp ? fmt(vp) : '—'}</td>` +
+                 `<td class="cell-forecast total-cell" style="color:#7a6000" id="art-${isIn?'in':'out'}-forecast-${ai}-${mi}">${vfc ? fmt(vfc) : '—'}</td>` +
+                 `<td class="cell-fact total-cell" style="color:${colorP}" id="art-${isIn?'in':'out'}-fact-${ai}-${mi}">${vf ? fmt(vf) : '—'}</td>`;
         }).join('');
         html += `<tr class="${subCls}" data-art-child="${ai}">
           <td class="left sticky-name sub-label">
@@ -1817,23 +2225,31 @@ function renderBudget() {
             ${isIn ? '<button class="delete-btn" style="margin-left:6px" onclick="deleteInRow(' + ai + ')" title="Удалить поступления">✕</button>' : ''}
           </td>
           <td class="sticky-tot-p total-cell" style="color:${colorP}" id="art-total-${isIn?'in':'out'}-${ai}">${total ? fmt(total) : '—'}</td>
+          <td class="sticky-tot-fc total-cell" style="color:#7a6000" id="art-total-${isIn?'fcin':'fcout'}-${ai}">${fcTotal ? fmt(fcTotal) : '—'}</td>
           <td class="sticky-tot-f total-cell" style="color:${colorP}" id="art-total-${isIn?'factin':'factout'}-${ai}">${fTotal ? fmt(fTotal) : '—'}</td>
           ${sumCells}
         </tr>`;
 
         if (art[section + 'Open']) {
           art[section + 'Lines'].forEach((line, li) => {
-            const ldp = ensureDec(line.dplan), ldf = ensureDec(line.dfact);
-            const lineCells = months.map(({m: mi}) => {
+            const ldp  = ensureDec(line.dplan);
+            const ldfc = ensureDec(line.dforecast || []);
+            const ldf  = ensureDec(line.dfact);
+            const lineCells = months.map(({m}, mi) => {  // mi = позиция в проекте (как в directCells)
               if (viewDecade) {
                 return [0,1,2].map(d => {
                   const di = mi*3+d;
-                  const vp = ldp[di]||0, vf = ldf[di]||0;
+                  const vp = ldp[di]||0, vfc = ldfc[di]||0, vf = ldf[di]||0;
                   return `<td class="cell-dplan cell-plan"><input class="month-input" type="text" inputmode="numeric"
                       value="${vp?fmt(vp):''}" placeholder="0"
                       onfocus="inputFocus(this)"
                       onblur="decSublineBlur(this,${ai},'${section}',${li},'dplan',${di})"
                       oninput="decSublineInput(${ai},'${section}',${li},'dplan',${di},this.value)"></td>` +
+                    `<td class="cell-forecast"><input class="month-input" type="text" inputmode="numeric"
+                      value="${vfc?fmt(vfc):''}" placeholder="0" style="color:#7a6000"
+                      onfocus="inputFocus(this)"
+                      onblur="decSublineBlur(this,${ai},'${section}',${li},'dforecast',${di})"
+                      oninput="decSublineInput(${ai},'${section}',${li},'dforecast',${di},this.value)"></td>` +
                     `<td class="cell-dfact cell-fact"><input class="month-input" type="text" inputmode="numeric"
                       value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
                       onfocus="inputFocus(this)"
@@ -1841,13 +2257,19 @@ function renderBudget() {
                       oninput="decSublineInput(${ai},'${section}',${li},'dfact',${di},this.value)"></td>`;
                 }).join('');
               } else {
-                const vp = line.plan[mi]||0, vf = line.fact[mi]||0;
+                const vp = line.plan[mi]||0, vfc = (line.forecast||[])[mi]||0, vf = line.fact[mi]||0;
                 return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
                     value="${vp?fmt(vp):''}" placeholder="0"
                     onfocus="inputFocus(this)"
                     onblur="sublineBlur(this,${ai},'${section}',${li},'plan',${mi})"
                     onkeydown="sublineKeydown(event,this,${ai},'${section}',${li},'plan',${mi})"
                     oninput="sublineInput(${ai},'${section}',${li},'plan',${mi},this.value)"></td>` +
+                  `<td class="cell-forecast"><input class="month-input" type="text" inputmode="numeric"
+                    value="${vfc?fmt(vfc):''}" placeholder="0" style="color:#7a6000"
+                    onfocus="inputFocus(this)"
+                    onblur="sublineBlur(this,${ai},'${section}',${li},'forecast',${mi})"
+                    onkeydown="sublineKeydown(event,this,${ai},'${section}',${li},'forecast',${mi})"
+                    oninput="sublineInput(${ai},'${section}',${li},'forecast',${mi},this.value)"></td>` +
                   `<td class="cell-fact"><input class="month-input" type="text" inputmode="numeric"
                     value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
                     onfocus="inputFocus(this)"
@@ -1856,11 +2278,14 @@ function renderBudget() {
               }
             }).join('');
             const lineTotal  = viewDecade
-              ? months.reduce((s,{m}) => s + decSum(ldp,m), 0)
-              : months.reduce((s,{m}) => s + (line.plan[m]||0), 0);
+              ? months.reduce((s,_,i) => s + decSum(ldp,i), 0)
+              : months.reduce((s,_,i) => s + (line.plan[i]||0), 0);
+            const lineFCTotal = viewDecade
+              ? months.reduce((s,_,i) => s + decSum(ldfc,i), 0)
+              : months.reduce((s,_,i) => s + ((line.forecast||[])[i]||0), 0);
             const lineFTotal = viewDecade
-              ? months.reduce((s,{m}) => s + decSum(ldf,m), 0)
-              : months.reduce((s,{m}) => s + (line.fact[m]||0), 0);
+              ? months.reduce((s,_,i) => s + decSum(ldf,i), 0)
+              : months.reduce((s,_,i) => s + (line.fact[i]||0), 0);
             const subRowCls  = isIn ? 'subline-in' : 'subline-out';
             html += `<tr class="${subRowCls}" data-art-child="${ai}">
               <td class="left sticky-name subline-label">
@@ -1868,6 +2293,7 @@ function renderBudget() {
                 <button class="delete-subline-btn" onclick="deleteSubline(${ai},'${section}',${li})" title="Удалить">✕</button>
               </td>
               <td class="sticky-tot-p total-cell" style="color:${colorP}">${lineTotal ? fmt(lineTotal) : '—'}</td>
+              <td class="sticky-tot-fc total-cell" style="color:#7a6000">${lineFCTotal ? fmt(lineFCTotal) : '—'}</td>
               <td class="sticky-tot-f total-cell" style="color:${colorP}">${lineFTotal ? fmt(lineFTotal) : '—'}</td>
               ${lineCells}
             </tr>`;
@@ -1876,7 +2302,7 @@ function renderBudget() {
             <td class="sticky-name" style="background:${bgAdd}">
               <button class="add-subline-btn" onclick="addSubline(${ai},'${section}')">${btnTxt}</button>
             </td>
-            <td colspan="${MC * colsPerMonth + 2}" style="background:${bgAdd}"></td>
+            <td colspan="${MC * colsPerMonth + 3}" style="background:${bgAdd}"></td>
           </tr>`;
         }
       }
@@ -1887,90 +2313,54 @@ function renderBudget() {
   });
 
   // Grand total rows
-  const netSum = sumArr(grandNet);
+  const netSum     = sumArr(grandNet);
+  const netFCSum   = sumArr(grandForecastNet);
   const netFactSum = sumArr(grandFactNet);
 
   // Helper: build cells for one total row across all project months
-  // rowData[m] = { p, f } for month mode; in decade mode we pull from dec arrays
-  function buildTotalCells(rowPlan12, rowFact12, planDec36, factDec36, cls, colorFn) {
+  function buildTotalCells(rowPlan12, rowForecast12, rowFact12, planDec36, forecastDec36, factDec36, cls, colorFn) {
     return months.map(({m}, mi) => {
       if (viewDecade) {
-        // 3 decades × plan+fact per month
         return [0,1,2].map(d => {
-          const di = m*3+d;
-          const vp = planDec36 ? (planDec36[di]||0) : 0;
-          const vf = factDec36 ? (factDec36[di]||0) : 0;
+          const di = mi*3+d; // позиционный индекс в проекте, не календарный месяц
+          const vp  = planDec36     ? (planDec36[di]    ||0) : 0;
+          const vfc = forecastDec36 ? (forecastDec36[di]||0) : 0;
+          const vf  = factDec36     ? (factDec36[di]    ||0) : 0;
           return `<td class="total-cell ${cls} cell-dplan cell-plan" style="color:${colorFn(vp)}">${vp?fmt(vp):'—'}</td>` +
+                 `<td class="total-cell ${cls} cell-forecast" style="color:${colorFn(vfc)}">${vfc?fmt(vfc):'—'}</td>` +
                  `<td class="total-cell ${cls} cell-dfact cell-fact" style="color:${colorFn(vf)}">${vf?fmt(vf):'—'}</td>`;
         }).join('');
       } else {
-        const vp = rowPlan12[mi]||0, vf = rowFact12[mi]||0;
+        const vp = rowPlan12[mi]||0, vfc = rowForecast12[mi]||0, vf = rowFact12[mi]||0;
         return `<td class="total-cell ${cls} cell-plan" style="color:${colorFn(vp)}">${fmt(vp)}</td>` +
+               `<td class="total-cell ${cls} cell-forecast" style="color:${colorFn(vfc)}">${fmt(vfc)}</td>` +
                `<td class="total-cell ${cls} cell-fact" style="color:${colorFn(vf)}">${fmt(vf)}</td>`;
       }
     }).join('');
   }
 
-  // Compute decade [36] totals across all articles (plan + fact)
-  let grandInDec36    = Array(DEC_COUNT).fill(0);
-  let grandOutDec36   = Array(DEC_COUNT).fill(0);
-  let grandInFDec36   = Array(DEC_COUNT).fill(0);
-  let grandOutFDec36  = Array(DEC_COUNT).fill(0);
-  articles.forEach(a => {
-    const ip   = sectionSum36(a, 'in',  'dplan');
-    const op   = sectionSum36(a, 'out', 'dplan');
-    const inf  = sectionSum36(a, 'in',  'dfact');
-    const outf = sectionSum36(a, 'out', 'dfact');
-    for (let i = 0; i < DEC_COUNT; i++) {
-      grandInDec36[i]   += ip[i]  || 0;
-      grandOutDec36[i]  += op[i]  || 0;
-      grandInFDec36[i]  += inf[i] || 0;
-      grandOutFDec36[i] += outf[i]|| 0;
-    }
-  });
-  const grandNetDec36  = grandInDec36.map((v,i)  => v - (grandOutDec36[i] ||0));
-  const grandNetFDec36 = grandInFDec36.map((v,i) => v - (grandOutFDec36[i]||0));
+  // Compute decade [36] totals across all articles (plan + forecast + fact)
+  const { grandInDec36, grandOutDec36, grandInFCDec36, grandOutFCDec36, grandInFDec36, grandOutFDec36,
+          grandNetDec36, grandNetFCDec36, grandNetFDec36, cumulDec36, cumulFCDec36, cumulFDec36 } =
+    computeGrandDecTotals(articles, months);
 
-  // Cumulative by decade: running sum across all decades in project month order
-  const cumulDec36 = Array(DEC_COUNT).fill(0);
-  if (viewDecade) {
-    let run = 0;
-    months.forEach(({m}) => {
-      [0,1,2].forEach(d => {
-        run += grandNetDec36[m*3+d]||0;
-        cumulDec36[m*3+d] = run;
-      });
-    });
-  }
-
-  const posColor  = v => v >= 0 ? '#0a6e4e' : '#a33020';
-  const negColor  = v => v <= 0 ? '#a33020' : '#0a6e4e';
   const netColorFn= v => netColor(v);
 
-  const inMonthCells   = buildTotalCells(grandIn,  grandFactIn,  grandInDec36,  grandInFDec36,  'positive', () => '#0a6e4e');
-  const outMonthCells  = buildTotalCells(grandOut, grandFactOut, grandOutDec36, grandOutFDec36, 'negative', () => '#a33020');
-  const netMonthCells  = buildTotalCells(grandNet, grandFactNet, grandNetDec36, grandNetFDec36, '',         netColorFn);
-  // Cumulative fact by decade
-  const cumulFDec36 = Array(DEC_COUNT).fill(0);
-  if (viewDecade) {
-    let runF2 = 0;
-    months.forEach(({m}) => {
-      [0,1,2].forEach(d => {
-        runF2 += grandNetFDec36[m*3+d]||0;
-        cumulFDec36[m*3+d] = runF2;
-      });
-    });
-  }
+  const inMonthCells   = buildTotalCells(grandIn,  grandForecastIn,  grandFactIn,  grandInDec36,  grandInFCDec36,  grandInFDec36,  'positive', () => '#0a6e4e');
+  const outMonthCells  = buildTotalCells(grandOut, grandForecastOut, grandFactOut, grandOutDec36, grandOutFCDec36, grandOutFDec36, 'negative', () => '#a33020');
+  const netMonthCells  = buildTotalCells(grandNet, grandForecastNet, grandFactNet, grandNetDec36, grandNetFCDec36, grandNetFDec36, '',         netColorFn);
 
   const cumulMonthCells = viewDecade
-    ? months.map(({m}) => [0,1,2].map(d => {
-        const di = m*3+d;
-        const vp = cumulDec36[di]||0, vf = cumulFDec36[di]||0;
+    ? months.map(({m}, mi) => [0,1,2].map(d => {
+        const di = mi*3+d; // позиционный индекс в проекте
+        const vp = cumulDec36[di]||0, vfc = cumulFCDec36[di]||0, vf = cumulFDec36[di]||0;
         return `<td class="total-cell cell-dplan cell-plan" style="color:${netColor(vp)}">${fmt(vp)}</td>` +
+               `<td class="total-cell cell-forecast" style="color:${netColor(vfc)}">${fmt(vfc)}</td>` +
                `<td class="total-cell cell-dfact cell-fact" style="color:${netColor(vf)}">${fmt(vf)}</td>`;
       }).join('')).join('')
     : cumulP.map((v,i) =>
         `<td class="total-cell cell-plan" id="g-cumul-plan-m${i}" style="color:${netColor(v)}">${fmt(v)}</td>` +
+        `<td class="total-cell cell-forecast" id="g-cumul-forecast-m${i}" style="color:${netColor(cumulFC[i])}">${fmt(cumulFC[i])}</td>` +
         `<td class="total-cell cell-fact" id="g-cumul-fact-m${i}" style="color:${netColor(cumulF[i])}">${fmt(cumulF[i])}</td>`
       ).join('');
 
@@ -1978,29 +2368,34 @@ function renderBudget() {
     <tr class="total-row" id="grand-in-row">
       <td class="left sticky-name">Итого поступления</td>
       <td class="sticky-tot-p total-cell positive" id="g-in-plan">${fmt(sumArr(grandIn))}</td>
+      <td class="sticky-tot-fc total-cell" style="color:#7a6000" id="g-in-forecast">${fmt(sumArr(grandForecastIn))}</td>
       <td class="sticky-tot-f total-cell positive" id="g-in-fact">${fmt(sumArr(grandFactIn))}</td>
       ${inMonthCells}
     </tr>
     <tr class="total-row" id="grand-out-row">
       <td class="left sticky-name">Итого выплаты</td>
       <td class="sticky-tot-p total-cell negative" id="g-out-plan">${fmt(sumArr(grandOut))}</td>
+      <td class="sticky-tot-fc total-cell" style="color:#a33020" id="g-out-forecast">${fmt(sumArr(grandForecastOut))}</td>
       <td class="sticky-tot-f total-cell negative" id="g-out-fact">${fmt(sumArr(grandFactOut))}</td>
       ${outMonthCells}
     </tr>
     <tr class="net-row" id="grand-net-row">
       <td class="left sticky-name">Чистый денежный поток</td>
       <td class="sticky-tot-p total-cell" id="g-net-plan" style="color:${netColor(netSum)}">${fmt(netSum)}</td>
+      <td class="sticky-tot-fc total-cell" id="g-net-forecast" style="color:${netColor(netFCSum)}">${fmt(netFCSum)}</td>
       <td class="sticky-tot-f total-cell" id="g-net-fact" style="color:${netColor(netFactSum)}">${fmt(netFactSum)}</td>
       ${netMonthCells}
     </tr>
     <tr class="cumul-row" id="grand-cumul-row">
       <td class="left sticky-name">Накопительно</td>
       <td class="sticky-tot-p total-cell" id="g-cumul-plan" style="color:${netColor(runP)}">${fmt(runP)}</td>
+      <td class="sticky-tot-fc total-cell" id="g-cumul-forecast" style="color:${netColor(runFC)}">${fmt(runFC)}</td>
       <td class="sticky-tot-f total-cell" id="g-cumul-fact" style="color:${netColor(runF)}">${fmt(runF)}</td>
       ${cumulMonthCells}
     </tr>`;
 
   document.getElementById('articles-body').innerHTML = html;
+  updateStickyPositions();
   initArticleDrag();
 }
 
@@ -2012,10 +2407,13 @@ function inputFocus(el) {
 
 function parseInput(val) { return parseFloat(val.replace(/\s/g,'').replace(',','.')) || 0; }
 
-/* Прямой ввод (direct mode) */
+/* Прямой ввод (direct mode) — пишем в d1 декадного массива */
 function directInput(ai, section, field, mi, val) {
   const art = getBudget().articles[ai];
-  art[section + field.charAt(0).toUpperCase() + field.slice(1)][mi] = parseInput(val);
+  const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
+  const KEY = section + df.charAt(0).toUpperCase() + df.slice(1);
+  if (!Array.isArray(art[KEY]) || art[KEY].length !== DEC_COUNT) art[KEY] = Array(DEC_COUNT).fill(0);
+  art[KEY][mi*3] = parseInput(val);
   renderTotals();
 }
 function directKeydown(event, el, ai, section, field, mi) {
@@ -2028,26 +2426,24 @@ function directKeydown(event, el, ai, section, field, mi) {
   }
 }
 
-/* Подстрока: ввод */
+/* Подстрока: ввод — пишем в d1 декадного массива */
 function sublineInput(ai, section, li, field, mi, val) {
-  const art = getBudget().articles[ai];
-  art[section+'Lines'][li][field][mi] = parseInput(val);
+  const line = getBudget().articles[ai][section+'Lines'][li];
+  const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
+  if (!Array.isArray(line[df]) || line[df].length !== DEC_COUNT) line[df] = Array(DEC_COUNT).fill(0);
+  line[df][mi*3] = parseInput(val);
   renderTotals();
 }
 function sublineBlur(el, ai, section, li, field, mi) {
   const num = parseInput(el.value);
   const line = getBudget().articles[ai][section+'Lines'][li];
-  // Check if extra decades have data
-  const df = field==='plan'?'dplan':'dfact';
-  const dArr = ensureDec(line[df]);
-  if (hasExtraDecData(dArr, mi)) {
-    el.value = fmt(line[field][mi]||0) || '';
-    showToast('Требуется планирование в формате 10 дней');
+  const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
+  if (!Array.isArray(line[df]) || line[df].length !== DEC_COUNT) line[df] = Array(DEC_COUNT).fill(0);
+  if (hasExtraDecData(line[df], mi)) {
+    el.value = fmt(decSum(line[df], mi)) || '';
+    showToast('Нельзя изменить месяц — в нём уже есть декадное планирование');
     return;
   }
-  line[field][mi] = num;
-  // sync to first decade slot
-  if (!Array.isArray(line[df])||line[df].length!==DEC_COUNT) line[df]=Array(DEC_COUNT).fill(0);
   line[df][mi*3] = num;
   el.value = num ? fmt(num) : '';
   saveData();
@@ -2066,7 +2462,9 @@ function sublineKeydown(event, el, ai, section, li, field, mi) {
 /* Decade direct input handlers */
 function decDirectInput(ai, section, field, di, val) {
   const art = getBudget().articles[ai];
-  ensureDec(art[section+field.charAt(0).toUpperCase()+field.slice(1)])[di] = parseInput(val);
+  const KEY = section + field.charAt(0).toUpperCase() + field.slice(1);
+  if (!Array.isArray(art[KEY]) || art[KEY].length !== DEC_COUNT) art[KEY] = Array(DEC_COUNT).fill(0);
+  art[KEY][di] = parseInput(val);
   // Monthly totals are recalculated only on blur — no need to re-render on every keystroke
 }
 function decDirectBlur(el, ai, section, field, di) {
@@ -2075,9 +2473,6 @@ function decDirectBlur(el, ai, section, field, di) {
   const KEY = section + field.charAt(0).toUpperCase()+field.slice(1);
   if (!Array.isArray(art[KEY]) || art[KEY].length!==DEC_COUNT) art[KEY]=Array(DEC_COUNT).fill(0);
   art[KEY][di] = num;
-  const m = Math.floor(di/3);
-  const capF = field==='dplan'?'Plan':'Fact';
-  art[section+capF][m] = decSum(art[KEY], m);
   el.value = num ? fmt(num) : '';
   saveData(); renderTotals();
 }
@@ -2085,10 +2480,6 @@ function decSublineInput(ai, section, li, field, di, val) {
   const line = getBudget().articles[ai][section+'Lines'][li];
   if (!Array.isArray(line[field])||line[field].length!==DEC_COUNT) line[field]=Array(DEC_COUNT).fill(0);
   line[field][di] = parseInput(val);
-  const m = Math.floor(di/3);
-  const mf = field==='dplan'?'plan':'fact';
-  line[mf][m] = decSum(line[field], m);
-  // Update aggregate cells in DOM (no full re-render)
   updateAggregateCell(ai, section, field, di, line);
 }
 function decSublineBlur(el, ai, section, li, field, di) {
@@ -2096,15 +2487,12 @@ function decSublineBlur(el, ai, section, li, field, di) {
   const line = getBudget().articles[ai][section+'Lines'][li];
   if (!Array.isArray(line[field])||line[field].length!==DEC_COUNT) line[field]=Array(DEC_COUNT).fill(0);
   line[field][di] = num;
-  const m = Math.floor(di/3);
-  const mf = field==='dplan'?'plan':'fact';
-  line[mf][m] = decSum(line[field], m);
   el.value = num ? fmt(num) : '';
   updateAggregateCell(ai, section, field, di, line);
   saveData(); renderTotals();
 }
 function updateAggregateCell(ai, section, field, di, changedLine) {
-  // Update the aggregate cells (plan or fact) for the given decade index
+  // Update the aggregate cells (plan, forecast, or fact) for the given decade index
   const art = getBudget().articles[ai];
   const m = Math.floor(di/3);
   // Recompute section totals across all lines for this decade
@@ -2116,7 +2504,9 @@ function updateAggregateCell(ai, section, field, di, changedLine) {
   const vp = allD[di]||0;
   const cellId = field === 'dplan'
     ? `art-${section}-dplan-${ai}-${di}`
-    : `art-${section}-dfact-${ai}-${di}`;
+    : field === 'dforecast'
+      ? `art-${section}-dforecast-${ai}-${di}`
+      : `art-${section}-dfact-${ai}-${di}`;
   const el = document.getElementById(cellId);
   if (el) el.textContent = vp ? fmt(vp) : '—';
 }
@@ -2130,24 +2520,18 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 3500);
 }
 
-/* directBlur in month mode: write to plan[mi] AND to dplan[mi*3+0] */
 function directBlur(el, ai, section, field, mi) {
   const num = parseInput(el.value);
   const art = getBudget().articles[ai];
-  const capF = field.charAt(0).toUpperCase()+field.slice(1);
-  // Check if extra decades have data
-  const df = field==='plan'?'dplan':'dfact';
-  const dArr = ensureDec(art[section+df.charAt(0).toUpperCase()+df.slice(1)]);
-  if (hasExtraDecData(dArr, mi)) {
-    el.value = fmt(art[section+capF][mi]||0) || '';
-    showToast('Требуется планирование в формате 10 дней');
+  const df = field==='plan'?'dplan':(field==='forecast'?'dforecast':'dfact');
+  const dfKey = section + df.charAt(0).toUpperCase() + df.slice(1);
+  if (!Array.isArray(art[dfKey]) || art[dfKey].length !== DEC_COUNT) art[dfKey] = Array(DEC_COUNT).fill(0);
+  if (hasExtraDecData(art[dfKey], mi)) {
+    el.value = fmt(decSum(art[dfKey], mi)) || '';
+    showToast('Нельзя изменить месяц — в нём уже есть декадное планирование');
     return;
   }
-  art[section+capF][mi] = num;
-  // sync to first decade slot
-  const dKEY = section + df.charAt(0).toUpperCase()+df.slice(1);
-  if (!Array.isArray(art[dKEY])||art[dKEY].length!==DEC_COUNT) art[dKEY]=Array(DEC_COUNT).fill(0);
-  art[dKEY][mi*3] = num;
+  art[dfKey][mi*3] = num;
   el.value = num ? fmt(num) : '';
   saveData(); renderTotals();
 }
@@ -2160,15 +2544,19 @@ function addSubline(ai, section) {
     // данные из прямой строки переносим в первую подстроку
     const label = section === 'in' ? 'Поступление 1' : 'Выплата 1';
     const firstLine = newLine(label);
-    firstLine.plan  = art[section + 'Plan'].slice();
-    firstLine.fact  = art[section + 'Fact'].slice();
-    firstLine.dplan = art[section + 'Dplan'].slice();
-    firstLine.dfact = art[section + 'Dfact'].slice();
-    art[section + 'Lines'] = [firstLine];
-    art[section + 'Plan']  = Array(MONTHS_COUNT).fill(0);
-    art[section + 'Fact']  = Array(MONTHS_COUNT).fill(0);
-    art[section + 'Dplan'] = Array(DEC_COUNT).fill(0);
-    art[section + 'Dfact'] = Array(DEC_COUNT).fill(0);
+    firstLine.plan      = art[section + 'Plan'].slice();
+    firstLine.forecast  = (art[section + 'Forecast'] || Array(MONTHS_COUNT).fill(0)).slice();
+    firstLine.fact      = art[section + 'Fact'].slice();
+    firstLine.dplan     = art[section + 'Dplan'].slice();
+    firstLine.dforecast = (art[section + 'Dforecast'] || Array(DEC_COUNT).fill(0)).slice();
+    firstLine.dfact     = art[section + 'Dfact'].slice();
+    art[section + 'Lines']    = [firstLine];
+    art[section + 'Plan']     = Array(MONTHS_COUNT).fill(0);
+    art[section + 'Forecast'] = Array(MONTHS_COUNT).fill(0);
+    art[section + 'Fact']     = Array(MONTHS_COUNT).fill(0);
+    art[section + 'Dplan']    = Array(DEC_COUNT).fill(0);
+    art[section + 'Dforecast']= Array(DEC_COUNT).fill(0);
+    art[section + 'Dfact']    = Array(DEC_COUNT).fill(0);
     art[section + 'Direct'] = false;
     art[section + 'Open']  = true;
     // Добавляем вторую подстроку сразу
@@ -2193,10 +2581,12 @@ function deleteSubline(ai, section, li) {
   if (art[key].length <= 1) {
     // Последняя подстрока — переносим данные обратно в direct mode
     if (confirm('Удалить подстроки и вернуться к прямому вводу? Данные этой подстроки сохранятся.')) {
-      art[section + 'Plan']  = art[key][0].plan.slice();
-      art[section + 'Fact']  = art[key][0].fact.slice();
-      art[section + 'Dplan'] = art[key][0].dplan.slice();
-      art[section + 'Dfact'] = art[key][0].dfact.slice();
+      art[section + 'Plan']     = art[key][0].plan.slice();
+      art[section + 'Forecast'] = (art[key][0].forecast || Array(MONTHS_COUNT).fill(0)).slice();
+      art[section + 'Fact']     = art[key][0].fact.slice();
+      art[section + 'Dplan']    = art[key][0].dplan.slice();
+      art[section + 'Dforecast']= (art[key][0].dforecast || Array(DEC_COUNT).fill(0)).slice();
+      art[section + 'Dfact']    = art[key][0].dfact.slice();
       art[section + 'Lines'] = [];
       art[section + 'Direct'] = true;
       saveData();
@@ -2211,14 +2601,16 @@ function deleteSubline(ai, section, li) {
 function deleteInRow(ai) {
   if (!confirm('Удалить строку «Поступление»? Статья останется с пустыми поступлениями.')) return;
   const art = getBudget().articles[ai];
-  art.inDeleted = true;
-  art.inPlan    = Array(MONTHS_COUNT).fill(0);
-  art.inFact    = Array(MONTHS_COUNT).fill(0);
-  art.inDplan   = Array(DEC_COUNT).fill(0);
-  art.inDfact   = Array(DEC_COUNT).fill(0);
-  art.inLines   = [];
-  art.inDirect  = true;
-  art.inOpen    = false;
+  art.inDeleted  = true;
+  art.inPlan     = Array(MONTHS_COUNT).fill(0);
+  art.inForecast = Array(MONTHS_COUNT).fill(0);
+  art.inFact     = Array(MONTHS_COUNT).fill(0);
+  art.inDplan    = Array(DEC_COUNT).fill(0);
+  art.inDforecast= Array(DEC_COUNT).fill(0);
+  art.inDfact    = Array(DEC_COUNT).fill(0);
+  art.inLines    = [];
+  art.inDirect   = true;
+  art.inOpen     = false;
   saveData();
   renderBudget();
 }
@@ -2234,79 +2626,167 @@ function toggleSection(ai, section) {
   renderBudget();
 }
 
+function updateStickyPositions() {
+  // sticky-tot-p left = 200 (name)
+  // sticky-tot-fc left = 200 + (viewPlan ? 88 : 0)
+  // sticky-tot-f  left = 200 + (viewPlan ? 88 : 0) + (viewForecast ? 88 : 0)
+  const fcLeft = 200 + (viewPlan     ? 88 : 0);
+  const fLeft  = 200 + (viewPlan     ? 88 : 0) + (viewForecast ? 88 : 0);
+  document.documentElement.style.setProperty('--sticky-tot-fc-left', fcLeft + 'px');
+  document.documentElement.style.setProperty('--sticky-tot-f-left',  fLeft  + 'px');
+}
+
 function renderTotals() {
-  // В режиме декад перерисовываем всю таблицу, т.к. id ячеек другие
-  if (viewDecade) { renderBudget(); return; }
+  updateStickyPositions();
   const b = getBudget();
   const articles = b.articles;
-  const { grandIn, grandOut, grandFactIn, grandFactOut, grandNet, grandFactNet, cumulP, cumulF, runP, runF, months } = computeGrandTotals(articles);
+  const { grandIn, grandOut, grandForecastIn, grandForecastOut, grandFactIn, grandFactOut,
+          grandNet, grandForecastNet, grandFactNet,
+          cumulP, cumulFC, cumulF, runP, runFC, runF, months } = computeGrandTotals(articles);
 
-  // Per-article sticky totals + monthly sub-row cells
+  const sumEff = sectionSum; // декадные массивы — единственный источник
+
   articles.forEach((art, ai) => {
-    const artInPlan  = sectionSum(art, 'in',  'plan');
-    const artOutPlan = sectionSum(art, 'out', 'plan');
-    const artInFact  = sectionSum(art, 'in',  'fact');
-    const artOutFact = sectionSum(art, 'out', 'fact');
+    const artInPlan      = sumEff(art, 'in',  'plan');
+    const artOutPlan     = sumEff(art, 'out', 'plan');
+    const artInForecast  = sumEff(art, 'in',  'forecast');
+    const artOutForecast = sumEff(art, 'out', 'forecast');
+    const artInFact      = sumEff(art, 'in',  'fact');
+    const artOutFact     = sumEff(art, 'out', 'fact');
     const s = (id, val) => { const el=document.getElementById(id); if(el) el.textContent = val ? fmt(val) : '—'; };
-    s(`art-total-in-${ai}`,      months.reduce((acc,{m}) => acc + (artInPlan[m]  || 0), 0));
-    s(`art-total-out-${ai}`,     months.reduce((acc,{m}) => acc + (artOutPlan[m] || 0), 0));
-    s(`art-total-factin-${ai}`,  months.reduce((acc,{m}) => acc + (artInFact[m]  || 0), 0));
-    s(`art-total-factout-${ai}`, months.reduce((acc,{m}) => acc + (artOutFact[m] || 0), 0));
+    // Суммируем по позициям в проекте (i = 0..MC-1)
+    s(`art-total-in-${ai}`,      months.reduce((acc,_,i) => acc + (artInPlan[i]       || 0), 0));
+    s(`art-total-fcin-${ai}`,    months.reduce((acc,_,i) => acc + (artInForecast[i]   || 0), 0));
+    s(`art-total-out-${ai}`,     months.reduce((acc,_,i) => acc + (artOutPlan[i]      || 0), 0));
+    s(`art-total-fcout-${ai}`,   months.reduce((acc,_,i) => acc + (artOutForecast[i]  || 0), 0));
+    s(`art-total-factin-${ai}`,  months.reduce((acc,_,i) => acc + (artInFact[i]       || 0), 0));
+    s(`art-total-factout-${ai}`, months.reduce((acc,_,i) => acc + (artOutFact[i]      || 0), 0));
 
-    // Monthly cells for in/out sub-rows
-    months.forEach(({m}, mi) => {
-      const elInP  = document.getElementById(`art-in-plan-${ai}-${mi}`);
-      const elInF  = document.getElementById(`art-in-fact-${ai}-${mi}`);
-      const elOutP = document.getElementById(`art-out-plan-${ai}-${mi}`);
-      const elOutF = document.getElementById(`art-out-fact-${ai}-${mi}`);
-      if (elInP)  elInP.textContent  = artInPlan[m]  ? fmt(artInPlan[m])  : '—';
-      if (elInF)  elInF.textContent  = artInFact[m]  ? fmt(artInFact[m])  : '—';
-      if (elOutP) elOutP.textContent = artOutPlan[m] ? fmt(artOutPlan[m]) : '—';
-      if (elOutF) elOutF.textContent = artOutFact[m] ? fmt(artOutFact[m]) : '—';
-    });
+    if (viewDecade) {
+      if (!art.inDirect && !art.inDeleted) {
+        const ip  = sectionSum36(art, 'in',  'dplan');
+        const ifc = sectionSum36(art, 'in',  'dforecast');
+        const iF  = sectionSum36(art, 'in',  'dfact');
+        months.forEach(({m}, mi) => {
+          [0,1,2].forEach(d => {
+            const di = mi*3+d; // позиционный индекс в проекте
+            const setDec = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? fmt(v) : '—'; };
+            setDec(`art-in-dplan-${ai}-${di}`,     ip[di]  || 0);
+            setDec(`art-in-dforecast-${ai}-${di}`, ifc[di] || 0);
+            setDec(`art-in-dfact-${ai}-${di}`,     iF[di]  || 0);
+          });
+        });
+      }
+      if (!art.outDirect) {
+        const op  = sectionSum36(art, 'out', 'dplan');
+        const ofc = sectionSum36(art, 'out', 'dforecast');
+        const oF  = sectionSum36(art, 'out', 'dfact');
+        months.forEach(({m}, mi) => {
+          [0,1,2].forEach(d => {
+            const di = mi*3+d; // позиционный индекс в проекте
+            const setDec = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ? fmt(v) : '—'; };
+            setDec(`art-out-dplan-${ai}-${di}`,     op[di]  || 0);
+            setDec(`art-out-dforecast-${ai}-${di}`, ofc[di] || 0);
+            setDec(`art-out-dfact-${ai}-${di}`,     oF[di]  || 0);
+          });
+        });
+      }
+    } else {
+      months.forEach(({m}, mi) => {
+        const elInP   = document.getElementById(`art-in-plan-${ai}-${mi}`);
+        const elInFC  = document.getElementById(`art-in-forecast-${ai}-${mi}`);
+        const elInF   = document.getElementById(`art-in-fact-${ai}-${mi}`);
+        const elOutP  = document.getElementById(`art-out-plan-${ai}-${mi}`);
+        const elOutFC = document.getElementById(`art-out-forecast-${ai}-${mi}`);
+        const elOutF  = document.getElementById(`art-out-fact-${ai}-${mi}`);
+        if (elInP)   elInP.textContent   = artInPlan[mi]      ? fmt(artInPlan[mi])       : '—';
+        if (elInFC)  elInFC.textContent  = artInForecast[mi]  ? fmt(artInForecast[mi])   : '—';
+        if (elInF)   elInF.textContent   = artInFact[mi]      ? fmt(artInFact[mi])        : '—';
+        if (elOutP)  elOutP.textContent  = artOutPlan[mi]     ? fmt(artOutPlan[mi])       : '—';
+        if (elOutFC) elOutFC.textContent = artOutForecast[mi] ? fmt(artOutForecast[mi])   : '—';
+        if (elOutF)  elOutF.textContent  = artOutFact[mi]     ? fmt(artOutFact[mi])       : '—';
+      });
+    }
   });
 
-  // Grand sticky totals
   const sv = (id, val, color) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = fmt(val);
     if (color !== undefined) el.style.color = color;
   };
-  sv('g-in-plan',  sumArr(grandIn));
-  sv('g-in-fact',  sumArr(grandFactIn));
-  sv('g-out-plan', sumArr(grandOut));
-  sv('g-out-fact', sumArr(grandFactOut));
-  const ns = sumArr(grandNet), nfs = sumArr(grandFactNet);
-  sv('g-net-plan', ns,  netColor(ns));
-  sv('g-net-fact', nfs, netColor(nfs));
+  sv('g-in-plan',      sumArr(grandIn));
+  sv('g-in-forecast',  sumArr(grandForecastIn));
+  sv('g-in-fact',      sumArr(grandFactIn));
+  sv('g-out-plan',     sumArr(grandOut));
+  sv('g-out-forecast', sumArr(grandForecastOut));
+  sv('g-out-fact',     sumArr(grandFactOut));
+  const ns = sumArr(grandNet), nfcs = sumArr(grandForecastNet), nfs = sumArr(grandFactNet);
+  sv('g-net-plan',     ns,   netColor(ns));
+  sv('g-net-forecast', nfcs, netColor(nfcs));
+  sv('g-net-fact',     nfs,  netColor(nfs));
 
-  // Grand month cells (skip sticky col cells — only update month cells)
-  const updateRow = (rowId, arrP, arrF, colorFnP, colorFnF) => {
+  const updateRow = (rowId, arrP, arrFC, arrF, colorFnP, colorFnF) => {
     const row = document.getElementById(rowId);
     if (!row) return;
-    // Filter to only td.cell-plan and td.cell-fact that are NOT sticky totals
-    const planCells = Array.from(row.querySelectorAll('td.cell-plan.total-cell')).filter(el =>
-      !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-f')
+    const planCells     = Array.from(row.querySelectorAll('td.cell-plan.total-cell')).filter(el =>
+      !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-fc') && !el.classList.contains('sticky-tot-f')
     );
-    const factCells = Array.from(row.querySelectorAll('td.cell-fact.total-cell')).filter(el =>
-      !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-f')
+    const forecastCells = Array.from(row.querySelectorAll('td.cell-forecast.total-cell')).filter(el =>
+      !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-fc') && !el.classList.contains('sticky-tot-f')
+    );
+    const factCells     = Array.from(row.querySelectorAll('td.cell-fact.total-cell')).filter(el =>
+      !el.classList.contains('sticky-tot-p') && !el.classList.contains('sticky-tot-fc') && !el.classList.contains('sticky-tot-f')
     );
     arrP.forEach((v,i) => {
-      if (planCells[i]) { planCells[i].textContent = fmt(v); if(colorFnP) planCells[i].style.color = colorFnP(v); }
+      if (planCells[i]) { planCells[i].textContent = v ? fmt(v) : '—'; if(colorFnP) planCells[i].style.color = colorFnP(v); }
+    });
+    arrFC.forEach((v,i) => {
+      if (forecastCells[i]) { forecastCells[i].textContent = v ? fmt(v) : '—'; if(colorFnP) forecastCells[i].style.color = colorFnP(v); }
     });
     arrF.forEach((v,i) => {
-      if (factCells[i]) { factCells[i].textContent = fmt(v); if(colorFnF) factCells[i].style.color = colorFnF(v); }
+      if (factCells[i]) { factCells[i].textContent = v ? fmt(v) : '—'; if(colorFnF) factCells[i].style.color = colorFnF(v); }
     });
   };
-  updateRow('grand-in-row',  grandIn,  grandFactIn,  null, null);
-  updateRow('grand-out-row', grandOut, grandFactOut, null, null);
-  updateRow('grand-net-row', grandNet, grandFactNet, netColor, netColor);
 
-  // Накопительный поток — вычислен в computeGrandTotals
-  updateRow('grand-cumul-row', cumulP, cumulF, netColor, netColor);  const svC = (id, val) => { const el=document.getElementById(id); if(el){ el.textContent=fmt(val); el.style.color=netColor(val); } };
-  svC('g-cumul-plan', runP);
-  svC('g-cumul-fact', runF);
+  if (viewDecade) {
+    const dec = computeGrandDecTotals(articles, months);
+    const flatInP = [], flatInFC = [], flatInF = [];
+    const flatOutP = [], flatOutFC = [], flatOutF = [];
+    const flatNetP = [], flatNetFC = [], flatNetF = [];
+    const flatCumP = [], flatCumFC = [], flatCumF = [];
+    months.forEach(({m}, i) => {
+      [0,1,2].forEach(d => {
+        const di = i*3+d;
+        flatInP.push(dec.grandInDec36[di]||0);
+        flatInFC.push(dec.grandInFCDec36[di]||0);
+        flatInF.push(dec.grandInFDec36[di]||0);
+        flatOutP.push(dec.grandOutDec36[di]||0);
+        flatOutFC.push(dec.grandOutFCDec36[di]||0);
+        flatOutF.push(dec.grandOutFDec36[di]||0);
+        flatNetP.push(dec.grandNetDec36[di]||0);
+        flatNetFC.push(dec.grandNetFCDec36[di]||0);
+        flatNetF.push(dec.grandNetFDec36[di]||0);
+        flatCumP.push(dec.cumulDec36[di]||0);
+        flatCumFC.push(dec.cumulFCDec36[di]||0);
+        flatCumF.push(dec.cumulFDec36[di]||0);
+      });
+    });
+    updateRow('grand-in-row',  flatInP,  flatInFC,  flatInF,  null, null);
+    updateRow('grand-out-row', flatOutP, flatOutFC, flatOutF, null, null);
+    updateRow('grand-net-row', flatNetP, flatNetFC, flatNetF, netColor, netColor);
+    updateRow('grand-cumul-row', flatCumP, flatCumFC, flatCumF, netColor, netColor);
+  } else {
+    updateRow('grand-in-row',  grandIn,  grandForecastIn,  grandFactIn,  null, null);
+    updateRow('grand-out-row', grandOut, grandForecastOut, grandFactOut, null, null);
+    updateRow('grand-net-row', grandNet, grandForecastNet, grandFactNet, netColor, netColor);
+    updateRow('grand-cumul-row', cumulP, cumulFC, cumulF, netColor, netColor);
+  }
+
+  const svC = (id, val) => { const el=document.getElementById(id); if(el){ el.textContent=fmt(val); el.style.color=netColor(val); } };
+  svC('g-cumul-plan',     runP);
+  svC('g-cumul-forecast', runFC);
+  svC('g-cumul-fact',     runF);
 }
 function renameArticle(ai, val) {
   getBudget().articles[ai].name = val;
@@ -2402,6 +2882,7 @@ function editProject(i) { openEditModal(i); }
 function confirmProjectModal() {
   const name = document.getElementById('modal-name').value.trim();
   if (!name) { document.getElementById('modal-name').focus(); return; }
+  // Многолетние проекты разрешены
   const newData = {
     name,
     type: selectedType || null,
@@ -2469,6 +2950,7 @@ function handleLogin() {
         document.getElementById('main-layout').style.display = '';
         window.renderSidebarProjects();
         window.showPage('dashboard');
+        console.log('[login] rendered, projects:', projects.length, 'budgets:', Object.keys(budgets));
       });
     })
     .catch(error => {
@@ -2498,17 +2980,17 @@ function handleRegister() {
     .then(() => {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
-      // Create initial data for new user
+      var demoY = new Date().getFullYear();
       projects = [
-        { name: 'Проект А', type: 'СМР', start: {y:2025,m:0}, end: {y:2025,m:11} },
-        { name: 'Проект Б', type: 'ПИР', start: {y:2025,m:2}, end: {y:2025,m:8} }
+        { name: 'Проект А', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} },
+        { name: 'Проект Б', type: 'ПИР', start: {y:demoY,m:2}, end: {y:demoY,m:8} }
       ];
       currentProject = 0;
       budgets = {
         0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
         1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
       };
-      window.saveData();
+      window.flushSaveData();
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('main-layout').style.display = '';
       window.renderSidebarProjects();
@@ -2525,6 +3007,7 @@ function handleRegister() {
 
 function handleLogout() {
   if (confirm('Вы уверены что хотите выйти?')) {
+    window.flushSaveData();
     window.auth.signOut().then(() => {
       window.firebaseUid = null;
       document.getElementById('login-page').style.display = 'flex';
@@ -2545,6 +3028,10 @@ function togglePicker(which) {
 }
 function changeYear(which, delta) {
   pickerState[which].year += delta;
+  if (which === 'end' && pickerState.start.month != null &&
+      pickerState.end.year < pickerState.start.year) {
+    pickerState.end.year = pickerState.start.year;
+  }
   renderGrid(which);
 }
 function renderGrid(which) {
@@ -2588,8 +3075,17 @@ document.addEventListener('click', e => {
 });
 
 /* INIT */
-let viewPlan = true, viewFact = true, viewDecade = false;
+let viewPlan = true, viewForecast = true, viewFact = true, viewDecade = false;
 let viewDashDecade = false;
+let viewDashBudget = false;
+
+function toggleDashView(which) {
+  if (which === 'budget') {
+    viewDashBudget = !viewDashBudget;
+    document.getElementById('dash-btn-budget').classList.toggle('active', viewDashBudget);
+  }
+  renderDashboard();
+}
 
 function toggleDashDecadeView(which) {
   viewDashDecade = (which === 'decade');
@@ -2606,21 +3102,32 @@ function toggleDecadeView(which) {
 }
 
 function toggleView(which) {
-  if (which === 'fact') viewFact = !viewFact;
-  // viewPlan is always true — план всегда отображается
+  if (which === 'plan')     viewPlan     = !viewPlan;
+  if (which === 'fact')     viewFact     = !viewFact;
 
+  document.getElementById('view-btn-plan').classList.toggle('active', viewPlan);
   document.getElementById('view-btn-fact').classList.toggle('active', viewFact);
 
-  // Rebuild thead so colspans reflect new viewFact state, then reapply hide class
+  // Rebuild thead so colspans reflect new state, then reapply hide class
   renderBudget();
 }
 
 /* ---- DRAG-AND-DROP для статей ---- */
 let dragSrcIndex = null;
+let _dragMouseupBound = false;
+
+function _onDragMouseup() {
+  document.querySelectorAll('tr.article-header[draggable="true"]').forEach(r => { r.draggable = false; });
+}
 
 function initArticleDrag() {
   const tbody = document.getElementById('articles-body');
   if (!tbody) return;
+
+  if (!_dragMouseupBound) {
+    window.addEventListener('mouseup', _onDragMouseup);
+    _dragMouseupBound = true;
+  }
 
   tbody.querySelectorAll('tr.article-header').forEach(headerRow => {
     const ai = parseInt(headerRow.dataset.article);
@@ -2628,7 +3135,6 @@ function initArticleDrag() {
     if (!handle) return;
 
     handle.addEventListener('mousedown', () => { headerRow.draggable = true; });
-    window.addEventListener('mouseup', () => { headerRow.draggable = false; });
 
     headerRow.addEventListener('dragstart', e => {
       dragSrcIndex = ai;
@@ -2692,8 +3198,6 @@ function initArticleDrag() {
   });
 }
 
-renderSidebarProjects();
-showPage('dashboard');
 </script>
 </body>
 </html>
