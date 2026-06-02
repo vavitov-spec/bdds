@@ -52,6 +52,7 @@ td.sticky-name {
   background:#fff;
   min-width:200px; max-width:200px;
   border-right:2px solid #d8d8d0;
+  vertical-align:middle;
 }
 .sticky-tot-p,
 td.sticky-tot-p {
@@ -276,29 +277,29 @@ table.hide-fact td.cell-dfact { display:none }
 #cumul-chart { display:block; min-width:100%; }
 #dashboard-table th { text-align:right; font-weight:500; color:#888; padding:4px 4px; border-bottom:2px solid #e5e5e0; font-size:11px; white-space:nowrap; }
 #dashboard-table th.left { text-align:left; }
-#dashboard-table th.dash-cur-month { background:#fffbe6; color:#7a6000; }
+#dashboard-table th.dash-cur-month { background:#fff0aa; color:#5a3e00; }
 #dashboard-table td { text-align:right; padding:3px 4px; border-bottom:1px solid #f0f0ec; font-size:11px; white-space:nowrap; }
 #dashboard-table td.left { text-align:left; }
 #dashboard-table td.dash-zero { color:#ccc; }
 #dashboard-table td.dash-pos { color:#0a6e4e; }
 #dashboard-table td.dash-neg { color:#a33020; }
-#dashboard-table td.dash-cur-month { background:#fffbe6; }
+#dashboard-table td.dash-cur-month { background:#fffaee; }
 #dashboard-table td.dash-out-range { background:#f9f9f7; color:#ccc; }
 /* sticky project name col */
 #dashboard-table th.dash-sticky,
 #dashboard-table td.dash-sticky {
   position:sticky; left:0; z-index:3;
   background:#fff; width:160px; min-width:160px; max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  border-right:2px solid #d8d8d0; text-align:left;
+  border-right:2px solid #d8d8d0; text-align:left; vertical-align:middle;
 }
 #dashboard-table thead th.dash-sticky { background:#fafaf8; z-index:5; }
 #dashboard-table thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
 /* Dashboard decade cells */
 #dashboard-table th.dash-dec-group { font-size:11px; font-weight:600; color:#555; background:#f0f0ec; text-align:center; white-space:nowrap; padding:4px 2px; border-right:2px solid #c0c0d0; }
-#dashboard-table th.dash-dec-group.dash-cur-month { background:#fff4cc; color:#7a6000; border-right-color:#e8c800; }
+#dashboard-table th.dash-dec-group.dash-cur-month { background:#fff0aa; color:#5a3e00; }
 #dashboard-table th.dash-dec-head { font-size:9px; font-weight:500; color:#6677aa; background:#f0f2ff; white-space:nowrap; padding:3px 3px; border-right:2px solid #c8c8e0; }
 #dashboard-table th.dash-dec-head:nth-child(3n+2) { border-right:1px solid #d8d8e8; }
-#dashboard-table th.dash-dec-head.dash-cur-month { background:#fff8e0; color:#7a6000; }
+#dashboard-table th.dash-dec-head.dash-cur-month { background:#fff0aa; color:#5a3e00; }
 #dashboard-table th.dash-dec-head:last-of-type { border-right:none !important; }
 #dashboard-table td.dash-dec-cell { font-size:11px; white-space:nowrap; padding:3px 4px; border-bottom:1px solid #f0f0ec; border-right:1px solid #e8e8f0; }
 #dashboard-table td.dash-dec-cell:nth-child(3n+4) { border-right:2px solid #b8b8d0; }
@@ -307,7 +308,7 @@ table.hide-fact td.cell-dfact { display:none }
 #dashboard-table td.dash-dec-cell.dash-pos { color:#0a6e4e; }
 #dashboard-table td.dash-dec-cell.dash-neg { color:#a33020; }
 #dashboard-table td.dash-dec-cell.dash-out-range { background:#f9f9f7; color:#ccc; }
-#dashboard-table td.dash-dec-cell.dash-cur-month { background:#fffbe6; }
+#dashboard-table td.dash-dec-cell.dash-cur-month { background:#fffaee; }
 #dashboard-table tr.dash-total td.dash-dec-cell { font-weight:600; background:#f8f8f6; border-top:2px solid #c0c0d0; }
 #dashboard-table tr.dash-cumul td.dash-dec-cell { background:#f5f0ff; color:#3d1a8a; font-weight:600; border-top:1px solid #ddd8f5; }
 /* total rows */
