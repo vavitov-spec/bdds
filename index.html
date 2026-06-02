@@ -734,19 +734,32 @@ function initFirebase() {
       var user = window.auth.currentUser;
       if (!user) { resolve(false); return; }
       window.firebaseUid = user.uid;
-      window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
+      window.db.doc('bdds/' + window.firebaseUid).get({ source: 'server' }).then(function(snap) {
         console.log('[loadData] snap.exists=', snap.exists);
         var fbData = snap.exists ? snap.data() : null;
         // Читаем localStorage как резервную копию
         var lsData = null;
-        try { var raw = localStorage.getItem(_LS_KEY); if (raw) lsData = JSON.parse(raw); } catch(e) {}
+        try {
+          var raw = localStorage.getItem(_LS_KEY);
+          console.log('[loadData] localStorage raw length=', raw ? raw.length : 0);
+          if (raw) lsData = JSON.parse(raw);
+        } catch(e) { console.warn('[loadData] localStorage read error:', e); }
 
-        // Выбираем источник данных: предпочитаем localStorage если Firebase вернул то же самое
-        // (localStorage всегда актуальнее — пишется мгновенно, Firebase может отставать)
+        // Сравниваем данные из Firebase и localStorage для отладки
+        var fbArt0 = fbData && fbData.budgets && fbData.budgets[0] && fbData.budgets[0].articles ? fbData.budgets[0].articles.length : 'n/a';
+        var lsArt0 = lsData && lsData.budgets && lsData.budgets[0] && lsData.budgets[0].articles ? lsData.budgets[0].articles.length : 'n/a';
+        console.log('[loadData] Firebase budgets[0] articles=', fbArt0, '| localStorage budgets[0] articles=', lsArt0);
+        // Логируем первое значение из первой статьи для сравнения
+        try {
+          var fbV = fbData && fbData.budgets && fbData.budgets[0] && fbData.budgets[0].articles[0] ? JSON.stringify(fbData.budgets[0].articles[0].inDplan||[]).slice(0,60) : 'n/a';
+          var lsV = lsData && lsData.budgets && lsData.budgets[0] && lsData.budgets[0].articles[0] ? JSON.stringify(lsData.budgets[0].articles[0].inDplan||[]).slice(0,60) : 'n/a';
+          console.log('[loadData] FB inDplan[0..5]=', fbV);
+          console.log('[loadData] LS inDplan[0..5]=', lsV);
+        } catch(e) {}
+
         var d = null;
         if (fbData && fbData.projects && Array.isArray(fbData.projects) && fbData.projects.length > 0) {
           d = fbData;
-          // Если в localStorage есть данные с тем же числом проектов — берём его как более свежее
           if (lsData && lsData.projects && Array.isArray(lsData.projects) && lsData.projects.length > 0) {
             d = lsData;
             console.log('[loadData] using localStorage cache (more recent)');
@@ -762,7 +775,8 @@ function initFirebase() {
           budgets        = d.budgets || {};
           currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
           window.migrateData();
-          window.saveData(); // сохраняем мигрированные декадные данные
+          // saveData после загрузки убран — чтобы не перезаписывать Firebase загруженными данными
+          // (это могло стирать изменения сделанные непосредственно перед refresh)
           console.log('[loadData] loaded OK, projects:', projects.length);
           resolve(true);
           return;
@@ -822,7 +836,11 @@ function initFirebase() {
   window.saveData = function() {
     // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
     var payload = { projects: projects, budgets: budgets, currentProject: currentProject };
-    try { localStorage.setItem(_LS_KEY, JSON.stringify(payload)); } catch(e) {}
+    try {
+      var s = JSON.stringify(payload);
+      localStorage.setItem(_LS_KEY, s);
+      console.log('[saveData] wrote localStorage, size=', s.length, 'budgets keys=', Object.keys(budgets));
+    } catch(e) { console.error('[saveData] localStorage write FAILED:', e); }
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(window.persistDataNow, 500);
   };
