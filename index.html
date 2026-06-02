@@ -18,7 +18,7 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a18;font-size
 .nav-item .label{flex:1}
 .nav-toggle{font-size:11px;color:#aaa;transition:transform .2s;display:inline-block}
 .nav-toggle.open{transform:rotate(90deg)}
-.nav-sub-item{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 42px;cursor:pointer;color:#666;font-size:13px}
+.nav-sub-item{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 42px;cursor:pointer;color:#666;font-size:13px;position:relative}
 .nav-sub-item:hover{background:#f0f0ec;color:#1a1a18}
 .nav-sub-item.active{color:#1a1a18;font-weight:500}
 .nav-sub-item .dot{width:6px;height:6px;border-radius:50%;background:#ccc;flex-shrink:0}
@@ -147,7 +147,7 @@ tr.dragging-article td{opacity:0.35}
 .nav-sub-item.drag-over-top{box-shadow:inset 0 2px 0 #4a90d9}
 .nav-sub-item.drag-over-bottom{box-shadow:inset 0 -2px 0 #4a90d9}
 .nav-sub-item.dragging-proj{opacity:0.35}
-.proj-drag-handle{display:inline-block;cursor:grab;color:#ccc;font-size:12px;padding:0 4px 0 0;line-height:1;user-select:none;flex-shrink:0}
+.proj-drag-handle{position:absolute;left:14px;top:50%;transform:translateY(-50%);cursor:grab;color:#ccc;font-size:12px;line-height:1;user-select:none}
 .proj-drag-handle:hover{color:#888}
 .proj-drag-handle:active{cursor:grabbing}
 .delete-subline-btn{font-size:10px;padding:1px 5px;cursor:pointer;border-radius:4px;background:none;border:none;color:#ccc;font-family:inherit}
