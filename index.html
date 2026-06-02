@@ -81,9 +81,9 @@ td.sticky-tot-f {
 
 /* Sticky header bumps z-index so it stays above body sticky cells */
 thead th.sticky-name{ z-index:5; background:#fafaf8; }
-thead th.sticky-tot-p{ z-index:5; background:#daeeff; }
-thead th.sticky-tot-fc{ z-index:5; background:#fff0c0; }
-thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; }
+thead th.sticky-tot-p{ z-index:5; background:#daeeff; text-align:center; }
+thead th.sticky-tot-fc{ z-index:5; background:#fff0c0; text-align:center; }
+thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; text-align:center; }
 thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
 
 /* Row-specific overrides for sticky cols */
@@ -1256,8 +1256,8 @@ function renderDashboard() {
     for (let d = startDecIdx; d < startDecIdx + SHOWN_DEC; d++) {
       const cm = d === curDecGlobal ? ' dash-cur-month' : '';
       if (viewDashBudget)
-        thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none">бдж</th>`;
-      thead += `<th class="dash-dec-head${cm}" style="color:#7a6000;background:#fff8e0;font-size:9px;border-right:2px solid #c0c0d0">план</th>`;
+        thead += `<th class="dash-dec-head${cm}" style="color:#1a5fa3;background:#eaf4ff;font-size:9px;border-right:none;text-align:center">бдж</th>`;
+      thead += `<th class="dash-dec-head${cm}" style="color:#7a6000;background:#fff8e0;font-size:9px;border-right:2px solid #c0c0d0;text-align:center">план</th>`;
     }
     thead += '</tr>';
     document.getElementById('dashboard-thead').innerHTML = thead;
@@ -1382,13 +1382,13 @@ function renderDashboard() {
     thead += '</tr><tr>';
     // Prior period subheaders: бдж only if budget, always план
     if (viewDashBudget)
-      thead += `<th style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бдж</th>`;
-    thead += `<th style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
+      thead += `<th style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:center;padding:3px 6px;border-right:none">бдж</th>`;
+    thead += `<th style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:center;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
     for(let m=0;m<12;m++){
       const cm = m===curM?' class="dash-cur-month"':'';
       if (viewDashBudget)
-        thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:none">бдж</th>`;
-      thead += `<th${cm} style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:right;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
+        thead += `<th${cm} style="color:#1a5fa3;background:#eaf4ff;font-size:10px;font-weight:500;text-align:center;padding:3px 6px;border-right:none">бдж</th>`;
+      thead += `<th${cm} style="color:#7a6000;background:#fff8e0;font-size:10px;font-weight:500;text-align:center;padding:3px 6px;border-right:2px solid #c0c0d0">план</th>`;
     }
     thead += '</tr>';
     document.getElementById('dashboard-thead').innerHTML = thead;
@@ -1608,7 +1608,8 @@ function renderCumulChart(cumul, cumulFC, curM) {
   ctx.textAlign = 'right';
   ctx.fillText('0', yLabelRight, zeroY + 3.5);
 
-  // ── Filled areas ─────────────────────────────────────────────
+  // ── Filled areas — по линии план (valsFC) ───────────────────
+  const fillData = cumulFC ? valsFC : vals;
   function drawFill(color, isAbove) {
     ctx.save();
     ctx.beginPath();
@@ -1617,7 +1618,7 @@ function renderCumulChart(cumul, cumulFC, curM) {
     ctx.clip();
     ctx.beginPath();
     ctx.moveTo(toX(0), zeroY);
-    for (let m = 0; m < 12; m++) ctx.lineTo(toX(m), toY(vals[m]));
+    for (let m = 0; m < 12; m++) ctx.lineTo(toX(m), toY(fillData[m]));
     ctx.lineTo(toX(11), zeroY);
     ctx.closePath();
     ctx.fillStyle = color;
@@ -1627,26 +1628,19 @@ function renderCumulChart(cumul, cumulFC, curM) {
   drawFill('rgba(10,110,78,0.10)', true);
   drawFill('rgba(163,48,32,0.10)', false);
 
-  // ── Line with color split at zero ────────────────────────────
-  function drawLineFull(color, isAbove) {
-    ctx.save();
-    ctx.beginPath();
-    if (isAbove) ctx.rect(xLeft - 2, PAD.top - 2, xRight - xLeft + 4, zeroY - PAD.top + 2);
-    else         ctx.rect(xLeft - 2, zeroY, xRight - xLeft + 4, PAD.top + cH - zeroY + 2);
-    ctx.clip();
-    ctx.beginPath();
-    for (let m = 0; m < 12; m++) {
-      if (m === 0) ctx.moveTo(toX(m), toY(vals[m]));
-      else         ctx.lineTo(toX(m), toY(vals[m]));
-    }
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = 2.5;
-    ctx.lineJoin    = 'round';
-    ctx.stroke();
-    ctx.restore();
+  // ── Бюджет — тёмно-синий пунктир ────────────────────────────
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  for (let m = 0; m < 12; m++) {
+    if (m === 0) ctx.moveTo(toX(m), toY(vals[m]));
+    else         ctx.lineTo(toX(m), toY(vals[m]));
   }
-  drawLineFull('#0a6e4e', true);
-  drawLineFull('#c0392b', false);
+  ctx.strokeStyle = '#2a4a8a';
+  ctx.lineWidth   = 2;
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+  ctx.restore();
 
   // ── Current month vertical marker ────────────────────────────
   if (curM >= 0 && curM <= 11) {
@@ -1661,26 +1655,44 @@ function renderCumulChart(cumul, cumulFC, curM) {
     ctx.restore();
   }
 
-  // ── Forecast (план) line — dashed ───────────────────────────
-  if (cumulFC) {
+  // ── План — сплошная с разбивкой по нулю (зелёная/красная) ───
+  function drawPlanLine(color, isAbove) {
     ctx.save();
-    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    if (isAbove) ctx.rect(xLeft - 2, PAD.top - 2, xRight - xLeft + 4, zeroY - PAD.top + 2);
+    else         ctx.rect(xLeft - 2, zeroY, xRight - xLeft + 4, PAD.top + cH - zeroY + 2);
+    ctx.clip();
     ctx.beginPath();
     for (let m = 0; m < 12; m++) {
-      const v = valsFC[m];
+      const v = (cumulFC ? valsFC : vals)[m];
       if (m === 0) ctx.moveTo(toX(m), toY(v));
       else         ctx.lineTo(toX(m), toY(v));
     }
-    ctx.strokeStyle = '#c8a000';
-    ctx.lineWidth   = 2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2.5;
     ctx.lineJoin    = 'round';
     ctx.stroke();
     ctx.restore();
   }
+  drawPlanLine('#0a6e4e', true);
+  drawPlanLine('#c0392b', false);
 
-  // ── Dots бюджет ───────────────────────────────────────────────
+  // ── Dots бюджет (синие) ───────────────────────────────────────
   for (let m = 0; m < 12; m++) {
     const v = vals[m], cx = toX(m), cy = toY(v);
+    ctx.beginPath();
+    ctx.arc(cx, cy, m === curM ? 4 : 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#2a4a8a';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // ── Dots план (зелёные/красные) ──────────────────────────────
+  const planData = cumulFC ? valsFC : vals;
+  for (let m = 0; m < 12; m++) {
+    const v = planData[m], cx = toX(m), cy = toY(v);
     ctx.beginPath();
     ctx.arc(cx, cy, m === curM ? 5 : 3.5, 0, Math.PI * 2);
     ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
@@ -1690,20 +1702,6 @@ function renderCumulChart(cumul, cumulFC, curM) {
     ctx.stroke();
   }
 
-  // ── Dots план ────────────────────────────────────────────────
-  if (cumulFC) {
-    for (let m = 0; m < 12; m++) {
-      const v = valsFC[m], cx = toX(m), cy = toY(v);
-      ctx.beginPath();
-      ctx.arc(cx, cy, m === curM ? 4 : 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#c8a000';
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-  }
-
   // ── Value labels: бюджет и план — без наложения ─────────────
   // Та линия, что выше в данной точке → метка сверху; ниже → снизу
   ctx.textAlign = 'center';
@@ -1711,16 +1709,15 @@ function renderCumulChart(cumul, cumulFC, curM) {
   for (let m = 0; m < 12; m++) {
     const vB = vals[m];
     const vP = cumulFC ? valsFC[m] : null;
-    // bAbove=true → бюджет выше (или план отсутствует)
     const bAbove = vP === null || vB >= vP;
     if (vB !== 0) {
       const cx = toX(m), cy = toY(vB);
-      ctx.fillStyle = vB >= 0 ? '#0a6e4e' : '#c0392b';
+      ctx.fillStyle = '#2a4a8a';
       ctx.fillText(String(Math.round(vB)), cx, bAbove ? cy - 8 : cy + 15);
     }
     if (vP !== null && vP !== 0) {
       const cx = toX(m), cy = toY(vP);
-      ctx.fillStyle = '#c8a000';
+      ctx.fillStyle = vP >= 0 ? '#0a6e4e' : '#c0392b';
       ctx.fillText(String(Math.round(vP)), cx, bAbove ? cy + 15 : cy - 8);
     }
   }
@@ -1827,9 +1824,10 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   ctx.textAlign = 'right';
   ctx.fillText('0', yLabelRight, zeroY + 3.5);
 
-  // ── Filled areas ────────────────────────────────────────────
+  // ── Filled areas — по линии план (valsFC) ───────────────────
   const valsScaled = cumulArr.map(v => v === null ? null : v / 1000);
   const valsFC = cumulArrFC ? cumulArrFC.map(v => v === null ? null : v / 1000) : null;
+  const fillDataDec = valsFC || valsScaled;
   function drawFill(color, isAbove) {
     ctx.save();
     if (isAbove) ctx.rect(xLeft, PAD.top, xRight - xLeft, zeroY - PAD.top);
@@ -1838,8 +1836,8 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
     ctx.beginPath();
     ctx.moveTo(toX(0), zeroY);
     for (let d = 0; d < shown; d++) {
-      if (valsScaled[d] === null) continue;
-      ctx.lineTo(toX(d), toY(valsScaled[d]));
+      if (fillDataDec[d] === null) continue;
+      ctx.lineTo(toX(d), toY(fillDataDec[d]));
     }
     ctx.lineTo(toX(shown - 1), zeroY);
     ctx.closePath();
@@ -1850,27 +1848,21 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   drawFill('rgba(10,110,78,0.10)', true);
   drawFill('rgba(163,48,32,0.10)', false);
 
-  // ── Line ────────────────────────────────────────────────────
-  function drawLineFull(color, isAbove) {
-    ctx.save();
-    if (isAbove) ctx.rect(xLeft - 2, PAD.top - 2, xRight - xLeft + 4, zeroY - PAD.top + 2);
-    else         ctx.rect(xLeft - 2, zeroY, xRight - xLeft + 4, PAD.top + cH - zeroY + 2);
-    ctx.clip();
-    ctx.beginPath();
-    let first = true;
-    for (let d = 0; d < shown; d++) {
-      if (valsScaled[d] === null) { first = true; continue; }
-      if (first) { ctx.moveTo(toX(d), toY(valsScaled[d])); first = false; }
-      else         ctx.lineTo(toX(d), toY(valsScaled[d]));
-    }
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = 2.5;
-    ctx.lineJoin    = 'round';
-    ctx.stroke();
-    ctx.restore();
+  // ── Бюджет — тёмно-синий пунктир ────────────────────────────
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = '#2a4a8a';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  let firstB = true;
+  for (let d = 0; d < shown; d++) {
+    if (valsScaled[d] === null) { firstB = true; continue; }
+    if (firstB) { ctx.moveTo(toX(d), toY(valsScaled[d])); firstB = false; }
+    else          ctx.lineTo(toX(d), toY(valsScaled[d]));
   }
-  drawLineFull('#0a6e4e', true);
-  drawLineFull('#c0392b', false);
+  ctx.stroke();
+  ctx.restore();
 
   // ── Month boundary lines between shown decades ─────────────
   const curM = new Date().getMonth();
@@ -1891,49 +1883,54 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
     }
   }
 
-  // ── Dots ────────────────────────────────────────────────────
+  // ── Dots бюджет (синие) ──────────────────────────────────────
   for (let d = 0; d < shown; d++) {
     if (cumulArr[d] === null) continue;
     const v = valsScaled[d], cx = toX(d), cy = toY(v);
     ctx.beginPath();
-    ctx.arc(cx, cy, d === 0 ? 5 : 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
+    ctx.arc(cx, cy, d === 0 ? 4 : 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#2a4a8a';
     ctx.fill();
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
 
-  // ── Линия план (пунктир) ──────────────────────────────────
+  // ── План — сплошная с разбивкой по нулю (зелёная/красная) ───
   if (cumulArrFC) {
-    ctx.save();
-    ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = '#c8a000';
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    let firstFC = true;
-    for (let d = 0; d < shown; d++) {
-      if (valsFC[d] === null) { firstFC = true; continue; }
-      if (firstFC) { ctx.moveTo(toX(d), toY(valsFC[d])); firstFC = false; }
-      else          ctx.lineTo(toX(d), toY(valsFC[d]));
+    function drawPlanLineDec(color, isAbove) {
+      ctx.save();
+      if (isAbove) ctx.rect(xLeft - 2, PAD.top - 2, xRight - xLeft + 4, zeroY - PAD.top + 2);
+      else         ctx.rect(xLeft - 2, zeroY, xRight - xLeft + 4, PAD.top + cH - zeroY + 2);
+      ctx.clip();
+      ctx.beginPath();
+      let first = true;
+      for (let d = 0; d < shown; d++) {
+        if (valsFC[d] === null) { first = true; continue; }
+        if (first) { ctx.moveTo(toX(d), toY(valsFC[d])); first = false; }
+        else         ctx.lineTo(toX(d), toY(valsFC[d]));
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 2.5;
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
+      ctx.restore();
     }
-    ctx.stroke();
-    ctx.restore();
+    drawPlanLineDec('#0a6e4e', true);
+    drawPlanLineDec('#c0392b', false);
 
-    // Dots план
+    // Dots план (зелёные/красные)
     for (let d = 0; d < shown; d++) {
       if (cumulArrFC[d] === null) continue;
       const v = valsFC[d], cx = toX(d), cy = toY(v);
       ctx.beginPath();
-      ctx.arc(cx, cy, d === 0 ? 4 : 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#c8a000';
+      ctx.arc(cx, cy, d === 0 ? 5 : 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = v >= 0 ? '#0a6e4e' : '#c0392b';
       ctx.fill();
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
-
   }
 
   // ── Value labels: бюджет и план — без наложения ─────────────
@@ -1945,12 +1942,12 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
     const bAbove = vP === null || (vB !== null && vB >= vP);
     if (vB !== null) {
       const cx = toX(d), cy = toY(vB);
-      ctx.fillStyle = vB >= 0 ? '#0a6e4e' : '#c0392b';
+      ctx.fillStyle = '#2a4a8a';
       ctx.fillText(String(Math.round(vB)), cx, bAbove ? cy - 8 : cy + 15);
     }
     if (vP !== null) {
       const cx = toX(d), cy = toY(vP);
-      ctx.fillStyle = '#c8a000';
+      ctx.fillStyle = vP >= 0 ? '#0a6e4e' : '#c0392b';
       ctx.fillText(String(Math.round(vP)), cx, bAbove ? cy + 15 : cy - 8);
     }
   }
@@ -2135,9 +2132,9 @@ function renderBudget() {
                (viewFact     ? `<th class="decade-sub-head month-fact-head">фк</th>` : '')).repeat(3);
     } else {
       row1 += `<th class="month-group" colspan="${colspan}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
-      row2 += (viewPlan     ? `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff">бюджет</th>` : '') +
-              (viewForecast ? `<th class="month-forecast-head" style="color:#7a6000;font-size:10px;background:#fff8e0">план</th>` : '') +
-              (viewFact     ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6">факт</th>` : '');
+      row2 += (viewPlan     ? `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff;text-align:center">бюджет</th>` : '') +
+              (viewForecast ? `<th class="month-forecast-head" style="color:#7a6000;font-size:10px;background:#fff8e0;text-align:center">план</th>` : '') +
+              (viewFact     ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6;text-align:center">факт</th>` : '');
     }
   });
 
