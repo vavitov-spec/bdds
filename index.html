@@ -144,6 +144,12 @@ tr.add-subline-row td{background:transparent;border-bottom:none}
 tr.drag-over-top td{box-shadow:inset 0 2px 0 #4a90d9}
 tr.drag-over-bottom td{box-shadow:inset 0 -2px 0 #4a90d9}
 tr.dragging-article td{opacity:0.35}
+.nav-sub-item.drag-over-top{box-shadow:inset 0 2px 0 #4a90d9}
+.nav-sub-item.drag-over-bottom{box-shadow:inset 0 -2px 0 #4a90d9}
+.nav-sub-item.dragging-proj{opacity:0.35}
+.proj-drag-handle{display:inline-block;cursor:grab;color:#ccc;font-size:12px;padding:0 4px 0 0;line-height:1;user-select:none;flex-shrink:0}
+.proj-drag-handle:hover{color:#888}
+.proj-drag-handle:active{cursor:grabbing}
 .delete-subline-btn{font-size:10px;padding:1px 5px;cursor:pointer;border-radius:4px;background:none;border:none;color:#ccc;font-family:inherit}
 .delete-subline-btn:hover{color:#c0392b;background:#fdf0f0}
 
@@ -968,7 +974,8 @@ function getBudget() {
 /* ---- SIDEBAR ---- */
 function renderSidebarProjects() {
   document.getElementById('nav-projects-list').innerHTML = projects.map((p,i) => `
-    <div class="nav-sub-item${i===currentProject?' active':''}" onclick="selectProject(${i})">
+    <div class="nav-sub-item${i===currentProject?' active':''}" data-proj="${i}" onclick="selectProject(${i})">
+      <span class="proj-drag-handle" title="Перетащить проект">⠿</span>
       <span class="dot"></span>
       <span style="flex:1">${esc(p.name)}</span>
       ${p.type ? `<span class="proj-type-badge">${esc(p.type)}</span>` : ''}
@@ -976,6 +983,7 @@ function renderSidebarProjects() {
     </div>`).join('');
   document.getElementById('projects-submenu').style.display = projectsOpen ? '' : 'none';
   document.getElementById('projects-toggle').classList.toggle('open', projectsOpen);
+  initProjectDrag();
 }
 
 /* Mobile sidebar toggle */
@@ -3114,6 +3122,101 @@ function toggleView(which) {
 
   // Rebuild thead so colspans reflect new state, then reapply hide class
   renderBudget();
+}
+
+/* ---- DRAG-AND-DROP для проектов в сайдбаре ---- */
+let _projDragSrc = null;
+let _projDragMouseupBound = false;
+
+function _onProjDragMouseup() {
+  document.querySelectorAll('.nav-sub-item[draggable="true"]').forEach(el => { el.draggable = false; });
+}
+
+function initProjectDrag() {
+  const list = document.getElementById('nav-projects-list');
+  if (!list) return;
+
+  if (!_projDragMouseupBound) {
+    window.addEventListener('mouseup', _onProjDragMouseup);
+    _projDragMouseupBound = true;
+  }
+
+  list.querySelectorAll('.nav-sub-item').forEach(item => {
+    const pi = parseInt(item.dataset.proj);
+    const handle = item.querySelector('.proj-drag-handle');
+    if (!handle) return;
+
+    handle.addEventListener('mousedown', () => { item.draggable = true; });
+
+    item.addEventListener('dragstart', e => {
+      _projDragSrc = pi;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => item.classList.add('dragging-proj'), 0);
+    });
+
+    item.addEventListener('dragend', () => {
+      _projDragSrc = null;
+      list.querySelectorAll('.nav-sub-item').forEach(el => {
+        el.classList.remove('dragging-proj', 'drag-over-top', 'drag-over-bottom');
+        el.draggable = false;
+      });
+    });
+
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (_projDragSrc === null || _projDragSrc === pi) return;
+      list.querySelectorAll('.nav-sub-item').forEach(el =>
+        el.classList.remove('drag-over-top', 'drag-over-bottom'));
+      const rect = item.getBoundingClientRect();
+      item.classList.add(e.clientY < rect.top + rect.height / 2 ? 'drag-over-top' : 'drag-over-bottom');
+    });
+
+    item.addEventListener('dragleave', e => {
+      if (!item.contains(e.relatedTarget))
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (_projDragSrc === null || _projDragSrc === pi) return;
+      const rect = item.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      const srcIdx = _projDragSrc;
+      let targetIdx = pi;
+      _projDragSrc = null;
+
+      // Переставить проект в массиве
+      const [movedProj] = projects.splice(srcIdx, 1);
+      if (srcIdx < targetIdx) targetIdx--;
+      projects.splice(before ? targetIdx : targetIdx + 1, 0, movedProj);
+
+      // Переставить бюджеты
+      const oldBudgets = {...budgets};
+      const keys = Object.keys(oldBudgets).map(Number).sort((a,b)=>a-b);
+      // Собрать бюджеты в порядке до перестановки
+      const budgetArr = keys.map(k => oldBudgets[k] || null);
+      const [movedBudget] = budgetArr.splice(srcIdx, 1);
+      budgetArr.splice(before ? targetIdx : targetIdx + 1, 0, movedBudget);
+      budgets = {};
+      budgetArr.forEach((b, i) => { if (b) budgets[i] = b; });
+
+      // Скорректировать currentProject
+      const insertPos = before ? targetIdx : targetIdx + 1;
+      const effectiveInsert = srcIdx < insertPos ? insertPos - 1 : insertPos;
+      let ci = currentProject;
+      if (ci === srcIdx) {
+        ci = effectiveInsert;
+      } else {
+        if (ci > srcIdx) ci--;
+        if (ci >= effectiveInsert) ci++;
+      }
+      currentProject = ci;
+
+      saveData();
+      renderSidebarProjects();
+      renderBudget();
+    });
+  });
 }
 
 /* ---- DRAG-AND-DROP для статей ---- */
