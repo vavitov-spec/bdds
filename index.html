@@ -596,6 +596,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px">
         <div id="project-page-title" style="font-size:20px;font-weight:500"></div>
         <div id="project-page-meta" style="font-size:13px;color:#aaa"></div>
+        <div id="save-indicator" style="font-size:12px;margin-left:auto;transition:color .3s"></div>
         <button id="project-edit-btn" onclick="openEditModal()" title="Редактировать проект" style="background:none;border:1px solid #e0e0d8;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.color='#555';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.color='#aaa';this.style.background='none'">✏️</button>
       </div>
       <div class="section">
@@ -735,19 +736,36 @@ function initFirebase() {
       window.firebaseUid = user.uid;
       window.db.doc('bdds/' + window.firebaseUid).get().then(function(snap) {
         console.log('[loadData] snap.exists=', snap.exists);
-        if (snap.exists) {
-          var d = snap.data();
-          console.log('[loadData] projects=', d.projects, 'budgets keys=', d.budgets ? Object.keys(d.budgets) : null);
-          if (d.projects && Array.isArray(d.projects) && d.projects.length > 0) {
-            projects       = d.projects;
-            budgets        = d.budgets || {};
-            currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
-            window.migrateData();
-            window.saveData(); // сохраняем мигрированные декадные данные
-            console.log('[loadData] loaded OK, projects:', projects.length);
-            resolve(true);
-            return;
+        var fbData = snap.exists ? snap.data() : null;
+        // Читаем localStorage как резервную копию
+        var lsData = null;
+        try { var raw = localStorage.getItem(_LS_KEY); if (raw) lsData = JSON.parse(raw); } catch(e) {}
+
+        // Выбираем источник данных: предпочитаем localStorage если Firebase вернул то же самое
+        // (localStorage всегда актуальнее — пишется мгновенно, Firebase может отставать)
+        var d = null;
+        if (fbData && fbData.projects && Array.isArray(fbData.projects) && fbData.projects.length > 0) {
+          d = fbData;
+          // Если в localStorage есть данные с тем же числом проектов — берём его как более свежее
+          if (lsData && lsData.projects && Array.isArray(lsData.projects) && lsData.projects.length > 0) {
+            d = lsData;
+            console.log('[loadData] using localStorage cache (more recent)');
           }
+        } else if (lsData && lsData.projects && Array.isArray(lsData.projects) && lsData.projects.length > 0) {
+          d = lsData;
+          console.log('[loadData] Firebase empty, using localStorage cache');
+        }
+
+        if (d) {
+          console.log('[loadData] projects=', d.projects, 'budgets keys=', d.budgets ? Object.keys(d.budgets) : null);
+          projects       = d.projects;
+          budgets        = d.budgets || {};
+          currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
+          window.migrateData();
+          window.saveData(); // сохраняем мигрированные декадные данные
+          console.log('[loadData] loaded OK, projects:', projects.length);
+          resolve(true);
+          return;
         }
         console.warn('[loadData] no data found, will use demo');
         resolve(false);
@@ -776,11 +794,25 @@ function initFirebase() {
 
   // ── Save to Firestore (debounced) ───────────────────────────────────────
   var _saveTimer = null;
+  var _LS_KEY = 'bdds_cache';
+
+  function _setSaveIndicator(state) { // 'saving' | 'saved' | 'error'
+    var el = document.getElementById('save-indicator');
+    if (!el) return;
+    if (state === 'saving') { el.textContent = '⏳ Сохранение…'; el.style.color = '#aaa'; }
+    else if (state === 'saved') { el.textContent = '✓ Сохранено'; el.style.color = '#0a6e4e'; setTimeout(function(){ el.textContent=''; }, 2500); }
+    else { el.textContent = '⚠ Ошибка сохранения'; el.style.color = '#c0392b'; }
+  }
+
   window.persistDataNow = function() {
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject };
+    // Всегда пишем в localStorage немедленно как резервная копия
+    try { localStorage.setItem(_LS_KEY, JSON.stringify(payload)); } catch(e) {}
     if (!window.firebaseUid) return;
-    window.db.doc('bdds/' + window.firebaseUid).set(
-      { projects: projects, budgets: budgets, currentProject: currentProject }
-    ).catch(function(e) { console.error('Save error:', e); });
+    _setSaveIndicator('saving');
+    window.db.doc('bdds/' + window.firebaseUid).set(payload)
+      .then(function() { _setSaveIndicator('saved'); })
+      .catch(function(e) { console.error('Save error:', e); _setSaveIndicator('error'); });
   };
   window.flushSaveData = function() {
     clearTimeout(_saveTimer);
@@ -788,6 +820,9 @@ function initFirebase() {
     window.persistDataNow();
   };
   window.saveData = function() {
+    // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject };
+    try { localStorage.setItem(_LS_KEY, JSON.stringify(payload)); } catch(e) {}
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(window.persistDataNow, 500);
   };
