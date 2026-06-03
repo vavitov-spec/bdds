@@ -84,7 +84,9 @@ thead th.sticky-name{ z-index:5; background:#fafaf8; }
 thead th.sticky-tot-p{ z-index:5; background:#daeeff; text-align:center; }
 thead th.sticky-tot-fc{ z-index:5; background:#fff0c0; text-align:center; }
 thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; text-align:center; }
-thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
+/* z-index:4 — выше замороженных ячеек тела (sticky-name/tot-* = 3), иначе при
+   одновременном скролле строки тела перекрывают шапку (заметно в Safari) */
+thead th { position:sticky; top:0; z-index:4; background:#fafaf8; }
 
 /* Row-specific overrides for sticky cols */
 tr.article-header td.sticky-name { background:#f7f7f4; }
@@ -293,7 +295,7 @@ table.hide-fact td.cell-dfact { display:none }
   border-right:2px solid #d8d8d0; text-align:left; vertical-align:middle;
 }
 #dashboard-table thead th.dash-sticky { background:#fafaf8; z-index:5; }
-#dashboard-table thead th { position:sticky; top:0; z-index:2; background:#fafaf8; }
+#dashboard-table thead th { position:sticky; top:0; z-index:4; background:#fafaf8; }
 /* Dashboard decade cells */
 #dashboard-table th.dash-dec-group { font-size:11px; font-weight:600; color:#555; background:#f0f0ec; text-align:center; white-space:nowrap; padding:4px 2px; border-right:2px solid #c0c0d0; }
 #dashboard-table th.dash-dec-group.dash-cur-month { background:#fff0aa; color:#5a3e00; }
@@ -1215,17 +1217,27 @@ function computeProjectNetDec36Forecast(pi, dashY) {
 function computePriorPeriodCumul(pi) {
   const b = budgets[(projects[pi] || {}).id];
   const p = projects[pi];
-  if (!b || !b.articles || !p || !p.start) return { budget: 0, forecast: 0 };
-  const prevY = new Date().getFullYear() - 1;
-  const projPrevY = _projectMonthsForYear(p, prevY);
-  if (!projPrevY.length) return { budget: 0, forecast: 0 };
+  if (!b || !b.articles || !p || !p.start || !p.end) return { budget: 0, forecast: 0 };
+  const curY = new Date().getFullYear();
+  // Собираем позиции ВСЕХ месяцев проекта до текущего года — накопленный перенос.
+  // Раньше учитывался только предыдущий год, из-за чего у многолетних проектов
+  // данные позапрошлых лет терялись в колонке «Дек».
+  const priorIdx = [];
+  let y = p.start.y, m = p.start.m, idx = 0;
+  const endKey = p.end.y * 12 + p.end.m;
+  while (y * 12 + m <= endKey && idx < MONTHS_COUNT) {
+    if (y < curY) priorIdx.push(idx);
+    m++; if (m > 11) { m = 0; y++; }
+    idx++;
+  }
+  if (!priorIdx.length) return { budget: 0, forecast: 0 };
   let sumB = 0, sumP = 0;
   b.articles.forEach(a => {
     const ip = sectionSum(a, 'in',  'plan');
     const op = sectionSum(a, 'out', 'plan');
     const ipF = sectionSum(a, 'in',  'forecast');
     const opF = sectionSum(a, 'out', 'forecast');
-    projPrevY.forEach(({projIdx}) => {
+    priorIdx.forEach(projIdx => {
       sumB += (ip[projIdx]||0) - (op[projIdx]||0);
       sumP += (ipF[projIdx]||0) - (opF[projIdx]||0);
     });
@@ -2126,6 +2138,15 @@ function computeGrandDecTotals(articles, months) {
 /* ---- BUDGET TABLE ---- */
 function renderBudget() {
   const p = projects[currentProject];
+  // Защита от пустого списка проектов (новый пользователь / пустые данные):
+  // без этого p.name роняет весь JS-контекст. Показываем пустое состояние.
+  if (!p) {
+    document.getElementById('project-page-title').textContent = 'Нет проектов';
+    document.getElementById('project-page-meta').textContent = '';
+    document.getElementById('articles-body').innerHTML = '';
+    document.getElementById('main-thead').innerHTML = '';
+    return;
+  }
   document.getElementById('project-page-title').textContent = p.name;
   let meta = '';
   if (p.type) meta += p.type;
@@ -3111,6 +3132,12 @@ function handleLogout() {
     window.flushSaveData();
     window.auth.signOut().then(() => {
       window.firebaseUid = null;
+      // Чистим данные из памяти и локального кэша, чтобы следующий пользователь
+      // (особенно без своих данных) не увидел чужие проекты до загрузки.
+      projects = [];
+      budgets = {};
+      currentProject = 0;
+      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
       document.getElementById('login-page').style.display = 'flex';
       document.getElementById('main-layout').style.display = 'none';
       document.getElementById('login-email').value = '';
