@@ -25,9 +25,11 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a18;font-size
 .nav-sub-item.active .dot{background:#1a1a18}
 .nav-add-project{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 42px;cursor:pointer;color:#888;font-size:13px;border-top:1px solid #f0f0ec}
 .nav-add-project:hover{color:#1a1a18;background:#f0f0ec}
-.main{flex:1;overflow-y:auto;padding:24px}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:10px 24px 24px}
 .page{display:none}
-.page.active{display:block}
+.page.active{display:block;flex:1;overflow:hidden}
+#page-dashboard.active,#page-payments.active{overflow-y:auto}
+#page-project.active{display:flex;flex-direction:column}
 .add-btn{font-size:13px;padding:6px 14px;cursor:pointer;border-radius:7px;background:#fff;border:1px solid #d5d5d0;color:#555;font-family:inherit}
 .add-btn:hover{background:#f5f5f3}
 .delete-btn{font-size:11px;padding:2px 7px;cursor:pointer;border-radius:5px;background:none;border:none;color:#bbb;font-family:inherit}
@@ -35,7 +37,9 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a18;font-size
 .edit-btn{font-size:11px;padding:2px 7px;cursor:pointer;border-radius:5px;background:none;border:none;color:#666;font-family:inherit}
 .edit-btn:hover{color:#1a1a18;background:#f0f0ec}
 .section{background:#fff;border:1px solid #e5e5e0;border-radius:10px;padding:20px;margin-bottom:16px}
+#page-project .section{flex:1;display:flex;flex-direction:column;overflow:hidden;margin-bottom:0;min-height:0}
 .table-wrap{overflow-x:auto;margin-bottom:12px}
+#page-project .table-wrap{flex:1;overflow:auto;margin-bottom:8px;min-height:0}
 table{border-collapse:separate;border-spacing:0;font-size:13px;white-space:nowrap;table-layout:fixed}
 th{text-align:right;font-weight:500;color:#888;padding:4px 6px;border-bottom:2px solid #e5e5e0;white-space:nowrap;font-size:12px}
 th.left{text-align:left}
@@ -86,7 +90,14 @@ thead th.sticky-tot-fc{ z-index:5; background:#fff0c0; text-align:center; }
 thead th.sticky-tot-f{ z-index:5; background:#d6f2e6; text-align:center; }
 /* z-index:4 — выше замороженных ячеек тела (sticky-name/tot-* = 3), иначе при
    одновременном скролле строки тела перекрывают шапку (заметно в Safari) */
-thead th { position:sticky; top:0; z-index:4; background:#fafaf8; }
+thead tr:nth-child(1) th { position:sticky; top:0; z-index:4; background:#fafaf8; }
+thead tr:nth-child(2) th { position:sticky; top:var(--thead-row1-h,0px); z-index:2; background:#fafaf8; }
+thead tr:nth-child(3) th { position:sticky; top:var(--thead-row12-h,0px); z-index:2; background:#fafaf8; }
+/* Sticky-left cols in thead must be above month/decade sub-rows */
+thead tr:nth-child(1) th.sticky-name  { z-index:6; }
+thead tr:nth-child(1) th.sticky-tot-p { z-index:6; }
+thead tr:nth-child(1) th.sticky-tot-fc{ z-index:6; }
+thead tr:nth-child(1) th.sticky-tot-f { z-index:6; }
 
 /* Row-specific overrides for sticky cols */
 tr.article-header td.sticky-name { background:#f7f7f4; }
@@ -160,6 +171,16 @@ tr.dragging-article td{opacity:0.35}
 
 /* Total rows */
 tr.total-row td{font-weight:600;border-top:2px solid #d8d8d0;background:#fafaf8;color:#555}
+tr.add-article-row td{background:#fafaf8;border-top:1px solid #ececea;padding:5px 8px}
+tr.add-article-row td.sticky-tot-p{background:#edf5ff}
+tr.add-article-row td.sticky-tot-fc{background:#fffbee}
+tr.add-article-row td.sticky-tot-f{background:#f0faf5}
+/* Sticky tfoot — строки итогов прилипают снизу скролл-контейнера */
+#main-table tfoot td { position:sticky; z-index:3; }
+#main-table tfoot td.sticky-name  { z-index:5; }
+#main-table tfoot td.sticky-tot-p { z-index:5; }
+#main-table tfoot td.sticky-tot-fc{ z-index:5; }
+#main-table tfoot td.sticky-tot-f { z-index:5; }
 tr.net-row td{
   font-weight:600;
   background:#fafaf8;
@@ -598,11 +619,11 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
     </div>
 
     <div class="page" id="page-project">
-      <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px">
-        <div id="project-page-title" style="font-size:20px;font-weight:500"></div>
-        <div id="project-page-meta" style="font-size:13px;color:#aaa"></div>
-        <div id="save-indicator" style="font-size:12px;margin-left:auto;transition:color .3s"></div>
-        <button id="project-edit-btn" onclick="openEditModal()" title="Редактировать проект" style="background:none;border:1px solid #e0e0d8;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:13px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.color='#555';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.color='#aaa';this.style.background='none'">✏️</button>
+      <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <div id="project-page-title" style="font-size:15px;font-weight:600"></div>
+        <div id="project-page-meta" style="font-size:12px;color:#aaa"></div>
+        <button id="project-edit-btn" onclick="openEditModal()" title="Редактировать проект" style="background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.color='#555';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.color='#aaa';this.style.background='none'">✏️</button>
+        <div id="save-indicator" style="font-size:11px;margin-left:auto;transition:color .3s"></div>
       </div>
       <div class="section">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
@@ -622,9 +643,9 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           <table id="main-table">
             <thead id="main-thead"></thead>
             <tbody id="articles-body"></tbody>
+            <tfoot id="main-tfoot"></tfoot>
           </table>
         </div>
-        <button class="add-btn" onclick="addArticle()">+ Добавить статью</button>
       </div>
     </div>
 
@@ -1300,6 +1321,7 @@ function renderDashboard() {
     }
     thead += '</tr>';
     document.getElementById('dashboard-thead').innerHTML = thead;
+    requestAnimationFrame(() => fixStickyTheadRows('dashboard-thead', 'dashboard-table'));
 
     // DATA
     const nets36B  = projects.map((p, pi) => computeProjectNetDec36(pi, curY));
@@ -1431,6 +1453,7 @@ function renderDashboard() {
     }
     thead += '</tr>';
     document.getElementById('dashboard-thead').innerHTML = thead;
+    requestAnimationFrame(() => fixStickyTheadRows('dashboard-thead', 'dashboard-table'));
 
     // DATA
     const nets12B  = projects.map((p,pi) => computeProjectNet12(pi, curY));
@@ -2135,6 +2158,39 @@ function computeGrandDecTotals(articles, months) {
            grandNetDec36, grandNetFCDec36, grandNetFDec36, cumulDec36, cumulFCDec36, cumulFDec36 };
 }
 
+/* ---- Sticky tfoot row offset fixer (bottom offsets, bottom-up) ---- */
+function fixStickyTfootRows(tfootId) {
+  const tfoot = document.getElementById(tfootId);
+  if (!tfoot) return;
+  const rows = Array.from(tfoot.querySelectorAll('tr'));
+  let cumH = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    Array.from(rows[i].querySelectorAll('td')).forEach(td => {
+      td.style.bottom = cumH + 'px';
+    });
+    cumH += rows[i].getBoundingClientRect().height;
+  }
+}
+
+/* ---- Sticky thead row offset fixer ---- */
+function fixStickyTheadRows(theadId, tableId) {
+  const thead = document.getElementById(theadId);
+  const table = tableId ? document.getElementById(tableId) : (thead ? thead.closest('table') : null);
+  if (!thead) return;
+  const rows = Array.from(thead.querySelectorAll('tr'));
+  let cumH = 0;
+  rows.forEach((tr, i) => {
+    if (i === 0) { cumH = tr.getBoundingClientRect().height; return; }
+    const cssVar = i === 1 ? (tableId === 'main-table' ? '--thead-row1-h' : '--dash-row1-h')
+                           : (tableId === 'main-table' ? '--thead-row12-h' : '--dash-row12-h');
+    // Set top directly on each th in this row
+    Array.from(tr.querySelectorAll('th')).forEach(th => {
+      th.style.top = cumH + 'px';
+    });
+    cumH += tr.getBoundingClientRect().height;
+  });
+}
+
 /* ---- BUDGET TABLE ---- */
 function renderBudget() {
   const p = projects[currentProject];
@@ -2145,6 +2201,7 @@ function renderBudget() {
     document.getElementById('project-page-meta').textContent = '';
     document.getElementById('articles-body').innerHTML = '';
     document.getElementById('main-thead').innerHTML = '';
+    document.getElementById('main-tfoot').innerHTML = '';
     return;
   }
   document.getElementById('project-page-title').textContent = p.name;
@@ -2199,6 +2256,9 @@ function renderBudget() {
     document.getElementById('main-thead').innerHTML =
       `<tr>${FIXED_COLS}${row1}</tr><tr>${row2}</tr>`;
   }
+
+  // Fix sticky top offsets for rows 2 and 3 after DOM update
+  requestAnimationFrame(() => fixStickyTheadRows('main-thead', 'main-table'));
 
   // Apply hide classes (colspans already correct from thead generation above)
   const tbl = document.getElementById('main-table');
@@ -2470,6 +2530,17 @@ function renderBudget() {
       ).join('');
 
   html += `
+    <tr class="add-article-row">
+      <td class="left sticky-name" colspan="1">
+        <button class="add-btn" onclick="addArticle()" style="font-size:12px;padding:4px 12px">+ Добавить статью</button>
+      </td>
+      <td class="sticky-tot-p"></td>
+      <td class="sticky-tot-fc"></td>
+      <td class="sticky-tot-f"></td>
+      <td colspan="${MC * colsPerMonth}"></td>
+    </tr>`;
+
+  const footerHtml = `
     <tr class="total-row" id="grand-in-row">
       <td class="left sticky-name">Итого поступления</td>
       <td class="sticky-tot-p total-cell positive" id="g-in-plan">${fmt(sumArr(grandIn))}</td>
@@ -2500,6 +2571,8 @@ function renderBudget() {
     </tr>`;
 
   document.getElementById('articles-body').innerHTML = html;
+  document.getElementById('main-tfoot').innerHTML = footerHtml;
+  requestAnimationFrame(() => fixStickyTfootRows('main-tfoot'));
   updateStickyPositions();
   initArticleDrag();
 }
