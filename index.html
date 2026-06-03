@@ -355,6 +355,41 @@ table.hide-fact td.cell-dfact { display:none }
 /* project type badge reuse */
 #dashboard-table .proj-badge { font-size:10px; padding:1px 6px; border-radius:4px; background:#f0f0ec; color:#888; margin-left:6px; font-weight:400; }
 
+/* ── КП TABLE ── */
+#kp-table th { text-align:right; font-weight:500; color:#888; padding:5px 8px; border-bottom:2px solid #e5e5e0; white-space:nowrap; font-size:12px; background:#fafaf8; position:sticky; top:0; z-index:3; }
+#kp-table th.kp-left { text-align:left; }
+#kp-table th.kp-ver-head { background:#eaf4ff; color:#1a5fa3; text-align:center; min-width:130px; border-left:2px solid #c8dff0; }
+#kp-table th.kp-ver-head:first-of-type { }
+#kp-table td { padding:4px 8px; border-bottom:1px solid #f0f0ec; font-size:13px; text-align:right; white-space:nowrap; }
+#kp-table td.kp-left { text-align:left; }
+#kp-table td.kp-ver { border-left:2px solid #c8dff0; background:#f5faff; }
+#kp-table td.kp-ver input { width:100%; border:none; background:transparent; text-align:right; font-size:12px; font-family:inherit; outline:none; color:#333; }
+#kp-table td.kp-ver input:focus { background:#e8f4ff; border-radius:3px; }
+#kp-table tr.kp-article-head td { background:#f7f7f4; font-weight:600; font-size:13px; color:#1a1a18; border-top:2px solid #e5e5e0; }
+#kp-table tr.kp-article-head td.kp-ver { background:#eef5ff; border-top:2px solid #c8dff0; }
+#kp-table tr.kp-sub-in td { background:#f6fcfa; }
+#kp-table tr.kp-sub-in td.kp-ver { background:#f0f8ff; }
+#kp-table tr.kp-sub-out td { background:#fdf8f6; }
+#kp-table tr.kp-sub-out td.kp-ver { background:#f5f0ff; }
+#kp-table tr.kp-subline td { font-size:12px; color:#555; }
+#kp-table tr.kp-subline td.kp-ver { background:#f8fbff; }
+#kp-table tr.kp-total td { font-weight:600; border-top:2px solid #d8d8d0; background:#fafaf8; color:#555; position:sticky; bottom:0; z-index:2; }
+#kp-table tr.kp-total td.kp-ver { background:#eaf4ff; border-top:2px solid #c8dff0; color:#1a5fa3; }
+#kp-table tr.kp-total-out td { font-weight:600; border-top:1px solid #e0e0d8; background:#fdf8f6; color:#555; position:sticky; bottom:0; z-index:2; }
+#kp-table tr.kp-total-out td.kp-ver { background:#f5eeff; border-top:1px solid #d8c8f0; color:#7a3f9e; }
+#kp-table tr.kp-net td { font-weight:700; border-top:2px solid #b0c8e0; background:#eaf4ff; position:sticky; bottom:0; z-index:2; }
+#kp-table tr.kp-net td.kp-ver { background:#daeeff; border-top:2px solid #8ab4d8; }
+#kp-table .kp-sticky-name { position:sticky; left:0; z-index:4; min-width:220px; max-width:220px; }
+#kp-table th.kp-sticky-name { z-index:5; }
+#kp-table .kp-tag { display:inline-block; font-size:10px; padding:1px 6px; border-radius:4px; margin-left:6px; font-weight:500; }
+#kp-table .kp-tag-in  { background:#d4f0e8; color:#0a6e4e; }
+#kp-table .kp-tag-out { background:#fde8e4; color:#a33020; }
+#kp-table .kp-del-ver { font-size:11px; color:#ccc; cursor:pointer; margin-left:6px; }
+#kp-table .kp-del-ver:hover { color:#a33020; }
+#kp-table .kp-add-sub { font-size:11px; color:#aaa; cursor:pointer; margin-left:8px; }
+#kp-table .kp-add-sub:hover { color:#1a5fa3; }
+.kp-ver-date { font-size:10px; font-weight:400; color:#888; display:block; }
+
 /* ── DECADE VIEW ── */
 .decade-group { font-size:10px !important; font-weight:500 !important; color:#4a5a99 !important; background:#eef0ff !important; text-align:center; white-space:nowrap; padding:3px 4px !important; }
 .decade-sub-head { font-size:9px !important; background:#f2f4ff !important; color:#6677aa !important; text-align:center; white-space:nowrap; padding:2px 2px !important; }
@@ -593,6 +628,17 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
     <div class="nav-item" id="nav-payments" onclick="showPage('payments')">
       <span class="icon">💳</span><span class="label">Платежи</span>
     </div>
+    <div class="nav-item" id="nav-kp" onclick="toggleKpMenu()">
+      <span class="icon">📋</span><span class="label">КП</span>
+      <span class="nav-toggle" id="kp-toggle">▶</span>
+    </div>
+    <div id="kp-submenu" style="display:none">
+      <div id="nav-kp-list"></div>
+      <div class="nav-add-project" onclick="openAddKpModal()">
+        <span style="font-size:15px;line-height:1">+</span>
+        <span>Новое КП</span>
+      </div>
+    </div>
     <div style="flex:1"></div>
     <div class="nav-item" onclick="handleLogout()" style="border-top:1px solid #e5e5e0">
       <span class="icon">🚪</span><span class="label">Выход</span>
@@ -626,11 +672,11 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table>
       <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-top:24px;margin-bottom:14px;position:sticky;left:0">Накопительный денежный поток (в тыс. руб)</div>
       <div style="display:flex;gap:16px;align-items:flex-start">
-        <div id="dash-project-panel" style="width:180px;flex-shrink:0;background:#fafaf8;border:1px solid #e5e5e0;border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;gap:0;position:sticky;left:0">
+        <div id="dash-project-panel" style="width:180px;flex-shrink:0;background:#fafaf8;border:1px solid #e5e5e0;border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;gap:0;position:sticky;left:0;z-index:2">
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:10px">Проекты</div>
           <div id="dash-project-toggles" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
-        <div id="dash-chart-wrap" style="position:relative;flex:1;min-width:0">
+        <div id="dash-chart-wrap" style="position:relative;flex:1;min-width:0;z-index:1">
           <canvas id="cumul-chart" style="display:block"></canvas>
         </div>
       </div>
@@ -672,6 +718,28 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 
     <div class="page" id="page-payments">
       <div class="empty-state"><div class="big">💳</div><p>Платежи — раздел в разработке</p></div>
+    </div>
+    <div class="page" id="page-kp">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div style="font-size:20px;font-weight:500" id="kp-page-title">КП</div>
+          <div style="font-size:13px;color:#aaa;margin-top:2px" id="kp-page-meta"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="add-btn" id="kp-add-version-btn" onclick="addKpVersion()" style="display:none">+ Добавить КП</button>
+        </div>
+      </div>
+      <div class="empty-state" id="kp-empty" style="display:none">
+        <div class="big">📋</div>
+        <p>Выберите КП слева или создайте новое</p>
+      </div>
+      <div id="kp-table-wrap" style="overflow-x:auto;display:none">
+        <table id="kp-table" style="border-collapse:collapse;min-width:100%">
+          <thead id="kp-thead"></thead>
+          <tbody id="kp-tbody"></tbody>
+          <tfoot id="kp-tfoot"></tfoot>
+        </table>
+      </div>
     </div>
   </div>
 </div>
