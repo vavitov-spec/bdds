@@ -56,7 +56,7 @@ td.sticky-name {
 }
 .sticky-tot-p,
 td.sticky-tot-p {
-  position:sticky; left:200px; z-index:3;
+  position:sticky; left:var(--sticky-tot-p-left, 200px); z-index:3;
   background:#eaf4ff;
   min-width:88px; width:88px;
   border-right:1px solid #c5d8ee;
@@ -1174,7 +1174,7 @@ function computeProjectNet12Forecast(pi, dashY) {
 function computeProjectNetDec36(pi, dashY) {
   const b = budgets[(projects[pi] || {}).id];
   const p = projects[pi];
-  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT).fill(0);
+  if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT_YEAR).fill(0);
   dashY = dashY ?? new Date().getFullYear();
   const projY = _projectMonthsForYear(p, dashY);
   if (!projY.length) return Array(DEC_COUNT_YEAR).fill(0);
@@ -2710,14 +2710,33 @@ function collapseAllArticles() {
 }
 
 function updateStickyPositions() {
-  // sticky-tot-p left = 200 (name)
-  // sticky-tot-fc left = 200 + (viewPlan ? 88 : 0)
-  // sticky-tot-f  left = 200 + (viewPlan ? 88 : 0) + (viewForecast ? 88 : 0)
-  const fcLeft = 200 + (viewPlan     ? 88 : 0);
-  const fLeft  = 200 + (viewPlan     ? 88 : 0) + (viewForecast ? 88 : 0);
-  document.documentElement.style.setProperty('--sticky-tot-fc-left', fcLeft + 'px');
-  document.documentElement.style.setProperty('--sticky-tot-f-left',  fLeft  + 'px');
+  // Измеряем реальную ширину замороженных колонок из DOM, а не из констант 200/88.
+  // Это важно для мобильных, где ширина колонки «Статья» уменьшается (CSS @media),
+  // иначе колонки «Итого» разъезжаются.
+  const thead = document.getElementById('main-thead');
+  const root  = document.documentElement.style;
+  if (!thead) {
+    // Фолбэк до первого рендера таблицы
+    root.setProperty('--sticky-tot-p-left',  '200px');
+    root.setProperty('--sticky-tot-fc-left', (200 + (viewPlan ? 88 : 0)) + 'px');
+    root.setProperty('--sticky-tot-f-left',  (200 + (viewPlan ? 88 : 0) + (viewForecast ? 88 : 0)) + 'px');
+    return;
+  }
+  const nameTh = thead.querySelector('th.sticky-name');
+  const pTh    = thead.querySelector('th.sticky-tot-p');
+  const fcTh   = thead.querySelector('th.sticky-tot-fc');
+  // offsetWidth скрытых (display:none) колонок = 0, что корректно обнуляет смещение
+  const nameW = nameTh ? nameTh.offsetWidth : 200;
+  const pW    = pTh    ? pTh.offsetWidth    : 0;
+  const fcW   = fcTh   ? fcTh.offsetWidth   : 0;
+  root.setProperty('--sticky-tot-p-left',  nameW + 'px');
+  root.setProperty('--sticky-tot-fc-left', (nameW + pW) + 'px');
+  root.setProperty('--sticky-tot-f-left',  (nameW + pW + fcW) + 'px');
 }
+window.addEventListener('resize', function() {
+  const pp = document.getElementById('page-project');
+  if (pp && pp.classList.contains('active')) updateStickyPositions();
+});
 
 function renderTotals() {
   updateStickyPositions();
