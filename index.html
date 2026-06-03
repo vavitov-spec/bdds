@@ -356,6 +356,7 @@ table.hide-fact td.cell-dfact { display:none }
 #dashboard-table .proj-badge { font-size:10px; padding:1px 6px; border-radius:4px; background:#f0f0ec; color:#888; margin-left:6px; font-weight:400; }
 
 /* ── КП TABLE ── */
+#kp-table { table-layout:auto; width:auto; }
 #kp-table th { text-align:right; font-weight:500; color:#888; padding:5px 8px; border-bottom:2px solid #e5e5e0; white-space:nowrap; font-size:12px; background:#fafaf8; position:sticky; top:0; z-index:3; }
 #kp-table th.kp-left { text-align:left; }
 #kp-table th.kp-ver-head { background:#eaf4ff; color:#1a5fa3; text-align:center; min-width:130px; border-left:2px solid #c8dff0; }
@@ -367,19 +368,43 @@ table.hide-fact td.cell-dfact { display:none }
 #kp-table td.kp-ver input:focus { background:#e8f4ff; border-radius:3px; }
 #kp-table tr.kp-article-head td { background:#f7f7f4; font-weight:600; font-size:13px; color:#1a1a18; border-top:2px solid #e5e5e0; }
 #kp-table tr.kp-article-head td.kp-ver { background:#eef5ff; border-top:2px solid #c8dff0; }
+#kp-table tr.kp-article-head td.kp-sticky-name  { background:#f7f7f4; }
+#kp-table tr.kp-article-head td.kp-sticky-total { background:#f0f4fa; }
 #kp-table tr.kp-sub-in td { background:#f6fcfa; }
 #kp-table tr.kp-sub-in td.kp-ver { background:#f0f8ff; }
+#kp-table tr.kp-sub-in td.kp-sticky-name  { background:#f6fcfa; }
+#kp-table tr.kp-sub-in td.kp-sticky-total { background:#eef7ff; }
 #kp-table tr.kp-sub-out td { background:#fdf8f6; }
 #kp-table tr.kp-sub-out td.kp-ver { background:#f5f0ff; }
+#kp-table tr.kp-sub-out td.kp-sticky-name  { background:#fdf8f6; }
+#kp-table tr.kp-sub-out td.kp-sticky-total { background:#f5f2fb; }
 #kp-table tr.kp-subline td { font-size:12px; color:#555; }
 #kp-table tr.kp-subline td.kp-ver { background:#f8fbff; }
+#kp-table tr.subline-in  td.kp-sticky-name  { background:#f0faf6; }
+#kp-table tr.subline-in  td.kp-sticky-total { background:#eaf5ff; }
+#kp-table tr.subline-out td.kp-sticky-name  { background:#fef5f2; }
+#kp-table tr.subline-out td.kp-sticky-total { background:#f8f0fb; }
+#kp-table tr.add-subline-row td.kp-sticky-name  { background:#fff; }
+#kp-table tr.add-subline-row td.kp-sticky-total { background:#fff; }
+#kp-table tr td.kp-sticky-total { background:#f8f9fc; }
+#kp-table tr.kp-total    td.kp-sticky-total { background:#fafaf8; }
+#kp-table tr.kp-total-out td.kp-sticky-total { background:#fdf8f6; }
+#kp-table tr.kp-net      td.kp-sticky-total { background:#eaf4ff; }
 #kp-table tr.kp-total td { font-weight:600; border-top:2px solid #d8d8d0; background:#fafaf8; color:#555; position:sticky; bottom:0; z-index:2; }
 #kp-table tr.kp-total td.kp-ver { background:#eaf4ff; border-top:2px solid #c8dff0; color:#1a5fa3; }
 #kp-table tr.kp-total-out td { font-weight:600; border-top:1px solid #e0e0d8; background:#fdf8f6; color:#555; position:sticky; bottom:0; z-index:2; }
 #kp-table tr.kp-total-out td.kp-ver { background:#f5eeff; border-top:1px solid #d8c8f0; color:#7a3f9e; }
 #kp-table tr.kp-net td { font-weight:700; border-top:2px solid #b0c8e0; background:#eaf4ff; position:sticky; bottom:0; z-index:2; }
 #kp-table tr.kp-net td.kp-ver { background:#daeeff; border-top:2px solid #8ab4d8; }
-#kp-table .kp-sticky-name { position:sticky; left:0; z-index:4; min-width:220px; max-width:220px; }
+/* Sticky-left ячейки в tfoot должны быть выше обычных ячеек при горизонтальном скролле */
+#kp-table tfoot td.kp-sticky-name { z-index:5; }
+/* Столбец «Итого» — зафиксирован правее «Статьи» */
+#kp-table .kp-sticky-total { position:sticky; left:200px; z-index:4; background:#fafaf8; border-left:none; border-right:none; box-shadow:-2px 0 0 #d8d8d0, 2px 0 0 #d8d8d0; width:80px; min-width:80px; max-width:80px; text-align:right; }
+#kp-table th.kp-sticky-total { z-index:5; background:#fafaf8; }
+#kp-table tfoot td.kp-sticky-total { z-index:5; }
+/* Правая граница колонки «Статья» — через box-shadow чтобы не отрывалась при скролле */
+#kp-table .kp-sticky-name { box-shadow: 2px 0 0 transparent; }
+#kp-table .kp-sticky-name { position:sticky; left:0; z-index:4; width:200px; min-width:200px; max-width:200px; }
 #kp-table th.kp-sticky-name { z-index:5; }
 #kp-table .kp-tag { display:inline-block; font-size:10px; padding:1px 6px; border-radius:4px; margin-left:6px; font-weight:500; }
 #kp-table .kp-tag-in  { background:#d4f0e8; color:#0a6e4e; }
@@ -720,21 +745,19 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <div class="empty-state"><div class="big">💳</div><p>Платежи — раздел в разработке</p></div>
     </div>
     <div class="page" id="page-kp">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:16px;flex-wrap:wrap">
         <div>
           <div style="font-size:20px;font-weight:500" id="kp-page-title">КП</div>
           <div style="font-size:13px;color:#aaa;margin-top:2px" id="kp-page-meta"></div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="add-btn" id="kp-add-version-btn" onclick="addKpVersion()" style="display:none">+ Добавить КП</button>
-        </div>
+        <div id="kp-toolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"></div>
       </div>
       <div class="empty-state" id="kp-empty" style="display:none">
         <div class="big">📋</div>
         <p>Выберите КП слева или создайте новое</p>
       </div>
       <div id="kp-table-wrap" style="overflow-x:auto;display:none">
-        <table id="kp-table" style="border-collapse:collapse;min-width:100%">
+        <table id="kp-table" style="border-collapse:collapse">
           <thead id="kp-thead"></thead>
           <tbody id="kp-tbody"></tbody>
           <tfoot id="kp-tfoot"></tfoot>
@@ -802,6 +825,55 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="btn-create" id="btn-create" onclick="confirmProjectModal()">Создать проект</button>
+    </div>
+  </div>
+</div>
+
+<!-- KP MODAL -->
+<div class="modal-overlay hidden" id="kp-modal-overlay" onclick="closeKpModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Новое КП</h2>
+    <div class="field">
+      <label>Название сделки / объекта</label>
+      <input type="text" id="kp-modal-name" placeholder="Введите название...">
+    </div>
+    <div class="field">
+      <label>Дата начала</label>
+      <div class="month-picker-wrap" id="kp-wrap-start">
+        <button class="month-picker-btn" onclick="kpTogglePicker('start')">
+          <span id="kp-start-label" class="placeholder">Выберите месяц</span>
+          <span style="color:#bbb;font-size:12px">▼</span>
+        </button>
+        <div class="month-dropdown hidden" id="kp-picker-start">
+          <div class="year-nav">
+            <button onclick="kpChangeYear('start',-1)">&#8249;</button>
+            <span id="kp-year-start-label"></span>
+            <button onclick="kpChangeYear('start',1)">&#8250;</button>
+          </div>
+          <div class="months-grid" id="kp-grid-start"></div>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Дата окончания</label>
+      <div class="month-picker-wrap" id="kp-wrap-end">
+        <button class="month-picker-btn" onclick="kpTogglePicker('end')">
+          <span id="kp-end-label" class="placeholder">Выберите месяц</span>
+          <span style="color:#bbb;font-size:12px">▼</span>
+        </button>
+        <div class="month-dropdown hidden" id="kp-picker-end">
+          <div class="year-nav">
+            <button onclick="kpChangeYear('end',-1)">&#8249;</button>
+            <span id="kp-year-end-label"></span>
+            <button onclick="kpChangeYear('end',1)">&#8250;</button>
+          </div>
+          <div class="months-grid" id="kp-grid-end"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeKpModal()">Отмена</button>
+      <button class="btn-create" onclick="confirmKpModal()">Создать КП</button>
     </div>
   </div>
 </div>
@@ -894,6 +966,7 @@ function initFirebase() {
           projects       = d.projects;
           budgets        = d.budgets || {};
           currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
+          proposals      = Array.isArray(d.proposals) ? d.proposals : [];
           window.assignProjectIds();
           window.migrateBudgetsToIds();
           window.migrateData();
@@ -941,7 +1014,7 @@ function initFirebase() {
   }
 
   window.persistDataNow = function() {
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, proposals: proposals, updatedAt: Date.now() };
     // Всегда пишем в localStorage немедленно как резервная копия
     try { localStorage.setItem(_LS_KEY, JSON.stringify(payload)); } catch(e) {}
     if (!window.firebaseUid) return;
@@ -957,7 +1030,7 @@ function initFirebase() {
   };
   window.saveData = function() {
     // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, proposals: proposals, updatedAt: Date.now() };
     try {
       var s = JSON.stringify(payload);
       localStorage.setItem(_LS_KEY, s);
@@ -2136,6 +2209,11 @@ function showPage(name) {
   } else if (name === 'payments') {
     document.getElementById('page-payments').classList.add('active');
     document.getElementById('nav-payments').classList.add('active');
+  } else if (name === 'kp') {
+    document.getElementById('page-kp').classList.add('active');
+    document.getElementById('nav-kp').classList.add('active');
+    renderKpSidebar();
+    renderKp();
   } else {
     document.getElementById('page-project').classList.add('active');
     document.getElementById('nav-projects').classList.add('active');
@@ -3504,6 +3582,597 @@ document.addEventListener('click', e => {
     if (wrap && !wrap.contains(e.target)) document.getElementById('picker-'+w).classList.add('hidden');
   });
 });
+
+/* ════════════════════════════════════════════════════════════════
+   КП — КОММЕРЧЕСКИЕ ПРЕДЛОЖЕНИЯ  (v2 — архитектура бюджета)
+   ════════════════════════════════════════════════════════════════ */
+
+// ── Хранилище ──────────────────────────────────────────────────
+// proposals[i] = { id, name, start:{y,m}, end:{y,m},
+//   articles:[{id, name, inLines:[{id,name}], outLines:[{id,name}]}],
+//   versions:[{id, name, date, data:{lineId:[monthly values]}}] }
+let proposals = [];
+let currentProposal = 0;
+let currentKpVersion = 0;   // индекс активной версии
+let kpMenuOpen = false;
+
+function genKpId() { return 'kp' + Math.random().toString(36).slice(2,9); }
+
+function kpMonths(p) {
+  // Возвращает массив {y,m} за период КП
+  if (!p || !p.start || !p.end) return [];
+  const res = [];
+  let y = p.start.y, m = p.start.m;
+  while (y * 12 + m <= p.end.y * 12 + p.end.m) {
+    res.push({y, m});
+    m++; if (m > 11) { m = 0; y++; }
+  }
+  return res;
+}
+
+function newKpArticle(name) {
+  return { id: genKpId(), name,
+    inDirect: true, outDirect: true,
+    inOpen: true,   outOpen: true,
+    inDirectId:  genKpId(),   // id прямой строки поступлений
+    outDirectId: genKpId(),   // id прямой строки выплат
+    inLines:  [],
+    outLines: []
+  };
+}
+
+function newKpVersion(num, proposals_count) {
+  const d = new Date();
+  const dt = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+  return { id: genKpId(), name: `КП №${num}`, date: dt, data: {} };
+}
+
+function kpGetVal(ver, lineId, mi) {
+  return (ver.data[lineId] && ver.data[lineId][mi]) || 0;
+}
+function kpSetVal(ver, lineId, mi, v) {
+  if (!ver.data[lineId]) ver.data[lineId] = [];
+  ver.data[lineId][mi] = v;
+}
+
+// ── Сайдбар ────────────────────────────────────────────────────
+function toggleKpMenu() {
+  kpMenuOpen = !kpMenuOpen;
+  document.getElementById('kp-submenu').style.display = kpMenuOpen ? 'block' : 'none';
+  document.getElementById('kp-toggle').classList.toggle('open', kpMenuOpen);
+  renderKpSidebar();
+  if (kpMenuOpen && proposals.length > 0) showPage('kp');
+}
+
+function renderKpSidebar() {
+  const list = document.getElementById('nav-kp-list');
+  if (!list) return;
+  list.innerHTML = proposals.map((p, i) => `
+    <div class="nav-sub-item${i === currentProposal ? ' active' : ''}" onclick="selectProposal(${i})">
+      <span class="dot"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+      <button class="delete-btn" onclick="event.stopPropagation();deleteProposal(${i})" title="Удалить КП">✕</button>
+    </div>`).join('');
+}
+
+function selectProposal(i) {
+  currentProposal = i;
+  currentKpVersion = 0;
+  renderKpSidebar();
+  showPage('kp');
+}
+
+function deleteProposal(i) {
+  const name = proposals[i] ? proposals[i].name : '';
+  if (!confirm(`Удалить КП «${name}»? Это действие нельзя отменить.`)) return;
+  proposals.splice(i, 1);
+  if (currentProposal >= proposals.length) currentProposal = Math.max(0, proposals.length - 1);
+  currentKpVersion = 0;
+  flushSaveData();
+  renderKpSidebar();
+  renderKp();
+}
+
+// ── Модалка создания КП ────────────────────────────────────────
+let kpPickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
+
+function openAddKpModal() {
+  kpPickerState = { start:{year:new Date().getFullYear(),month:null}, end:{year:new Date().getFullYear(),month:null} };
+  document.getElementById('kp-modal-name').value = '';
+  document.getElementById('kp-start-label').textContent = 'Выберите месяц';
+  document.getElementById('kp-start-label').className = 'placeholder';
+  document.getElementById('kp-end-label').textContent = 'Выберите месяц';
+  document.getElementById('kp-end-label').className = 'placeholder';
+  document.getElementById('kp-picker-start').classList.add('hidden');
+  document.getElementById('kp-picker-end').classList.add('hidden');
+  document.getElementById('kp-modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('kp-modal-name').focus(), 50);
+}
+
+function closeKpModal() {
+  document.getElementById('kp-modal-overlay').classList.add('hidden');
+}
+
+function kpTogglePicker(which) {
+  const other = which === 'start' ? 'end' : 'start';
+  document.getElementById('kp-picker-' + other).classList.add('hidden');
+  const el = document.getElementById('kp-picker-' + which);
+  el.classList.toggle('hidden');
+  if (!el.classList.contains('hidden')) kpRenderGrid(which);
+}
+
+function kpChangeYear(which, delta) {
+  kpPickerState[which].year += delta;
+  kpRenderGrid(which);
+}
+
+function kpSelectMonth(which, m) {
+  kpPickerState[which].month = m;
+  document.getElementById('kp-picker-' + which).classList.add('hidden');
+  const lbl = document.getElementById('kp-' + which + '-label');
+  lbl.textContent = MONTH_NAMES_FULL[m] + ' ' + kpPickerState[which].year;
+  lbl.className = '';
+  kpRenderGrid(which);
+}
+
+function kpRenderGrid(which) {
+  const state = kpPickerState[which];
+  document.getElementById('kp-year-' + which + '-label').textContent = state.year;
+  const startSel = kpPickerState.start.month != null ? kpPickerState.start : null;
+  let html = '';
+  for (let m = 0; m < 12; m++) {
+    const isSelected = (state.month === m && kpPickerState[which].year === state.year);
+    let disabled = false;
+    if (which === 'end' && startSel) {
+      if (state.year * 12 + m < kpPickerState.start.year * 12 + kpPickerState.start.month) disabled = true;
+    }
+    html += `<div class="month-cell${isSelected?' selected':''}${disabled?' disabled':''}"
+      onclick="${disabled?'':'kpSelectMonth(\''+which+'\','+m+')'}">${MONTH_NAMES[m]}</div>`;
+  }
+  document.getElementById('kp-grid-' + which).innerHTML = html;
+}
+
+function confirmKpModal() {
+  const name = document.getElementById('kp-modal-name').value.trim();
+  if (!name) { document.getElementById('kp-modal-name').focus(); return; }
+  if (kpPickerState.start.month === null) { alert('Выберите дату начала'); return; }
+  if (kpPickerState.end.month === null)   { alert('Выберите дату окончания'); return; }
+
+  closeKpModal();
+  const p = {
+    id: genKpId(),
+    name,
+    start: {y: kpPickerState.start.year, m: kpPickerState.start.month},
+    end:   {y: kpPickerState.end.year,   m: kpPickerState.end.month},
+    articles: [newKpArticle('Новая статья')],
+    versions: [newKpVersion(1)]
+  };
+  proposals.push(p);
+  currentProposal = proposals.length - 1;
+  currentKpVersion = 0;
+  kpMenuOpen = true;
+  document.getElementById('kp-submenu').style.display = 'block';
+  document.getElementById('kp-toggle').classList.add('open');
+  renderKpSidebar();
+  flushSaveData();
+  showPage('kp');
+}
+
+// ── Версии ─────────────────────────────────────────────────────
+function addKpVersion() {
+  const p = proposals[currentProposal];
+  if (!p) return;
+  p.versions.push(newKpVersion(p.versions.length + 1));
+  currentKpVersion = p.versions.length - 1;
+  flushSaveData();
+  renderKp();
+}
+
+function deleteKpVersion(vi) {
+  const p = proposals[currentProposal];
+  if (!p || p.versions.length <= 1) { alert('Нельзя удалить единственную версию'); return; }
+  if (!confirm(`Удалить "${p.versions[vi].name}"?`)) return;
+  p.versions.splice(vi, 1);
+  currentKpVersion = Math.min(currentKpVersion, p.versions.length - 1);
+  flushSaveData();
+  renderKp();
+}
+
+// ── Статьи ─────────────────────────────────────────────────────
+function addKpArticle() {
+  const p = proposals[currentProposal]; if (!p) return;
+  const name = prompt('Название статьи:') || 'Новая статья';
+  p.articles.push(newKpArticle(name.trim()));
+  flushSaveData(); renderKp();
+}
+
+function deleteKpArticle(ai) {
+  const p = proposals[currentProposal]; if (!p) return;
+  if (!confirm('Удалить статью?')) return;
+  p.articles.splice(ai, 1);
+  flushSaveData(); renderKp();
+}
+
+function addKpSubline(ai, section) {
+  const p = proposals[currentProposal]; if (!p) return;
+  const art = p.articles[ai];
+  const ver = p.versions[currentKpVersion];
+  const isIn = section === 'in';
+  const label = isIn ? 'Поступление' : 'Выплата';
+
+  if (art[section + 'Direct']) {
+    // Переключаемся в режим подстрок: переносим данные прямой строки в первую подстроку
+    const firstId = genKpId();
+    const secondId = genKpId();
+    const directId = art[section + 'DirectId'];
+    // Копируем значения прямой строки в первую подстроку для всех версий
+    p.versions.forEach(v => {
+      if (v.data[directId]) {
+        v.data[firstId] = v.data[directId].slice();
+        delete v.data[directId];
+      }
+    });
+    art[section + 'Lines'] = [
+      {id: firstId,  name: label + ' 1'},
+      {id: secondId, name: label + ' 2'}
+    ];
+    art[section + 'Direct'] = false;
+    art[section + 'Open']   = true;
+  } else {
+    const lines = art[section + 'Lines'];
+    lines.push({id: genKpId(), name: `${label} ${lines.length + 1}`});
+  }
+  flushSaveData(); renderKp();
+}
+
+function deleteKpSubline(ai, section, li) {
+  const p = proposals[currentProposal]; if (!p) return;
+  const art = p.articles[ai];
+  const lines = art[section + 'Lines'];
+  if (lines.length <= 1) {
+    // Вернуть в direct mode
+    if (!confirm('Удалить подстроки и вернуться к прямому вводу? Данные этой подстроки сохранятся.')) return;
+    const directId = art[section + 'DirectId'];
+    p.versions.forEach(v => {
+      if (v.data[lines[0].id]) { v.data[directId] = v.data[lines[0].id].slice(); delete v.data[lines[0].id]; }
+    });
+    art[section + 'Lines'] = [];
+    art[section + 'Direct'] = true;
+  } else {
+    const lineId = lines[li].id;
+    p.versions.forEach(v => { delete v.data[lineId]; });
+    lines.splice(li, 1);
+  }
+  flushSaveData(); renderKp();
+}
+
+// ── Ввод значения ──────────────────────────────────────────────
+function kpInputFocus(el) {
+  const v = parseFloat(el.value.replace(/\s/g,'').replace(',','.')) || 0;
+  el.value = v ? String(v) : '';
+  el.select();
+}
+
+function kpInputBlur(el, ai, section, li, mi) {
+  const p = proposals[currentProposal]; if (!p) return;
+  const ver = p.versions[currentKpVersion]; if (!ver) return;
+  const v = parseFloat(el.value.replace(/\s/g,'').replace(',','.')) || 0;
+  const art = p.articles[ai];
+  // li === -1 means direct mode
+  const lineId = li === -1 ? art[section + 'DirectId']
+                           : (section === 'in' ? art.inLines[li] : art.outLines[li]).id;
+  kpSetVal(ver, lineId, mi, v);
+  el.value = v ? fmt(v) : '';
+  flushSaveData();
+  updateKpTotals();
+}
+
+// ── Итоги ──────────────────────────────────────────────────────
+function kpArticleInVal(art, ver, mi) {
+  if (art.inDirect) return kpGetVal(ver, art.inDirectId, mi);
+  return art.inLines.reduce((s,l) => s + kpGetVal(ver,l.id,mi), 0);
+}
+function kpArticleOutVal(art, ver, mi) {
+  if (art.outDirect) return kpGetVal(ver, art.outDirectId, mi);
+  return art.outLines.reduce((s,l) => s + kpGetVal(ver,l.id,mi), 0);
+}
+
+function calcKpTotals(p, ver, months) {
+  const inByMonth  = months.map((_,mi) => p.articles.reduce((s,a) => s + kpArticleInVal(a,ver,mi),  0));
+  const outByMonth = months.map((_,mi) => p.articles.reduce((s,a) => s + kpArticleOutVal(a,ver,mi), 0));
+  const totalIn  = inByMonth.reduce((s,v) => s+v, 0);
+  const totalOut = outByMonth.reduce((s,v) => s+v, 0);
+  return { inByMonth, outByMonth, totalIn, totalOut, net: totalIn - totalOut };
+}
+
+function updateKpTotals() {
+  const p = proposals[currentProposal]; if (!p) return;
+  const ver = p.versions[currentKpVersion]; if (!ver) return;
+  const months = kpMonths(p);
+  const tots = calcKpTotals(p, ver, months);
+
+  const setEl = (id, val, color) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = fmt(val);
+    if (color !== undefined) el.style.color = color;
+  };
+
+  // month cells
+  months.forEach((_,mi) => {
+    setEl(`kp-foot-in-${mi}`,  tots.inByMonth[mi]);
+    setEl(`kp-foot-out-${mi}`, tots.outByMonth[mi]);
+    setEl(`kp-foot-net-${mi}`, tots.outByMonth[mi] > 0 || tots.inByMonth[mi] > 0
+      ? tots.inByMonth[mi] - tots.outByMonth[mi] : 0,
+      netColor(tots.inByMonth[mi] - tots.outByMonth[mi]));
+  });
+  setEl('kp-tot-in',  tots.totalIn);
+  setEl('kp-tot-out', tots.totalOut);
+  setEl('kp-tot-net', tots.net, netColor(tots.net));
+
+  // article totals row
+  p.articles.forEach((art, ai) => {
+    months.forEach((_,mi) => {
+      const mIn  = kpArticleInVal(art, ver, mi);
+      const mOut = kpArticleOutVal(art, ver, mi);
+      const ein  = document.getElementById(`kp-art-in-${ai}-${mi}`);
+      const eout = document.getElementById(`kp-art-out-${ai}-${mi}`);
+      if (ein)  { ein.textContent  = mIn  ? '▲'+fmt(mIn)  : ''; ein.style.color  = '#0a6e4e'; }
+      if (eout) { eout.textContent = mOut ? '▼'+fmt(mOut) : ''; eout.style.color = '#a33020'; }
+    });
+  });
+}
+
+// ── Трансформация КП → Проект ──────────────────────────────────
+function kpToProject() {
+  const p = proposals[currentProposal]; if (!p) return;
+  const ver = p.versions[currentKpVersion]; if (!ver) return;
+  if (!confirm(`Создать проект из "${p.name}" (версия ${ver.name})?`)) return;
+
+  const months = kpMonths(p);
+  const MC = months.length;
+
+  // Новый проект
+  const proj = {
+    id: genId(),
+    name: p.name,
+    type: '',
+    start: p.start,
+    end:   p.end
+  };
+
+  // Строим статьи с inDplan/outDplan
+  const arts = p.articles.map(art => {
+    const a = newArticle(art.name);
+    // inDplan: заполняем по месяцам (3-я декада каждого месяца)
+    months.forEach((_,mi) => {
+      const vIn  = kpArticleInVal(art, ver, mi);
+      const vOut = kpArticleOutVal(art, ver, mi);
+      if (vIn)  a.inDplan[mi * 3 + 2]  += vIn;
+      if (vOut) a.outDplan[mi * 3 + 2] += vOut;
+    });
+    return a;
+  });
+
+  projects.push(proj);
+  budgets[proj.id] = { articles: arts };
+  currentProject = projects.length - 1;
+  flushSaveData();
+  renderSidebarProjects();
+  alert(`Проект "${proj.name}" создан!`);
+  showPage('project');
+}
+
+// ── Рендер КП ──────────────────────────────────────────────────
+function renderKp() {
+  const p = proposals[currentProposal];
+  const empty = document.getElementById('kp-empty');
+  const wrap  = document.getElementById('kp-table-wrap');
+
+  if (!p) {
+    empty.style.display = 'flex'; wrap.style.display = 'none';
+    document.getElementById('kp-page-title').textContent = 'КП';
+    document.getElementById('kp-page-meta').textContent  = '';
+    document.getElementById('kp-toolbar').innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none'; wrap.style.display = '';
+
+  document.getElementById('kp-page-title').textContent = p.name;
+  document.getElementById('kp-page-meta').textContent  =
+    p.start && p.end ? `${MONTH_NAMES_FULL[p.start.m]} ${p.start.y} — ${MONTH_NAMES_FULL[p.end.m]} ${p.end.y}` : '';
+
+  const ver = p.versions[currentKpVersion] || p.versions[0];
+
+  // toolbar: version tabs + buttons
+  const MNAMES_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  document.getElementById('kp-toolbar').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.04em">Версия:</span>
+      <div style="display:flex;gap:3px;background:#f0f0ec;border-radius:8px;padding:3px">
+        ${p.versions.map((v,vi) => `
+          <button class="view-btn${vi===currentKpVersion?' active':''}"
+            onclick="currentKpVersion=${vi};renderKp()"
+            style="position:relative">
+            ${esc(v.name)}
+            <span style="font-size:9px;color:#aaa;margin-left:3px">${esc(v.date)}</span>
+            ${p.versions.length > 1 ? `<span onclick="event.stopPropagation();deleteKpVersion(${vi})"
+              style="margin-left:4px;color:#ccc;font-size:10px;cursor:pointer" title="Удалить">✕</span>` : ''}
+          </button>`).join('')}
+      </div>
+      <button class="add-btn" onclick="addKpVersion()" style="font-size:12px;padding:4px 10px">+ Версия</button>
+      <button class="add-btn" onclick="kpToProject()"
+        style="font-size:12px;padding:4px 10px;background:#e8f5ee;border-color:#9dd4b8;color:#0a6e4e">
+        → Создать проект
+      </button>
+    </div>`;
+
+  const months = kpMonths(p);
+  const MC = months.length;
+  const STICKY_W = 200;
+  const TOTAL_W  = 80;
+
+  // thead
+  const thMonths = months.map(({y,m}) =>
+    `<th style="text-align:center;width:80px;min-width:80px;max-width:80px;border-left:1px solid #e5e5e0">
+      ${MNAMES_SHORT[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small>
+    </th>`).join('');
+  document.getElementById('kp-thead').innerHTML = `<tr>
+    <th class="kp-left kp-sticky-name" style="min-width:${STICKY_W}px">
+      Статья
+    </th>
+    <th class="kp-sticky-total">Итого</th>
+    ${thMonths}
+  </tr>`;
+
+  // tbody
+  let html = '';
+  p.articles.forEach((art, ai) => {
+    // Article header row
+    const artMonthCells = months.map((_,mi) => {
+      const mIn  = art.inLines.reduce((s,l)  => s+kpGetVal(ver,l.id,mi), 0);
+      const mOut = art.outLines.reduce((s,l) => s+kpGetVal(ver,l.id,mi), 0);
+      return `<td style="text-align:right;font-size:11px;color:#888;border-left:1px solid #e5e5e0">
+        ${mIn  ? `<span id="kp-art-in-${ai}-${mi}"  style="color:#0a6e4e">▲${fmt(mIn)}</span>` :
+                 `<span id="kp-art-in-${ai}-${mi}"></span>`}
+        ${mOut ? `<span id="kp-art-out-${ai}-${mi}" style="color:#a33020;margin-left:2px">▼${fmt(mOut)}</span>` :
+                 `<span id="kp-art-out-${ai}-${mi}"></span>`}
+      </td>`;
+    }).join('');
+
+    html += `<tr class="article-header">
+      <td class="left sticky-name kp-sticky-name" colspan="1">
+        <input class="row-name-input" value="${esc(art.name)}"
+          onchange="proposals[currentProposal].articles[${ai}].name=this.value;flushSaveData()">
+        <button class="delete-btn" style="margin-left:6px" onclick="deleteKpArticle(${ai})">✕</button>
+      </td>
+      <td class="kp-sticky-total"></td>
+      ${artMonthCells}
+    </tr>`;
+
+    // Render one section (in / out) — direct mode or sublines
+    const renderSection = (section) => {
+      const isIn = section === 'in';
+      const tagCls  = isIn ? 'tag-in' : 'tag-out';
+      const tagTxt  = isIn ? '▲ Поступление' : '▼ Выплата';
+      const subCls  = isIn ? 'sub-in' : 'sub-out';
+      const colorSt = isIn ? 'color:#0a6e4e' : 'color:#a33020';
+      const isDirect = art[section + 'Direct'];
+      const directId = art[section + 'DirectId'];
+      const lines    = art[section + 'Lines'];
+      const isOpen   = art[section + 'Open'] !== false;
+      const addLbl   = isIn ? 'подстроку поступления' : 'подстроку выплаты';
+
+      const makeInputCell = (id, li, mi) => {
+        const v = kpGetVal(ver, id, mi);
+        return `<td style="text-align:right;border-left:1px solid #e5e5e0;padding:2px 4px">
+          <input class="month-input" type="text" inputmode="numeric"
+            value="${v ? fmt(v) : ''}" placeholder="0" style="${colorSt}"
+            onfocus="kpInputFocus(this)"
+            onblur="kpInputBlur(this,${ai},'${section}',${li},${mi})">
+        </td>`;
+      };
+
+      if (isDirect) {
+        // ── ПРЯМОЙ ВВОД ──
+        const total = months.reduce((s,_,mi) => s + kpGetVal(ver,directId,mi), 0);
+        const cells = months.map((_,mi) => makeInputCell(directId, -1, mi)).join('');
+        html += `<tr class="${subCls}">
+          <td class="left sticky-name kp-sticky-name" style="padding-left:20px">
+            <span class="tag ${tagCls}">${tagTxt}</span>
+            <button class="add-subline-btn" onclick="addKpSubline(${ai},'${section}')" style="margin-left:8px">+ подстроки</button>
+          </td>
+          <td class="kp-sticky-total" style="font-weight:600;font-size:12px;${colorSt}">
+            ${total ? fmt(total) : ''}
+          </td>
+          ${cells}
+        </tr>`;
+      } else {
+        // ── РЕЖИМ ПОДСТРОК ──
+        // Родительская строка — суммирует подстроки, клик раскрывает/сворачивает
+        const parentTotal = months.reduce((s,_,mi) => s + lines.reduce((s2,l) => s2+kpGetVal(ver,l.id,mi),0), 0);
+        const parentCells = months.map((_,mi) => {
+          const v = lines.reduce((s,l) => s+kpGetVal(ver,l.id,mi),0);
+          return `<td style="text-align:right;border-left:1px solid #e5e5e0;font-size:12px;color:#888">${v ? fmt(v) : ''}</td>`;
+        }).join('');
+        html += `<tr class="${subCls}">
+          <td class="left sticky-name kp-sticky-name" style="padding-left:20px;cursor:pointer"
+            onclick="proposals[currentProposal].articles[${ai}].${section}Open=!proposals[currentProposal].articles[${ai}].${section}Open;renderKp()">
+            <span class="tag ${tagCls}">${tagTxt}</span>
+            <span style="font-size:10px;color:#aaa;margin-left:4px">${isOpen ? '▲' : '▼'}</span>
+          </td>
+          <td class="kp-sticky-total" style="font-weight:600;font-size:12px;${colorSt}">
+            ${parentTotal ? fmt(parentTotal) : ''}
+          </td>
+          ${parentCells}
+        </tr>`;
+
+        if (isOpen) {
+          lines.forEach((line, li) => {
+            const lineTotal = months.reduce((s,_,mi) => s + kpGetVal(ver,line.id,mi), 0);
+            const cells = months.map((_,mi) => makeInputCell(line.id, li, mi)).join('');
+            html += `<tr class="subline-${isIn?'in':'out'}">
+              <td class="left sticky-name kp-sticky-name subline-label">
+                <input class="subline-name-input" value="${esc(line.name)}"
+                  onchange="proposals[currentProposal].articles[${ai}].${section}Lines[${li}].name=this.value;flushSaveData()">
+                <button class="delete-subline-btn" onclick="deleteKpSubline(${ai},'${section}',${li})">✕</button>
+              </td>
+              <td class="kp-sticky-total" style="font-size:12px;${colorSt}">
+                ${lineTotal ? fmt(lineTotal) : ''}
+              </td>
+              ${cells}
+            </tr>`;
+          });
+          html += `<tr class="add-subline-row">
+            <td class="left sticky-name kp-sticky-name">
+              <button class="add-subline-btn" onclick="addKpSubline(${ai},'${section}')">+ ${addLbl}</button>
+            </td>
+            <td class="kp-sticky-total"></td>
+            ${months.map(() => '<td style="border-left:1px solid #e5e5e0"></td>').join('')}
+          </tr>`;
+        }
+      }
+    };
+
+    renderSection('in');
+    renderSection('out');
+  });
+
+  // Add article row
+  html += `<tr>
+    <td class="left sticky-name kp-sticky-name" style="padding:6px 8px;border-top:1px solid #ececea">
+      <button class="add-btn" onclick="addKpArticle()" style="font-size:12px;padding:4px 12px">+ Добавить статью</button>
+    </td>
+    <td class="kp-sticky-total" style="border-top:1px solid #ececea"></td>
+    ${months.map(() => '<td style="border-top:1px solid #ececea;border-left:1px solid #e5e5e0"></td>').join('')}
+  </tr>`;
+
+  document.getElementById('kp-tbody').innerHTML = html;
+
+  // tfoot
+  const tots = calcKpTotals(p, ver, months);
+  const footRow = (label, field, arr, colorFn, cls) => {
+    const cells = arr.map((v,mi) =>
+      `<td id="kp-foot-${field}-${mi}"
+        style="text-align:right;border-left:1px solid #e5e5e0;font-weight:600;font-size:12px;${colorFn?'color:'+colorFn(v):''}">${v ? fmt(v) : ''}</td>`
+    ).join('');
+    const total = arr.reduce((s,v)=>s+v,0);
+    return `<tr class="${cls}">
+      <td class="left sticky-name kp-sticky-name" style="font-weight:600">${label}</td>
+      <td id="kp-tot-${field}" class="kp-sticky-total" style="font-weight:700;font-size:13px;${colorFn?'color:'+colorFn(total):''}">${total ? fmt(total) : ''}</td>
+      ${cells}
+    </tr>`;
+  };
+
+  const netArr = tots.inByMonth.map((v,i) => v - tots.outByMonth[i]);
+  document.getElementById('kp-tfoot').innerHTML =
+    footRow('Итого поступления', 'in',  tots.inByMonth,  null,    'kp-total') +
+    footRow('Итого выплаты',     'out', tots.outByMonth, null,    'kp-total-out') +
+    footRow('Чистый денежный поток', 'net', netArr, netColor, 'kp-net');
+  requestAnimationFrame(() => fixStickyTfootRows('kp-tfoot'));
+}
+// ── showPage extension ─────────────────────────────────────────
+const _origShowPage = window.showPage;
 
 /* INIT */
 let viewPlan = true, viewForecast = true, viewFact = true, viewDecade = false;
