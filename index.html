@@ -294,6 +294,19 @@ table.hide-fact td.sticky-tot-f,
 table.hide-fact th.decade-sub-head.month-fact-head,
 table.hide-fact td.cell-dfact { display:none }
 
+/* DASHBOARD PROJECT TOGGLES */
+.dash-proj-toggle-row { display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid #f0f0ec; }
+.dash-proj-toggle-row:last-child { border-bottom:none; }
+.dash-proj-name { font-size:12px; color:#444; flex:1; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dash-proj-name.disabled { color:#bbb; }
+/* Toggle switch */
+.tog { position:relative; display:inline-block; width:30px; height:17px; flex-shrink:0; }
+.tog input { opacity:0; width:0; height:0; }
+.tog-slider { position:absolute; inset:0; background:#ccc; border-radius:17px; transition:.2s; cursor:pointer; }
+.tog-slider:before { content:''; position:absolute; width:13px; height:13px; left:2px; bottom:2px; background:#fff; border-radius:50%; transition:.2s; }
+.tog input:checked + .tog-slider { background:#4caf7d; }
+.tog input:checked + .tog-slider:before { transform:translateX(13px); }
+
 /* DASHBOARD TABLE */
 #dash-scroll-wrap { overflow-x:auto; overflow-y:visible; }
 #dashboard-table { width:auto; min-width:100%; table-layout:auto; }
@@ -606,12 +619,18 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           </div>
         </div>
       </div>
-      <div class="section">
+      <div class="section" style="min-height:0">
   <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Чистый денежный поток по проектам (в тыс. руб)</div>
   <div id="dash-scroll-wrap" style="overflow-x:auto;overflow-y:visible">
     <table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table>
-    <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-top:24px;margin-bottom:14px;position:sticky;left:0">Накопительный денежный поток (в тыс. руб)</div>
-    <div id="dash-chart-wrap" style="position:relative">
+  </div>
+  <div style="margin-top:24px;margin-bottom:14px;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888">Накопительный денежный поток (в тыс. руб)</div>
+  <div style="display:flex;gap:16px;align-items:flex-start">
+    <div id="dash-project-panel" style="width:180px;flex-shrink:0;background:#fafaf8;border:1px solid #e5e5e0;border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;gap:0">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:10px">Проекты</div>
+      <div id="dash-project-toggles" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <div id="dash-chart-wrap" style="position:relative;flex:1;min-width:0">
       <canvas id="cumul-chart" style="display:block"></canvas>
     </div>
   </div>
@@ -1271,6 +1290,27 @@ function renderDashboard() {
   const curM = new Date().getMonth();
   const DEC_LABELS = ['1–10','11–20','21–31'];
   document.getElementById('dashboard-year-label').textContent = curY + ' год';
+
+  // Sync dashProjectEnabled with projects list (keep existing, add true for new)
+  while (dashProjectEnabled.length < projects.length) dashProjectEnabled.push(true);
+  dashProjectEnabled.length = projects.length;
+
+  // Render project toggles panel
+  const togglesEl = document.getElementById('dash-project-toggles');
+  if (togglesEl) {
+    togglesEl.innerHTML = projects.map((p, pi) => `
+      <div class="dash-proj-toggle-row">
+        <label class="tog">
+          <input type="checkbox" ${dashProjectEnabled[pi] ? 'checked' : ''}
+            onchange="dashProjectEnabled[${pi}]=this.checked; renderDashboard()">
+          <span class="tog-slider"></span>
+        </label>
+        <span class="dash-proj-name${dashProjectEnabled[pi] ? '' : ' disabled'}" title="${esc(p.name)}">${esc(p.name)}</span>
+      </div>`).join('');
+  }
+
+  // Only process enabled projects (keep original pi for compute functions)
+  const activeProjects = projects.map((p,pi) => ({p,pi})).filter(({pi}) => dashProjectEnabled[pi]);
   const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
   const fmtD = (v) => {
@@ -1323,11 +1363,11 @@ function renderDashboard() {
     document.getElementById('dashboard-thead').innerHTML = thead;
     requestAnimationFrame(() => fixStickyTheadRows('dashboard-thead', 'dashboard-table'));
 
-    // DATA
-    const nets36B  = projects.map((p, pi) => computeProjectNetDec36(pi, curY));
-    const nets36P  = projects.map((p, pi) => computeProjectNetDec36Forecast(pi, curY));
+    // DATA (only enabled projects)
+    const nets36B  = activeProjects.map(({pi}) => computeProjectNetDec36(pi, curY));
+    const nets36P  = activeProjects.map(({pi}) => computeProjectNetDec36Forecast(pi, curY));
     // Prior period: cumulative of ALL 36 decades of previous year
-    const prior12  = projects.map((p, pi) => computePriorPeriodCumul(pi));
+    const prior12  = activeProjects.map(({pi}) => computePriorPeriodCumul(pi));
     const totB36   = Array(DEC_COUNT_YEAR).fill(0);
     const totP36   = Array(DEC_COUNT_YEAR).fill(0);
     nets36B.forEach(n => { for (let d=0;d<DEC_COUNT_YEAR;d++) totB36[d] += n[d]||0; });
@@ -1384,9 +1424,9 @@ function renderDashboard() {
       return budgetTd + `<td class="dash-dec-cell" style="${style}">${fmtD(vP)}</td>`;
     };
 
-    projects.forEach((p,pi) => {
-      const nB=nets36B[pi], nP=nets36P[pi];
-      const pr=prior12[pi];
+    activeProjects.forEach(({p,pi}, ai) => {
+      const nB=nets36B[ai], nP=nets36P[ai];
+      const pr=prior12[ai];
       const inYear = _projectMonthsForYear(p, curY).length > 0;
       const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
       tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
@@ -1455,11 +1495,11 @@ function renderDashboard() {
     document.getElementById('dashboard-thead').innerHTML = thead;
     requestAnimationFrame(() => fixStickyTheadRows('dashboard-thead', 'dashboard-table'));
 
-    // DATA
-    const nets12B  = projects.map((p,pi) => computeProjectNet12(pi, curY));
-    const nets12P  = projects.map((p,pi) => computeProjectNet12Forecast(pi, curY));
+    // DATA (only enabled projects)
+    const nets12B  = activeProjects.map(({pi}) => computeProjectNet12(pi, curY));
+    const nets12P  = activeProjects.map(({pi}) => computeProjectNet12Forecast(pi, curY));
     // Prior period cumulative for each project
-    const prior12  = projects.map((p,pi) => computePriorPeriodCumul(pi));
+    const prior12  = activeProjects.map(({pi}) => computePriorPeriodCumul(pi));
     const totB     = Array(12).fill(null);
     const totP     = Array(12).fill(null);
     // Company totals for prior period
@@ -1509,13 +1549,13 @@ function renderDashboard() {
       return budgetTd + `<td style="${style}">${fmtD(vP)}</td>`;
     };
 
-    projects.forEach((p,pi) => {
-      const nB=nets12B[pi], nP=nets12P[pi];
-      const pr=prior12[pi];
+    activeProjects.forEach(({p,pi}, ai) => {
+      const nB=nets12B[ai], nP=nets12P[ai];
+      const pr=prior12[ai];
       const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
       tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
       // Prior period column
-      tbody += priorCell(pr.budget, pr.forecast, pi);
+      tbody += priorCell(pr.budget, pr.forecast, ai);
       for(let m=0;m<12;m++)
         tbody += pair(nB[m], nP[m], nB[m]===null, nP[m]===null, m===curM);
       tbody += '</tr>';
@@ -3279,6 +3319,7 @@ document.addEventListener('click', e => {
 let viewPlan = true, viewForecast = true, viewFact = true, viewDecade = false;
 let viewDashDecade = false;
 let viewDashBudget = false;
+let dashProjectEnabled = []; // per-project toggle, synced in renderDashboard
 
 function toggleDashView(which) {
   if (which === 'budget') {
