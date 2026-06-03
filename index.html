@@ -760,23 +760,30 @@ function initFirebase() {
           console.log('[loadData] LS inDplan[0..5]=', lsV);
         } catch(e) {}
 
+        var fbValid = fbData && Array.isArray(fbData.projects) && fbData.projects.length > 0;
+        var lsValid = lsData && Array.isArray(lsData.projects) && lsData.projects.length > 0;
         var d = null;
-        if (fbData && fbData.projects && Array.isArray(fbData.projects) && fbData.projects.length > 0) {
+        if (fbValid && lsValid) {
+          // Выбираем более свежую версию по updatedAt, а не вслепую localStorage.
+          // Это предотвращает перезапись свежих серверных данных устаревшим кэшем
+          // (например, после работы с другого устройства).
+          var fbT = fbData.updatedAt || 0;
+          var lsT = lsData.updatedAt || 0;
+          d = lsT > fbT ? lsData : fbData;
+          console.log('[loadData] both present, fbT=', fbT, 'lsT=', lsT, '→', d === lsData ? 'localStorage' : 'firebase');
+        } else if (fbValid) {
           d = fbData;
-          if (lsData && lsData.projects && Array.isArray(lsData.projects) && lsData.projects.length > 0) {
-            d = lsData;
-            console.log('[loadData] using localStorage cache (more recent)');
-          }
-        } else if (lsData && lsData.projects && Array.isArray(lsData.projects) && lsData.projects.length > 0) {
+        } else if (lsValid) {
           d = lsData;
           console.log('[loadData] Firebase empty, using localStorage cache');
         }
 
         if (d) {
-          console.log('[loadData] projects=', d.projects, 'budgets keys=', d.budgets ? Object.keys(d.budgets) : null);
           projects       = d.projects;
           budgets        = d.budgets || {};
           currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
+          window.assignProjectIds();
+          window.migrateBudgetsToIds();
           window.migrateData();
           // saveData после загрузки убран — чтобы не перезаписывать Firebase загруженными данными
           // (это могло стирать изменения сделанные непосредственно перед refresh)
@@ -822,7 +829,7 @@ function initFirebase() {
   }
 
   window.persistDataNow = function() {
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
     // Всегда пишем в localStorage немедленно как резервная копия
     try { localStorage.setItem(_LS_KEY, JSON.stringify(payload)); } catch(e) {}
     if (!window.firebaseUid) return;
@@ -838,7 +845,7 @@ function initFirebase() {
   };
   window.saveData = function() {
     // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
     try {
       var s = JSON.stringify(payload);
       localStorage.setItem(_LS_KEY, s);
@@ -912,24 +919,51 @@ function initFirebase() {
           _migrateMonthlyToDec(l.forecast, l.dforecast);
           _migrateMonthlyToDec(l.fact,     l.dfact);
         });
+        // Декадные массивы — единственный источник истины. После переноса
+        // удаляем устаревшие месячные дубликаты (меньше данных, нет рассинхрона).
+        delete a.inPlan;  delete a.inForecast;  delete a.inFact;
+        delete a.outPlan; delete a.outForecast; delete a.outFact;
+        (a.inLines  || []).forEach(function(l) { delete l.plan; delete l.forecast; delete l.fact; });
+        (a.outLines || []).forEach(function(l) { delete l.plan; delete l.forecast; delete l.fact; });
       });
     });
   };
 
+  // ── Стабильные ID проектов + перенос бюджетов на ключи-ID (вместо индексов) ──
+  window.assignProjectIds = function() {
+    (projects || []).forEach(function(p) { if (p && !p.id) p.id = genId(); });
+  };
+  window.migrateBudgetsToIds = function() {
+    var keys = Object.keys(budgets);
+    if (!keys.length) return;
+    var allNumeric    = keys.every(function(k) { return /^\d+$/.test(k); });
+    var alreadyIdKeyed = projects.some(function(p) { return p && p.id && budgets.hasOwnProperty(p.id); });
+    if (allNumeric && !alreadyIdKeyed) {
+      var newB = {};
+      projects.forEach(function(p, i) {
+        if (budgets.hasOwnProperty(i)) newB[p.id] = budgets[i];
+      });
+      budgets = newB;
+    }
+  };
+
   } // end startApp()
 }
-// article.inDirect  — true: данные вбиваются прямо в строку (plan/fact), подстрок нет
+// article.inDirect  — true: данные вбиваются прямо в строку, подстрок нет
 // article.outDirect — то же для выплат
-// article.inPlan[12] / article.inFact[12]   — прямые данные поступлений
-// article.outPlan[12] / article.outFact[12] — прямые данные выплат
+// article.inDplan[180] / inDforecast / inDfact — декадные данные поступлений (источник истины)
+// article.outDplan[180] / outDforecast / outDfact — то же для выплат
 // article.inLines[]  — подстроки поступлений (только когда inDirect=false)
 // article.outLines[] — подстроки выплат     (только когда outDirect=false)
 // article.inOpen / article.outOpen — раскрыто ли (актуально только в режиме подстрок)
+// Генератор стабильного ID проекта (бюджеты ключуются по нему, а не по индексу)
+function genId() {
+  return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 function newLine(name) {
   return {
     name: name || '',
-    plan: Array(MONTHS_COUNT).fill(0), forecast: Array(MONTHS_COUNT).fill(0), fact: Array(MONTHS_COUNT).fill(0),
-    dplan: Array(DEC_COUNT).fill(0),   dforecast: Array(DEC_COUNT).fill(0),   dfact: Array(DEC_COUNT).fill(0)
+    dplan: Array(DEC_COUNT).fill(0), dforecast: Array(DEC_COUNT).fill(0), dfact: Array(DEC_COUNT).fill(0)
   };
 }
 function newArticle(name) {
@@ -937,8 +971,7 @@ function newArticle(name) {
     name: name || 'Новая статья',
     inDirect: true,  outDirect: true,
     inOpen:   true,  outOpen:   true,
-    inPlan:   Array(MONTHS_COUNT).fill(0), inForecast:   Array(MONTHS_COUNT).fill(0), inFact:   Array(MONTHS_COUNT).fill(0),
-    outPlan:  Array(MONTHS_COUNT).fill(0), outForecast:  Array(MONTHS_COUNT).fill(0), outFact:  Array(MONTHS_COUNT).fill(0),
+    inDeleted: false,
     inDplan:  Array(DEC_COUNT).fill(0),   inDforecast:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
     outDplan: Array(DEC_COUNT).fill(0),   outDforecast: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
     inLines:  [],
@@ -986,16 +1019,6 @@ function sectionSum(art, section, field) {
 function sectionSumEff(art, section, field) {
   return sectionSum(art, section, field);
 }
-// Суммировать подстроки в массив по 12 месяцам
-function sumLines(lines, field) {
-  const res = Array(MONTHS_COUNT).fill(0);
-  lines.forEach(l => {
-    const arr = l[field];
-    if (Array.isArray(arr)) arr.forEach((v,i) => res[i] += v || 0);
-  });
-  return res;
-}
-
 // old localStorage version — kept for reference
 // const STORAGE_KEY = 'bdds_data';
 // function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({projects,budgets,currentProject})); }
@@ -1022,10 +1045,14 @@ function netColor(v) { return v >= 0 ? '#0a6e4e' : '#a33020'; }
 function sumArr(a) { return a.reduce((s,v) => s+v, 0); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function getBudget() {
-  if (!budgets[currentProject]) budgets[currentProject] = { articles: [newArticle('Новая статья')] };
-  return budgets[currentProject];
+function getBudgetFor(idx) {
+  const p = projects[idx];
+  if (!p) return { articles: [] };
+  if (!p.id) p.id = genId();
+  if (!budgets[p.id]) budgets[p.id] = { articles: [newArticle('Новая статья')] };
+  return budgets[p.id];
 }
+function getBudget() { return getBudgetFor(currentProject); }
 
 /* ---- SIDEBAR ---- */
 function renderSidebarProjects() {
@@ -1078,11 +1105,11 @@ function selectProject(i) { currentProject = i; flushSaveData(); showPage('proje
 function deleteProject(i) {
   if (projects.length <= 1) { alert('Должен быть хотя бы один проект.'); return; }
   if (!confirm(`Удалить проект «${projects[i].name}»? Все данные будут потеряны.`)) return;
+  const id = projects[i].id;
   projects.splice(i, 1);
-  const newB = {}; let ni = 0;
-  Object.keys(budgets).sort((a,b)=>+a-+b).forEach(k => { if (+k !== i) { newB[ni] = budgets[k]; ni++; } });
-  budgets = newB;
-  if (currentProject >= projects.length) currentProject = projects.length - 1;
+  if (id) delete budgets[id]; // бюджеты ключуются по id — переиндексация не нужна
+  if (currentProject === i)      currentProject = Math.min(i, projects.length - 1);
+  else if (currentProject > i)   currentProject--; // остаёмся на том же проекте
   saveData();
   renderSidebarProjects(); renderBudget();
 }
@@ -1106,7 +1133,7 @@ function _projectMonthsForYear(p, dashY) {
 }
 
 function computeProjectNet12(pi, dashY) {
-  const b = budgets[pi];
+  const b = budgets[(projects[pi] || {}).id];
   const p = projects[pi];
   if (!b || !b.articles || !p || !p.start) return Array(12).fill(null);
   dashY = dashY ?? new Date().getFullYear();
@@ -1126,7 +1153,7 @@ function computeProjectNet12(pi, dashY) {
 }
 
 function computeProjectNet12Forecast(pi, dashY) {
-  const b = budgets[pi];
+  const b = budgets[(projects[pi] || {}).id];
   const p = projects[pi];
   if (!b || !b.articles || !p || !p.start) return Array(12).fill(null);
   dashY = dashY ?? new Date().getFullYear();
@@ -1145,7 +1172,7 @@ function computeProjectNet12Forecast(pi, dashY) {
 }
 
 function computeProjectNetDec36(pi, dashY) {
-  const b = budgets[pi];
+  const b = budgets[(projects[pi] || {}).id];
   const p = projects[pi];
   if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT).fill(0);
   dashY = dashY ?? new Date().getFullYear();
@@ -1165,7 +1192,7 @@ function computeProjectNetDec36(pi, dashY) {
 }
 
 function computeProjectNetDec36Forecast(pi, dashY) {
-  const b = budgets[pi];
+  const b = budgets[(projects[pi] || {}).id];
   const p = projects[pi];
   if (!b || !b.articles || !p || !p.start) return Array(DEC_COUNT_YEAR).fill(0);
   dashY = dashY ?? new Date().getFullYear();
@@ -1186,7 +1213,7 @@ function computeProjectNetDec36Forecast(pi, dashY) {
 
 // Compute cumulative net for December of previous year (prior period carryover)
 function computePriorPeriodCumul(pi) {
-  const b = budgets[pi];
+  const b = budgets[(projects[pi] || {}).id];
   const p = projects[pi];
   if (!b || !b.articles || !p || !p.start) return { budget: 0, forecast: 0 };
   const prevY = new Date().getFullYear() - 1;
@@ -2320,7 +2347,7 @@ function renderBudget() {
                       oninput="decSublineInput(${ai},'${section}',${li},'dfact',${di},this.value)"></td>`;
                 }).join('');
               } else {
-                const vp = line.plan[mi]||0, vfc = (line.forecast||[])[mi]||0, vf = line.fact[mi]||0;
+                const vp = decSum(ldp,mi), vfc = decSum(ldfc,mi), vf = decSum(ldf,mi);
                 return `<td class="cell-plan"><input class="month-input" type="text" inputmode="numeric"
                     value="${vp?fmt(vp):''}" placeholder="0"
                     onfocus="inputFocus(this)"
@@ -2340,15 +2367,9 @@ function renderBudget() {
                     oninput="sublineInput(${ai},'${section}',${li},'fact',${mi},this.value)"></td>`;
               }
             }).join('');
-            const lineTotal  = viewDecade
-              ? months.reduce((s,_,i) => s + decSum(ldp,i), 0)
-              : months.reduce((s,_,i) => s + (line.plan[i]||0), 0);
-            const lineFCTotal = viewDecade
-              ? months.reduce((s,_,i) => s + decSum(ldfc,i), 0)
-              : months.reduce((s,_,i) => s + ((line.forecast||[])[i]||0), 0);
-            const lineFTotal = viewDecade
-              ? months.reduce((s,_,i) => s + decSum(ldf,i), 0)
-              : months.reduce((s,_,i) => s + (line.fact[i]||0), 0);
+            const lineTotal   = months.reduce((s,_,i) => s + decSum(ldp,i),  0);
+            const lineFCTotal = months.reduce((s,_,i) => s + decSum(ldfc,i), 0);
+            const lineFTotal  = months.reduce((s,_,i) => s + decSum(ldf,i),  0);
             const subRowCls  = isIn ? 'subline-in' : 'subline-out';
             html += `<tr class="${subRowCls}" data-art-child="${ai}">
               <td class="left sticky-name subline-label">
@@ -2478,7 +2499,7 @@ function directInput(ai, section, field, mi, val) {
   if (!Array.isArray(art[KEY]) || art[KEY].length !== DEC_COUNT) art[KEY] = Array(DEC_COUNT).fill(0);
   if (hasExtraDecData(art[KEY], mi)) return; // D2/D3 заняты — не трогаем
   art[KEY][mi*3] = parseInput(val);
-  renderTotals();
+  // Итоги пересчитываются на blur — не пересчитываем всю таблицу на каждое нажатие
 }
 function directKeydown(event, el, ai, section, field, mi) {
   if (event.key === 'Enter') {
@@ -2497,7 +2518,7 @@ function sublineInput(ai, section, li, field, mi, val) {
   if (!Array.isArray(line[df]) || line[df].length !== DEC_COUNT) line[df] = Array(DEC_COUNT).fill(0);
   if (hasExtraDecData(line[df], mi)) return; // D2/D3 заняты — не трогаем
   line[df][mi*3] = parseInput(val);
-  renderTotals();
+  // Итоги пересчитываются на blur — не пересчитываем всю таблицу на каждое нажатие
 }
 function sublineBlur(el, ai, section, li, field, mi) {
   const num = parseInput(el.value);
@@ -2609,16 +2630,10 @@ function addSubline(ai, section) {
     // данные из прямой строки переносим в первую подстроку
     const label = section === 'in' ? 'Поступление 1' : 'Выплата 1';
     const firstLine = newLine(label);
-    firstLine.plan      = art[section + 'Plan'].slice();
-    firstLine.forecast  = (art[section + 'Forecast'] || Array(MONTHS_COUNT).fill(0)).slice();
-    firstLine.fact      = art[section + 'Fact'].slice();
-    firstLine.dplan     = art[section + 'Dplan'].slice();
-    firstLine.dforecast = (art[section + 'Dforecast'] || Array(DEC_COUNT).fill(0)).slice();
-    firstLine.dfact     = art[section + 'Dfact'].slice();
+    firstLine.dplan     = ensureDec(art[section + 'Dplan']).slice();
+    firstLine.dforecast = ensureDec(art[section + 'Dforecast']).slice();
+    firstLine.dfact     = ensureDec(art[section + 'Dfact']).slice();
     art[section + 'Lines']    = [firstLine];
-    art[section + 'Plan']     = Array(MONTHS_COUNT).fill(0);
-    art[section + 'Forecast'] = Array(MONTHS_COUNT).fill(0);
-    art[section + 'Fact']     = Array(MONTHS_COUNT).fill(0);
     art[section + 'Dplan']    = Array(DEC_COUNT).fill(0);
     art[section + 'Dforecast']= Array(DEC_COUNT).fill(0);
     art[section + 'Dfact']    = Array(DEC_COUNT).fill(0);
@@ -2646,12 +2661,9 @@ function deleteSubline(ai, section, li) {
   if (art[key].length <= 1) {
     // Последняя подстрока — переносим данные обратно в direct mode
     if (confirm('Удалить подстроки и вернуться к прямому вводу? Данные этой подстроки сохранятся.')) {
-      art[section + 'Plan']     = art[key][0].plan.slice();
-      art[section + 'Forecast'] = (art[key][0].forecast || Array(MONTHS_COUNT).fill(0)).slice();
-      art[section + 'Fact']     = art[key][0].fact.slice();
-      art[section + 'Dplan']    = art[key][0].dplan.slice();
-      art[section + 'Dforecast']= (art[key][0].dforecast || Array(DEC_COUNT).fill(0)).slice();
-      art[section + 'Dfact']    = art[key][0].dfact.slice();
+      art[section + 'Dplan']    = ensureDec(art[key][0].dplan).slice();
+      art[section + 'Dforecast']= ensureDec(art[key][0].dforecast).slice();
+      art[section + 'Dfact']    = ensureDec(art[key][0].dfact).slice();
       art[section + 'Lines'] = [];
       art[section + 'Direct'] = true;
       saveData();
@@ -2667,9 +2679,6 @@ function deleteInRow(ai) {
   if (!confirm('Удалить строку «Поступление»? Статья останется с пустыми поступлениями.')) return;
   const art = getBudget().articles[ai];
   art.inDeleted  = true;
-  art.inPlan     = Array(MONTHS_COUNT).fill(0);
-  art.inForecast = Array(MONTHS_COUNT).fill(0);
-  art.inFact     = Array(MONTHS_COUNT).fill(0);
   art.inDplan    = Array(DEC_COUNT).fill(0);
   art.inDforecast= Array(DEC_COUNT).fill(0);
   art.inDfact    = Array(DEC_COUNT).fill(0);
@@ -2970,12 +2979,13 @@ function confirmProjectModal() {
     renderSidebarProjects();
     renderBudget();
   } else {
+    newData.id = genId(); // стабильный id только при создании (в edit-режиме id не трогаем)
     projects.push(newData);
     closeModal();
     currentProject = projects.length - 1;
-    // Immediately initialise budget so renderDashboard/computeProjectNet12 never sees undefined
-    if (!budgets[currentProject]) {
-      budgets[currentProject] = { articles: [newArticle('Новая статья')] };
+    // Сразу инициализируем бюджет (по id), чтобы dashboard/computeProjectNet не видели undefined
+    if (!budgets[newData.id]) {
+      budgets[newData.id] = { articles: [newArticle('Новая статья')] };
     }
     projectsOpen = true;
     saveData();
@@ -3055,15 +3065,13 @@ function handleRegister() {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
       var demoY = new Date().getFullYear();
-      projects = [
-        { name: 'Проект А', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} },
-        { name: 'Проект Б', type: 'ПИР', start: {y:demoY,m:2}, end: {y:demoY,m:8} }
-      ];
+      var pa = { id: genId(), name: 'Проект А', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} };
+      var pb = { id: genId(), name: 'Проект Б', type: 'ПИР', start: {y:demoY,m:2}, end: {y:demoY,m:8} };
+      projects = [pa, pb];
       currentProject = 0;
-      budgets = {
-        0: { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] },
-        1: { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] }
-      };
+      budgets = {};
+      budgets[pa.id] = { articles: [ newArticle('Выручка'), newArticle('Зарплата'), newArticle('Аренда') ] };
+      budgets[pb.id] = { articles: [ newArticle('Выручка'), newArticle('Подрядчики') ] };
       window.flushSaveData();
       document.getElementById('login-page').style.display = 'none';
       document.getElementById('main-layout').style.display = '';
@@ -3247,32 +3255,17 @@ function initProjectDrag() {
       let targetIdx = pi;
       _projDragSrc = null;
 
-      // Переставить проект в массиве
+      // Запоминаем выбранный проект по id — выделение «поедет» вместе с ним
+      const curId = projects[currentProject] ? projects[currentProject].id : null;
+
+      // Переставить проект в массиве. Бюджеты ключуются по id —
+      // их трогать не нужно (раньше тут была хрупкая переиндексация).
       const [movedProj] = projects.splice(srcIdx, 1);
       if (srcIdx < targetIdx) targetIdx--;
       projects.splice(before ? targetIdx : targetIdx + 1, 0, movedProj);
 
-      // Переставить бюджеты
-      const oldBudgets = {...budgets};
-      const keys = Object.keys(oldBudgets).map(Number).sort((a,b)=>a-b);
-      // Собрать бюджеты в порядке до перестановки
-      const budgetArr = keys.map(k => oldBudgets[k] || null);
-      const [movedBudget] = budgetArr.splice(srcIdx, 1);
-      budgetArr.splice(before ? targetIdx : targetIdx + 1, 0, movedBudget);
-      budgets = {};
-      budgetArr.forEach((b, i) => { if (b) budgets[i] = b; });
-
-      // Скорректировать currentProject
-      const insertPos = before ? targetIdx : targetIdx + 1;
-      const effectiveInsert = srcIdx < insertPos ? insertPos - 1 : insertPos;
-      let ci = currentProject;
-      if (ci === srcIdx) {
-        ci = effectiveInsert;
-      } else {
-        if (ci > srcIdx) ci--;
-        if (ci >= effectiveInsert) ci++;
-      }
-      currentProject = ci;
+      const foundIdx = projects.findIndex(p => p.id === curId);
+      currentProject = foundIdx >= 0 ? foundIdx : 0;
 
       saveData();
       renderSidebarProjects();
