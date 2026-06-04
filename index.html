@@ -396,16 +396,16 @@ table.hide-fact td.cell-dfact { display:none }
 #kp-table tr.kp-total-out td.kp-ver { background:#f5eeff; border-top:1px solid #d8c8f0; color:#7a3f9e; }
 #kp-table tr.kp-net td { font-weight:700; border-top:2px solid #b0c8e0; background:#eaf4ff; position:sticky; bottom:0; z-index:2; }
 #kp-table tr.kp-net td.kp-ver { background:#daeeff; border-top:2px solid #8ab4d8; }
-/* Sticky-left ячейки в tfoot должны быть выше обычных ячеек при горизонтальном скролле */
-#kp-table tfoot td.kp-sticky-name { z-index:5; }
-/* Столбец «Итого» — зафиксирован правее «Статьи» */
-#kp-table .kp-sticky-total { position:sticky; left:200px; z-index:4; background:#fafaf8; border-left:none; border-right:none; box-shadow:-2px 0 0 #d8d8d0, 2px 0 0 #d8d8d0; width:80px; min-width:80px; max-width:80px; text-align:right; }
+/* ── Sticky колонки КП: Статья и Итого ── */
+#kp-table .kp-sticky-name  { position:sticky; left:0;     z-index:4; width:200px; min-width:200px; max-width:200px;
+                              box-shadow: 2px 0 0 #d8d8d0; }
+#kp-table .kp-sticky-total { position:sticky; left:200px; z-index:4; width:80px;  min-width:80px;  max-width:80px;
+                              text-align:right; background:#fafaf8;
+                              box-shadow: 2px 0 0 #d8d8d0; }
+#kp-table th.kp-sticky-name  { z-index:5; }
 #kp-table th.kp-sticky-total { z-index:5; background:#fafaf8; }
+#kp-table tfoot td.kp-sticky-name  { z-index:5; }
 #kp-table tfoot td.kp-sticky-total { z-index:5; }
-/* Правая граница колонки «Статья» — через box-shadow чтобы не отрывалась при скролле */
-#kp-table .kp-sticky-name { box-shadow: 2px 0 0 transparent; }
-#kp-table .kp-sticky-name { position:sticky; left:0; z-index:4; width:200px; min-width:200px; max-width:200px; }
-#kp-table th.kp-sticky-name { z-index:5; }
 #kp-table .kp-tag { display:inline-block; font-size:10px; padding:1px 6px; border-radius:4px; margin-left:6px; font-weight:500; }
 #kp-table .kp-tag-in  { background:#d4f0e8; color:#0a6e4e; }
 #kp-table .kp-tag-out { background:#fde8e4; color:#a33020; }
@@ -718,18 +718,27 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         <div id="save-indicator" style="font-size:11px;margin-left:auto;transition:color .3s"></div>
       </div>
       <div class="section">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
-          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <!-- Панель проектов -->
+          <span id="proj-view-label" style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
+          <div id="proj-view-btns" style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
             <button id="view-btn-plan" class="view-btn active" onclick="toggleView('plan')">Бюджет</button>
             <button id="view-btn-forecast" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
             <button id="view-btn-fact" class="view-btn active" onclick="toggleView('fact')">Факт</button>
           </div>
-          <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:4px">Детализация:</span>
-          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+          <span id="proj-detail-label" style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:4px">Детализация:</span>
+          <div id="proj-decade-btns" style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
             <button id="view-btn-month" class="view-btn active" onclick="toggleDecadeView('month')">Месяц</button>
             <button id="view-btn-decade" class="view-btn" onclick="toggleDecadeView('decade')">10 дней</button>
           </div>
+          <!-- Панель КП (скрыта по умолчанию) -->
+          <span id="kp-view-label" style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;display:none">Версии:</span>
+          <div id="kp-view-btns" style="display:none;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+            <button id="kp-btn-v1" class="view-btn active" onclick="toggleView('plan')">Версия 1</button>
+            <button id="kp-btn-v2" class="view-btn active" onclick="toggleView('forecast')">Версия 2</button>
+            <button id="kp-btn-v3" class="view-btn active" onclick="toggleView('fact')">Версия 3</button>
+          </div>
+          <button id="kp-to-project-btn" onclick="kpToProject()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit">→ Создать проект</button>
         </div>
         <div class="table-wrap">
           <table id="main-table">
@@ -744,26 +753,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
     <div class="page" id="page-payments">
       <div class="empty-state"><div class="big">💳</div><p>Платежи — раздел в разработке</p></div>
     </div>
-    <div class="page" id="page-kp">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:16px;flex-wrap:wrap">
-        <div>
-          <div style="font-size:20px;font-weight:500" id="kp-page-title">КП</div>
-          <div style="font-size:13px;color:#aaa;margin-top:2px" id="kp-page-meta"></div>
-        </div>
-        <div id="kp-toolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"></div>
-      </div>
-      <div class="empty-state" id="kp-empty" style="display:none">
-        <div class="big">📋</div>
-        <p>Выберите КП слева или создайте новое</p>
-      </div>
-      <div id="kp-table-wrap" style="overflow-x:auto;display:none">
-        <table id="kp-table" style="border-collapse:collapse">
-          <thead id="kp-thead"></thead>
-          <tbody id="kp-tbody"></tbody>
-          <tfoot id="kp-tfoot"></tfoot>
-        </table>
-      </div>
-    </div>
+
   </div>
 </div>
 
@@ -970,6 +960,20 @@ function initFirebase() {
           window.assignProjectIds();
           window.migrateBudgetsToIds();
           window.migrateData();
+          // Миграция КП: добавить inDirectId/outDirectId если их нет
+          proposals.forEach(function(prop) {
+            (prop.articles || []).forEach(function(a) {
+              if (!a.id)          a.id          = genKpId();
+              if (!a.inDirectId)  a.inDirectId  = genKpId();
+              if (!a.outDirectId) a.outDirectId = genKpId();
+              if (a.inDirect  === undefined) a.inDirect  = true;
+              if (a.outDirect === undefined) a.outDirect = true;
+              if (!Array.isArray(a.inLines))  a.inLines  = [];
+              if (!Array.isArray(a.outLines)) a.outLines = [];
+              (a.inLines  || []).forEach(function(l) { if (!l.id) l.id = genKpId(); });
+              (a.outLines || []).forEach(function(l) { if (!l.id) l.id = genKpId(); });
+            });
+          });
           // saveData после загрузки убран — чтобы не перезаписывать Firebase загруженными данными
           // (это могло стирать изменения сделанные непосредственно перед refresh)
           console.log('[loadData] loaded OK, projects:', projects.length);
@@ -1014,7 +1018,7 @@ function initFirebase() {
   }
 
   window.persistDataNow = function() {
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, proposals: proposals, updatedAt: Date.now() };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
     // Всегда пишем в localStorage немедленно как резервная копия
     try { localStorage.setItem(_LS_KEY, JSON.stringify(payload)); } catch(e) {}
     if (!window.firebaseUid) return;
@@ -1241,8 +1245,10 @@ function getBudget() { return getBudgetFor(currentProject); }
 
 /* ---- SIDEBAR ---- */
 function renderSidebarProjects() {
-  document.getElementById('nav-projects-list').innerHTML = projects.map((p,i) => `
-    <div class="nav-sub-item${i===currentProject?' active':''}" data-proj="${i}" onclick="selectProject(${i})">
+  document.getElementById('nav-projects-list').innerHTML = projects
+    .map((p,i) => ({p,i})).filter(({p}) => !p.isKp)
+    .map(({p,i}) => `
+    <div class="nav-sub-item${i===currentProject&&!kpMode?' active':''}" data-proj="${i}" onclick="selectProject(${i})">
       <span class="proj-drag-handle" title="Перетащить проект">⠿</span>
       <span class="dot"></span>
       <span style="flex:1">${esc(p.name)}</span>
@@ -2210,13 +2216,17 @@ function showPage(name) {
     document.getElementById('page-payments').classList.add('active');
     document.getElementById('nav-payments').classList.add('active');
   } else if (name === 'kp') {
-    document.getElementById('page-kp').classList.add('active');
+    kpMode = true;
+    document.getElementById('page-project').classList.add('active');
     document.getElementById('nav-kp').classList.add('active');
+    applyKpModeUI();
     renderKpSidebar();
-    renderKp();
+    renderBudget();
   } else {
+    kpMode = false;
     document.getElementById('page-project').classList.add('active');
     document.getElementById('nav-projects').classList.add('active');
+    applyKpModeUI();
     viewFact = false;
     document.getElementById('view-btn-fact').classList.remove('active');
     renderSidebarProjects();
@@ -2379,12 +2389,78 @@ function fixStickyTheadRows(theadId, tableId) {
   });
 }
 
+
+/* ── КП UI helpers ─────────────────────────────────────────── */
+function applyKpModeUI() {
+  const projUI  = ['proj-view-label','proj-detail-label'];
+  const projBtns = ['proj-view-btns','proj-decade-btns'];
+  const kpUI    = ['kp-view-label'];
+  const kpBtns  = ['kp-view-btns'];
+  const show = (id, visible, flex) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.style.display = visible ? (flex ? 'flex' : '') : 'none';
+  };
+  projUI.forEach(id  => show(id,  !kpMode));
+  projBtns.forEach(id => show(id, !kpMode, true));
+  kpUI.forEach(id    => show(id,  kpMode));
+  kpBtns.forEach(id  => show(id,  kpMode, true));
+  show('kp-to-project-btn', kpMode);
+  show('project-edit-btn',  !kpMode);
+  if (kpMode) {
+    // Sync KP version buttons with viewPlan/viewFact state
+    const b1 = document.getElementById('kp-btn-v1');
+    const b2 = document.getElementById('kp-btn-v2');
+    const b3 = document.getElementById('kp-btn-v3');
+    if (b1) b1.classList.toggle('active', viewPlan);
+    if (b2) b2.classList.toggle('active', viewForecast);
+    if (b3) b3.classList.toggle('active', viewFact);
+  }
+}
+
+function kpToProject() {
+  const p = projects[currentProject]; if (!p || !p.isKp) return;
+  if (!confirm('Создать проект «' + p.name + '» на основе этого КП?')) return;
+  const newProj = {
+    id: genId(), name: p.name, type: '', start: p.start, end: p.end
+  };
+  // Deep-copy budget
+  const srcBudget = budgets[p.id] || { articles: [] };
+  const newBudget = JSON.parse(JSON.stringify(srcBudget));
+  newBudget.articles.forEach(a => { a.id = genId(); });
+  projects.push(newProj);
+  budgets[newProj.id] = newBudget;
+  currentProject = projects.length - 1;
+  kpMode = false;
+  flushSaveData();
+  renderSidebarProjects();
+  alert('Проект «' + newProj.name + '» создан!');
+  showPage('project');
+}
+
 /* ---- BUDGET TABLE ---- */
 function renderBudget() {
+  // В режиме КП работаем только с isKp-проектами
+  const kpProjs = projects.map((p,i)=>({p,i})).filter(({p})=>p.isKp);
+  if (kpMode && (!projects[currentProject] || !projects[currentProject].isKp)) {
+    // Нет КП или выбран не-КП проект
+    if (kpProjs.length > 0) {
+      currentProject = kpProjs[0].i; // переключиться на первый КП
+    } else {
+      document.getElementById('project-page-title').textContent = 'Нет КП';
+      document.getElementById('project-page-meta').textContent = 'Создайте КП через кнопку «Новое КП»';
+      document.getElementById('articles-body').innerHTML = '';
+      document.getElementById('main-thead').innerHTML = '';
+      document.getElementById('main-tfoot').innerHTML = '';
+      return;
+    }
+  }
   const p = projects[currentProject];
   // Защита от пустого списка проектов (новый пользователь / пустые данные):
   // без этого p.name роняет весь JS-контекст. Показываем пустое состояние.
-  if (!p) {
+  if (!p || (!kpMode && p.isKp)) {
+    // В режиме проектов не показываем isKp-проекты
+    const nonKp = projects.map((pr,i)=>({pr,i})).filter(({pr})=>!pr.isKp);
+    if (nonKp.length > 0) { currentProject = nonKp[0].i; return renderBudget(); }
     document.getElementById('project-page-title').textContent = 'Нет проектов';
     document.getElementById('project-page-meta').textContent = '';
     document.getElementById('articles-body').innerHTML = '';
@@ -2425,17 +2501,23 @@ function renderBudget() {
                (viewFact     ? `<th class="decade-sub-head month-fact-head">фк</th>` : '')).repeat(3);
     } else {
       row1 += `<th class="month-group" colspan="${colspan}">${MONTH_NAMES[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
-      row2 += (viewPlan     ? `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff;text-align:center">бюджет</th>` : '') +
-              (viewForecast ? `<th class="month-forecast-head" style="color:#7a6000;font-size:10px;background:#fff8e0;text-align:center">план</th>` : '') +
-              (viewFact     ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6;text-align:center">факт</th>` : '');
+      const lP  = kpMode ? 'В1' : 'бюджет';
+      const lFC = kpMode ? 'В2' : 'план';
+      const lF  = kpMode ? 'В3' : 'факт';
+      row2 += (viewPlan     ? `<th class="month-plan-head" style="color:#0a6e4e;font-size:10px;background:#eaf4ff;text-align:center">${lP}</th>` : '') +
+              (viewForecast ? `<th class="month-forecast-head" style="color:#7a6000;font-size:10px;background:#fff8e0;text-align:center">${lFC}</th>` : '') +
+              (viewFact     ? `<th class="month-fact-head" style="color:#a33020;font-size:10px;background:#fff8f6;text-align:center">${lF}</th>` : '');
     }
   });
 
+  const totLabelP  = kpMode ? 'В1' : 'бюджет';
+  const totLabelFC = kpMode ? 'В2' : 'план';
+  const totLabelF  = kpMode ? 'В3' : 'факт';
   const FIXED_COLS = `
     <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья <button class="collapse-art-btn" title="Свернуть все подстроки" onclick="collapseAllArticles()">↑</button></th>
-    <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">бюджет</small></th>
-    <th class="sticky-tot-fc" style="background:#fff0c0;color:#7a6000;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">план</small></th>
-    <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">факт</small></th>`;
+    <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">${totLabelP}</small></th>
+    <th class="sticky-tot-fc" style="background:#fff0c0;color:#7a6000;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">${totLabelFC}</small></th>
+    <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">${totLabelF}</small></th>`;
 
   if (viewDecade) {
     document.getElementById('main-thead').innerHTML =
@@ -3583,72 +3665,25 @@ document.addEventListener('click', e => {
   });
 });
 
-/* ════════════════════════════════════════════════════════════════
-   КП — КОММЕРЧЕСКИЕ ПРЕДЛОЖЕНИЯ  (v2 — архитектура бюджета)
-   ════════════════════════════════════════════════════════════════ */
-
-// ── Хранилище ──────────────────────────────────────────────────
-// proposals[i] = { id, name, start:{y,m}, end:{y,m},
-//   articles:[{id, name, inLines:[{id,name}], outLines:[{id,name}]}],
-//   versions:[{id, name, date, data:{lineId:[monthly values]}}] }
-let proposals = [];
-let currentProposal = 0;
-let currentKpVersion = 0;   // индекс активной версии
-let kpMenuOpen = false;
-
-function genKpId() { return 'kp' + Math.random().toString(36).slice(2,9); }
-
-function kpMonths(p) {
-  // Возвращает массив {y,m} за период КП
-  if (!p || !p.start || !p.end) return [];
-  const res = [];
-  let y = p.start.y, m = p.start.m;
-  while (y * 12 + m <= p.end.y * 12 + p.end.m) {
-    res.push({y, m});
-    m++; if (m > 11) { m = 0; y++; }
-  }
-  return res;
-}
-
-function newKpArticle(name) {
-  return { id: genKpId(), name,
-    inDirect: true, outDirect: true,
-    inOpen: true,   outOpen: true,
-    inDirectId:  genKpId(),   // id прямой строки поступлений
-    outDirectId: genKpId(),   // id прямой строки выплат
-    inLines:  [],
-    outLines: []
-  };
-}
-
-function newKpVersion(num, proposals_count) {
-  const d = new Date();
-  const dt = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
-  return { id: genKpId(), name: `КП №${num}`, date: dt, data: {} };
-}
-
-function kpGetVal(ver, lineId, mi) {
-  return (ver.data[lineId] && ver.data[lineId][mi]) || 0;
-}
-function kpSetVal(ver, lineId, mi, v) {
-  if (!ver.data[lineId]) ver.data[lineId] = [];
-  ver.data[lineId][mi] = v;
-}
-
-// ── Сайдбар ────────────────────────────────────────────────────
 function toggleKpMenu() {
   kpMenuOpen = !kpMenuOpen;
   document.getElementById('kp-submenu').style.display = kpMenuOpen ? 'block' : 'none';
   document.getElementById('kp-toggle').classList.toggle('open', kpMenuOpen);
   renderKpSidebar();
-  if (kpMenuOpen && proposals.length > 0) showPage('kp');
+  if (kpMenuOpen) {
+    const kpProjs = projects.map((p,i)=>({p,i})).filter(({p})=>p.isKp);
+    if (kpProjs.length > 0) currentProject = kpProjs[0].i;
+    showPage('kp');
+  }
 }
 
 function renderKpSidebar() {
   const list = document.getElementById('nav-kp-list');
   if (!list) return;
-  list.innerHTML = proposals.map((p, i) => `
-    <div class="nav-sub-item${i === currentProposal ? ' active' : ''}" onclick="selectProposal(${i})">
+  list.innerHTML = projects
+    .map((p,i) => ({p,i})).filter(({p}) => p.isKp)
+    .map(({p,i}) => `
+    <div class="nav-sub-item${i===currentProject&&kpMode?' active':''}" onclick="selectProposal(${i})">
       <span class="dot"></span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
       <button class="delete-btn" onclick="event.stopPropagation();deleteProposal(${i})" title="Удалить КП">✕</button>
@@ -3656,21 +3691,21 @@ function renderKpSidebar() {
 }
 
 function selectProposal(i) {
-  currentProposal = i;
-  currentKpVersion = 0;
+  currentProject = i;
   renderKpSidebar();
   showPage('kp');
 }
 
 function deleteProposal(i) {
-  const name = proposals[i] ? proposals[i].name : '';
-  if (!confirm(`Удалить КП «${name}»? Это действие нельзя отменить.`)) return;
-  proposals.splice(i, 1);
-  if (currentProposal >= proposals.length) currentProposal = Math.max(0, proposals.length - 1);
-  currentKpVersion = 0;
+  const name = projects[i] ? projects[i].name : '';
+  if (!confirm('Удалить КП «' + name + '»? Это действие нельзя отменить.')) return;
+  delete budgets[projects[i].id];
+  projects.splice(i, 1);
+  // Switch to another KP or empty state
+  const kpProjs = projects.map((p,j)=>({p,j})).filter(({p})=>p.isKp);
+  if (kpProjs.length > 0) { currentProject = kpProjs[0].j; renderKpSidebar(); renderBudget(); }
+  else { currentProject = 0; renderKpSidebar(); renderBudget(); }
   flushSaveData();
-  renderKpSidebar();
-  renderKp();
 }
 
 // ── Модалка создания КП ────────────────────────────────────────
@@ -3737,19 +3772,20 @@ function confirmKpModal() {
   if (!name) { document.getElementById('kp-modal-name').focus(); return; }
   if (kpPickerState.start.month === null) { alert('Выберите дату начала'); return; }
   if (kpPickerState.end.month === null)   { alert('Выберите дату окончания'); return; }
-
   closeKpModal();
-  const p = {
-    id: genKpId(),
+
+  // КП — это обычный проект с флагом isKp:true
+  const proj = {
+    id: genId(),
     name,
+    type: '',
+    isKp: true,
     start: {y: kpPickerState.start.year, m: kpPickerState.start.month},
-    end:   {y: kpPickerState.end.year,   m: kpPickerState.end.month},
-    articles: [newKpArticle('Новая статья')],
-    versions: [newKpVersion(1)]
+    end:   {y: kpPickerState.end.year,   m: kpPickerState.end.month}
   };
-  proposals.push(p);
-  currentProposal = proposals.length - 1;
-  currentKpVersion = 0;
+  projects.push(proj);
+  budgets[proj.id] = { articles: [newArticle('Новая статья')] };
+  currentProject = projects.length - 1;
   kpMenuOpen = true;
   document.getElementById('kp-submenu').style.display = 'block';
   document.getElementById('kp-toggle').classList.add('open');
@@ -3758,424 +3794,9 @@ function confirmKpModal() {
   showPage('kp');
 }
 
-// ── Версии ─────────────────────────────────────────────────────
-function addKpVersion() {
-  const p = proposals[currentProposal];
-  if (!p) return;
-  p.versions.push(newKpVersion(p.versions.length + 1));
-  currentKpVersion = p.versions.length - 1;
-  flushSaveData();
-  renderKp();
-}
-
-function deleteKpVersion(vi) {
-  const p = proposals[currentProposal];
-  if (!p || p.versions.length <= 1) { alert('Нельзя удалить единственную версию'); return; }
-  if (!confirm(`Удалить "${p.versions[vi].name}"?`)) return;
-  p.versions.splice(vi, 1);
-  currentKpVersion = Math.min(currentKpVersion, p.versions.length - 1);
-  flushSaveData();
-  renderKp();
-}
-
-// ── Статьи ─────────────────────────────────────────────────────
-function addKpArticle() {
-  const p = proposals[currentProposal]; if (!p) return;
-  const name = prompt('Название статьи:') || 'Новая статья';
-  p.articles.push(newKpArticle(name.trim()));
-  flushSaveData(); renderKp();
-}
-
-function deleteKpArticle(ai) {
-  const p = proposals[currentProposal]; if (!p) return;
-  if (!confirm('Удалить статью?')) return;
-  p.articles.splice(ai, 1);
-  flushSaveData(); renderKp();
-}
-
-function addKpSubline(ai, section) {
-  const p = proposals[currentProposal]; if (!p) return;
-  const art = p.articles[ai];
-  const ver = p.versions[currentKpVersion];
-  const isIn = section === 'in';
-  const label = isIn ? 'Поступление' : 'Выплата';
-
-  if (art[section + 'Direct']) {
-    // Переключаемся в режим подстрок: переносим данные прямой строки в первую подстроку
-    const firstId = genKpId();
-    const secondId = genKpId();
-    const directId = art[section + 'DirectId'];
-    // Копируем значения прямой строки в первую подстроку для всех версий
-    p.versions.forEach(v => {
-      if (v.data[directId]) {
-        v.data[firstId] = v.data[directId].slice();
-        delete v.data[directId];
-      }
-    });
-    art[section + 'Lines'] = [
-      {id: firstId,  name: label + ' 1'},
-      {id: secondId, name: label + ' 2'}
-    ];
-    art[section + 'Direct'] = false;
-    art[section + 'Open']   = true;
-  } else {
-    const lines = art[section + 'Lines'];
-    lines.push({id: genKpId(), name: `${label} ${lines.length + 1}`});
-  }
-  flushSaveData(); renderKp();
-}
-
-function deleteKpSubline(ai, section, li) {
-  const p = proposals[currentProposal]; if (!p) return;
-  const art = p.articles[ai];
-  const lines = art[section + 'Lines'];
-  if (lines.length <= 1) {
-    // Вернуть в direct mode
-    if (!confirm('Удалить подстроки и вернуться к прямому вводу? Данные этой подстроки сохранятся.')) return;
-    const directId = art[section + 'DirectId'];
-    p.versions.forEach(v => {
-      if (v.data[lines[0].id]) { v.data[directId] = v.data[lines[0].id].slice(); delete v.data[lines[0].id]; }
-    });
-    art[section + 'Lines'] = [];
-    art[section + 'Direct'] = true;
-  } else {
-    const lineId = lines[li].id;
-    p.versions.forEach(v => { delete v.data[lineId]; });
-    lines.splice(li, 1);
-  }
-  flushSaveData(); renderKp();
-}
-
-// ── Ввод значения ──────────────────────────────────────────────
-function kpInputFocus(el) {
-  const v = parseFloat(el.value.replace(/\s/g,'').replace(',','.')) || 0;
-  el.value = v ? String(v) : '';
-  el.select();
-}
-
-function kpInputBlur(el, ai, section, li, mi) {
-  const p = proposals[currentProposal]; if (!p) return;
-  const ver = p.versions[currentKpVersion]; if (!ver) return;
-  const v = parseFloat(el.value.replace(/\s/g,'').replace(',','.')) || 0;
-  const art = p.articles[ai];
-  // li === -1 means direct mode
-  const lineId = li === -1 ? art[section + 'DirectId']
-                           : (section === 'in' ? art.inLines[li] : art.outLines[li]).id;
-  kpSetVal(ver, lineId, mi, v);
-  el.value = v ? fmt(v) : '';
-  flushSaveData();
-  updateKpTotals();
-}
-
-// ── Итоги ──────────────────────────────────────────────────────
-function kpArticleInVal(art, ver, mi) {
-  if (art.inDirect) return kpGetVal(ver, art.inDirectId, mi);
-  return art.inLines.reduce((s,l) => s + kpGetVal(ver,l.id,mi), 0);
-}
-function kpArticleOutVal(art, ver, mi) {
-  if (art.outDirect) return kpGetVal(ver, art.outDirectId, mi);
-  return art.outLines.reduce((s,l) => s + kpGetVal(ver,l.id,mi), 0);
-}
-
-function calcKpTotals(p, ver, months) {
-  const inByMonth  = months.map((_,mi) => p.articles.reduce((s,a) => s + kpArticleInVal(a,ver,mi),  0));
-  const outByMonth = months.map((_,mi) => p.articles.reduce((s,a) => s + kpArticleOutVal(a,ver,mi), 0));
-  const totalIn  = inByMonth.reduce((s,v) => s+v, 0);
-  const totalOut = outByMonth.reduce((s,v) => s+v, 0);
-  return { inByMonth, outByMonth, totalIn, totalOut, net: totalIn - totalOut };
-}
-
-function updateKpTotals() {
-  const p = proposals[currentProposal]; if (!p) return;
-  const ver = p.versions[currentKpVersion]; if (!ver) return;
-  const months = kpMonths(p);
-  const tots = calcKpTotals(p, ver, months);
-
-  const setEl = (id, val, color) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = fmt(val);
-    if (color !== undefined) el.style.color = color;
-  };
-
-  // month cells
-  months.forEach((_,mi) => {
-    setEl(`kp-foot-in-${mi}`,  tots.inByMonth[mi]);
-    setEl(`kp-foot-out-${mi}`, tots.outByMonth[mi]);
-    setEl(`kp-foot-net-${mi}`, tots.outByMonth[mi] > 0 || tots.inByMonth[mi] > 0
-      ? tots.inByMonth[mi] - tots.outByMonth[mi] : 0,
-      netColor(tots.inByMonth[mi] - tots.outByMonth[mi]));
-  });
-  setEl('kp-tot-in',  tots.totalIn);
-  setEl('kp-tot-out', tots.totalOut);
-  setEl('kp-tot-net', tots.net, netColor(tots.net));
-
-  // article totals row
-  p.articles.forEach((art, ai) => {
-    months.forEach((_,mi) => {
-      const mIn  = kpArticleInVal(art, ver, mi);
-      const mOut = kpArticleOutVal(art, ver, mi);
-      const ein  = document.getElementById(`kp-art-in-${ai}-${mi}`);
-      const eout = document.getElementById(`kp-art-out-${ai}-${mi}`);
-      if (ein)  { ein.textContent  = mIn  ? '▲'+fmt(mIn)  : ''; ein.style.color  = '#0a6e4e'; }
-      if (eout) { eout.textContent = mOut ? '▼'+fmt(mOut) : ''; eout.style.color = '#a33020'; }
-    });
-  });
-}
-
-// ── Трансформация КП → Проект ──────────────────────────────────
-function kpToProject() {
-  const p = proposals[currentProposal]; if (!p) return;
-  const ver = p.versions[currentKpVersion]; if (!ver) return;
-  if (!confirm(`Создать проект из "${p.name}" (версия ${ver.name})?`)) return;
-
-  const months = kpMonths(p);
-  const MC = months.length;
-
-  // Новый проект
-  const proj = {
-    id: genId(),
-    name: p.name,
-    type: '',
-    start: p.start,
-    end:   p.end
-  };
-
-  // Строим статьи с inDplan/outDplan
-  const arts = p.articles.map(art => {
-    const a = newArticle(art.name);
-    // inDplan: заполняем по месяцам (3-я декада каждого месяца)
-    months.forEach((_,mi) => {
-      const vIn  = kpArticleInVal(art, ver, mi);
-      const vOut = kpArticleOutVal(art, ver, mi);
-      if (vIn)  a.inDplan[mi * 3 + 2]  += vIn;
-      if (vOut) a.outDplan[mi * 3 + 2] += vOut;
-    });
-    return a;
-  });
-
-  projects.push(proj);
-  budgets[proj.id] = { articles: arts };
-  currentProject = projects.length - 1;
-  flushSaveData();
-  renderSidebarProjects();
-  alert(`Проект "${proj.name}" создан!`);
-  showPage('project');
-}
-
-// ── Рендер КП ──────────────────────────────────────────────────
-function renderKp() {
-  const p = proposals[currentProposal];
-  const empty = document.getElementById('kp-empty');
-  const wrap  = document.getElementById('kp-table-wrap');
-
-  if (!p) {
-    empty.style.display = 'flex'; wrap.style.display = 'none';
-    document.getElementById('kp-page-title').textContent = 'КП';
-    document.getElementById('kp-page-meta').textContent  = '';
-    document.getElementById('kp-toolbar').innerHTML = '';
-    return;
-  }
-  empty.style.display = 'none'; wrap.style.display = '';
-
-  document.getElementById('kp-page-title').textContent = p.name;
-  document.getElementById('kp-page-meta').textContent  =
-    p.start && p.end ? `${MONTH_NAMES_FULL[p.start.m]} ${p.start.y} — ${MONTH_NAMES_FULL[p.end.m]} ${p.end.y}` : '';
-
-  const ver = p.versions[currentKpVersion] || p.versions[0];
-
-  // toolbar: version tabs + buttons
-  const MNAMES_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-  document.getElementById('kp-toolbar').innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.04em">Версия:</span>
-      <div style="display:flex;gap:3px;background:#f0f0ec;border-radius:8px;padding:3px">
-        ${p.versions.map((v,vi) => `
-          <button class="view-btn${vi===currentKpVersion?' active':''}"
-            onclick="currentKpVersion=${vi};renderKp()"
-            style="position:relative">
-            ${esc(v.name)}
-            <span style="font-size:9px;color:#aaa;margin-left:3px">${esc(v.date)}</span>
-            ${p.versions.length > 1 ? `<span onclick="event.stopPropagation();deleteKpVersion(${vi})"
-              style="margin-left:4px;color:#ccc;font-size:10px;cursor:pointer" title="Удалить">✕</span>` : ''}
-          </button>`).join('')}
-      </div>
-      <button class="add-btn" onclick="addKpVersion()" style="font-size:12px;padding:4px 10px">+ Версия</button>
-      <button class="add-btn" onclick="kpToProject()"
-        style="font-size:12px;padding:4px 10px;background:#e8f5ee;border-color:#9dd4b8;color:#0a6e4e">
-        → Создать проект
-      </button>
-    </div>`;
-
-  const months = kpMonths(p);
-  const MC = months.length;
-  const STICKY_W = 200;
-  const TOTAL_W  = 80;
-
-  // thead
-  const thMonths = months.map(({y,m}) =>
-    `<th style="text-align:center;width:80px;min-width:80px;max-width:80px;border-left:1px solid #e5e5e0">
-      ${MNAMES_SHORT[m]}<br><small style="font-weight:400;font-size:10px;color:#aaa">${y}</small>
-    </th>`).join('');
-  document.getElementById('kp-thead').innerHTML = `<tr>
-    <th class="kp-left kp-sticky-name" style="min-width:${STICKY_W}px">
-      Статья
-    </th>
-    <th class="kp-sticky-total">Итого</th>
-    ${thMonths}
-  </tr>`;
-
-  // tbody
-  let html = '';
-  p.articles.forEach((art, ai) => {
-    // Article header row
-    const artMonthCells = months.map((_,mi) => {
-      const mIn  = art.inLines.reduce((s,l)  => s+kpGetVal(ver,l.id,mi), 0);
-      const mOut = art.outLines.reduce((s,l) => s+kpGetVal(ver,l.id,mi), 0);
-      return `<td style="text-align:right;font-size:11px;color:#888;border-left:1px solid #e5e5e0">
-        ${mIn  ? `<span id="kp-art-in-${ai}-${mi}"  style="color:#0a6e4e">▲${fmt(mIn)}</span>` :
-                 `<span id="kp-art-in-${ai}-${mi}"></span>`}
-        ${mOut ? `<span id="kp-art-out-${ai}-${mi}" style="color:#a33020;margin-left:2px">▼${fmt(mOut)}</span>` :
-                 `<span id="kp-art-out-${ai}-${mi}"></span>`}
-      </td>`;
-    }).join('');
-
-    html += `<tr class="article-header">
-      <td class="left sticky-name kp-sticky-name" colspan="1">
-        <input class="row-name-input" value="${esc(art.name)}"
-          onchange="proposals[currentProposal].articles[${ai}].name=this.value;flushSaveData()">
-        <button class="delete-btn" style="margin-left:6px" onclick="deleteKpArticle(${ai})">✕</button>
-      </td>
-      <td class="kp-sticky-total"></td>
-      ${artMonthCells}
-    </tr>`;
-
-    // Render one section (in / out) — direct mode or sublines
-    const renderSection = (section) => {
-      const isIn = section === 'in';
-      const tagCls  = isIn ? 'tag-in' : 'tag-out';
-      const tagTxt  = isIn ? '▲ Поступление' : '▼ Выплата';
-      const subCls  = isIn ? 'sub-in' : 'sub-out';
-      const colorSt = isIn ? 'color:#0a6e4e' : 'color:#a33020';
-      const isDirect = art[section + 'Direct'];
-      const directId = art[section + 'DirectId'];
-      const lines    = art[section + 'Lines'];
-      const isOpen   = art[section + 'Open'] !== false;
-      const addLbl   = isIn ? 'подстроку поступления' : 'подстроку выплаты';
-
-      const makeInputCell = (id, li, mi) => {
-        const v = kpGetVal(ver, id, mi);
-        return `<td style="text-align:right;border-left:1px solid #e5e5e0;padding:2px 4px">
-          <input class="month-input" type="text" inputmode="numeric"
-            value="${v ? fmt(v) : ''}" placeholder="0" style="${colorSt}"
-            onfocus="kpInputFocus(this)"
-            onblur="kpInputBlur(this,${ai},'${section}',${li},${mi})">
-        </td>`;
-      };
-
-      if (isDirect) {
-        // ── ПРЯМОЙ ВВОД ──
-        const total = months.reduce((s,_,mi) => s + kpGetVal(ver,directId,mi), 0);
-        const cells = months.map((_,mi) => makeInputCell(directId, -1, mi)).join('');
-        html += `<tr class="${subCls}">
-          <td class="left sticky-name kp-sticky-name" style="padding-left:20px">
-            <span class="tag ${tagCls}">${tagTxt}</span>
-            <button class="add-subline-btn" onclick="addKpSubline(${ai},'${section}')" style="margin-left:8px">+ подстроки</button>
-          </td>
-          <td class="kp-sticky-total" style="font-weight:600;font-size:12px;${colorSt}">
-            ${total ? fmt(total) : ''}
-          </td>
-          ${cells}
-        </tr>`;
-      } else {
-        // ── РЕЖИМ ПОДСТРОК ──
-        // Родительская строка — суммирует подстроки, клик раскрывает/сворачивает
-        const parentTotal = months.reduce((s,_,mi) => s + lines.reduce((s2,l) => s2+kpGetVal(ver,l.id,mi),0), 0);
-        const parentCells = months.map((_,mi) => {
-          const v = lines.reduce((s,l) => s+kpGetVal(ver,l.id,mi),0);
-          return `<td style="text-align:right;border-left:1px solid #e5e5e0;font-size:12px;color:#888">${v ? fmt(v) : ''}</td>`;
-        }).join('');
-        html += `<tr class="${subCls}">
-          <td class="left sticky-name kp-sticky-name" style="padding-left:20px;cursor:pointer"
-            onclick="proposals[currentProposal].articles[${ai}].${section}Open=!proposals[currentProposal].articles[${ai}].${section}Open;renderKp()">
-            <span class="tag ${tagCls}">${tagTxt}</span>
-            <span style="font-size:10px;color:#aaa;margin-left:4px">${isOpen ? '▲' : '▼'}</span>
-          </td>
-          <td class="kp-sticky-total" style="font-weight:600;font-size:12px;${colorSt}">
-            ${parentTotal ? fmt(parentTotal) : ''}
-          </td>
-          ${parentCells}
-        </tr>`;
-
-        if (isOpen) {
-          lines.forEach((line, li) => {
-            const lineTotal = months.reduce((s,_,mi) => s + kpGetVal(ver,line.id,mi), 0);
-            const cells = months.map((_,mi) => makeInputCell(line.id, li, mi)).join('');
-            html += `<tr class="subline-${isIn?'in':'out'}">
-              <td class="left sticky-name kp-sticky-name subline-label">
-                <input class="subline-name-input" value="${esc(line.name)}"
-                  onchange="proposals[currentProposal].articles[${ai}].${section}Lines[${li}].name=this.value;flushSaveData()">
-                <button class="delete-subline-btn" onclick="deleteKpSubline(${ai},'${section}',${li})">✕</button>
-              </td>
-              <td class="kp-sticky-total" style="font-size:12px;${colorSt}">
-                ${lineTotal ? fmt(lineTotal) : ''}
-              </td>
-              ${cells}
-            </tr>`;
-          });
-          html += `<tr class="add-subline-row">
-            <td class="left sticky-name kp-sticky-name">
-              <button class="add-subline-btn" onclick="addKpSubline(${ai},'${section}')">+ ${addLbl}</button>
-            </td>
-            <td class="kp-sticky-total"></td>
-            ${months.map(() => '<td style="border-left:1px solid #e5e5e0"></td>').join('')}
-          </tr>`;
-        }
-      }
-    };
-
-    renderSection('in');
-    renderSection('out');
-  });
-
-  // Add article row
-  html += `<tr>
-    <td class="left sticky-name kp-sticky-name" style="padding:6px 8px;border-top:1px solid #ececea">
-      <button class="add-btn" onclick="addKpArticle()" style="font-size:12px;padding:4px 12px">+ Добавить статью</button>
-    </td>
-    <td class="kp-sticky-total" style="border-top:1px solid #ececea"></td>
-    ${months.map(() => '<td style="border-top:1px solid #ececea;border-left:1px solid #e5e5e0"></td>').join('')}
-  </tr>`;
-
-  document.getElementById('kp-tbody').innerHTML = html;
-
-  // tfoot
-  const tots = calcKpTotals(p, ver, months);
-  const footRow = (label, field, arr, colorFn, cls) => {
-    const cells = arr.map((v,mi) =>
-      `<td id="kp-foot-${field}-${mi}"
-        style="text-align:right;border-left:1px solid #e5e5e0;font-weight:600;font-size:12px;${colorFn?'color:'+colorFn(v):''}">${v ? fmt(v) : ''}</td>`
-    ).join('');
-    const total = arr.reduce((s,v)=>s+v,0);
-    return `<tr class="${cls}">
-      <td class="left sticky-name kp-sticky-name" style="font-weight:600">${label}</td>
-      <td id="kp-tot-${field}" class="kp-sticky-total" style="font-weight:700;font-size:13px;${colorFn?'color:'+colorFn(total):''}">${total ? fmt(total) : ''}</td>
-      ${cells}
-    </tr>`;
-  };
-
-  const netArr = tots.inByMonth.map((v,i) => v - tots.outByMonth[i]);
-  document.getElementById('kp-tfoot').innerHTML =
-    footRow('Итого поступления', 'in',  tots.inByMonth,  null,    'kp-total') +
-    footRow('Итого выплаты',     'out', tots.outByMonth, null,    'kp-total-out') +
-    footRow('Чистый денежный поток', 'net', netArr, netColor, 'kp-net');
-  requestAnimationFrame(() => fixStickyTfootRows('kp-tfoot'));
-}
-// ── showPage extension ─────────────────────────────────────────
-const _origShowPage = window.showPage;
-
 /* INIT */
 let viewPlan = true, viewForecast = true, viewFact = true, viewDecade = false;
+let kpMode = false; // true когда открыта страница КП
 let viewDashDecade = false;
 let viewDashBudget = false;
 let dashProjectEnabled = []; // per-project toggle, synced in renderDashboard
