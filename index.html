@@ -819,6 +819,33 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
   </div>
 </div>
 
+<!-- KP VERSION TO PROJECT MODAL -->
+<div class="modal-overlay hidden" id="kp-ver-modal" onclick="event.target===this&&closeKpVerModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:360px">
+    <h2>Создать проект из КП</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 18px">Выберите версию КП, данные которой станут основой проекта.<br>
+    Выбранная версия будет скопирована в столбцы <b>Бюджет</b> и <b>План</b>. Столбец Факт останется пустым.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e0e0d8;border-radius:8px;cursor:pointer;transition:background .15s" id="kp-ver-opt-1">
+        <input type="radio" name="kp-ver" value="1" checked style="accent-color:#1a6fa3">
+        <span style="font-size:14px"><b>Версия 1</b></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e0e0d8;border-radius:8px;cursor:pointer;transition:background .15s" id="kp-ver-opt-2">
+        <input type="radio" name="kp-ver" value="2" style="accent-color:#1a6fa3">
+        <span style="font-size:14px"><b>Версия 2</b></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e0e0d8;border-radius:8px;cursor:pointer;transition:background .15s" id="kp-ver-opt-3">
+        <input type="radio" name="kp-ver" value="3" style="accent-color:#1a6fa3">
+        <span style="font-size:14px"><b>Версия 3</b></span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeKpVerModal()">Отмена</button>
+      <button class="btn-create" onclick="confirmKpToProject()">Создать проект</button>
+    </div>
+  </div>
+</div>
+
 <!-- KP MODAL -->
 <div class="modal-overlay hidden" id="kp-modal-overlay" onclick="closeKpModal()">
   <div class="modal" onclick="event.stopPropagation()">
@@ -2212,11 +2239,14 @@ function showPage(name) {
     renderBudget();
   } else {
     kpMode = false;
+    // Сбрасываем состояние колонок до дефолта для бюджетов
+    viewPlan = true; viewForecast = true; viewFact = false;
+    document.getElementById('view-btn-plan').classList.add('active');
+    document.getElementById('view-btn-forecast').classList.add('active');
+    document.getElementById('view-btn-fact').classList.remove('active');
     document.getElementById('page-project').classList.add('active');
     document.getElementById('nav-projects').classList.add('active');
     applyKpModeUI();
-    viewFact = false;
-    document.getElementById('view-btn-fact').classList.remove('active');
     renderSidebarProjects();
     renderBudget();
   }
@@ -2407,21 +2437,52 @@ function applyKpModeUI() {
 
 function kpToProject() {
   const p = projects[currentProject]; if (!p || !p.isKp) return;
-  if (!confirm('Создать проект «' + p.name + '» на основе этого КП?')) return;
-  const newProj = {
-    id: genId(), name: p.name, type: '', start: p.start, end: p.end
-  };
-  // Deep-copy budget
+  // Show version picker modal
+  document.getElementById('kp-ver-modal').classList.remove('hidden');
+  // Reset to Версия 1
+  const radios = document.querySelectorAll('input[name="kp-ver"]');
+  radios.forEach(r => r.checked = r.value === '1');
+}
+
+function closeKpVerModal() {
+  document.getElementById('kp-ver-modal').classList.add('hidden');
+}
+
+function confirmKpToProject() {
+  const p = projects[currentProject]; if (!p || !p.isKp) return;
+  const ver = parseInt(document.querySelector('input[name="kp-ver"]:checked')?.value || '1');
+  closeKpVerModal();
+
   const srcBudget = budgets[p.id] || { articles: [] };
   const newBudget = JSON.parse(JSON.stringify(srcBudget));
-  newBudget.articles.forEach(a => { a.id = genId(); });
+
+  // Map selected version to budget/plan, clear fact
+  newBudget.articles.forEach(a => {
+    a.id = genId();
+    // Source arrays based on version selection
+    const srcInPlan  = ver === 1 ? a.inDplan  : ver === 2 ? a.inDforecast  : a.inDfact;
+    const srcOutPlan = ver === 1 ? a.outDplan : ver === 2 ? a.outDforecast : a.outDfact;
+    // Version → бюджет AND план, факт пустой
+    a.inDplan      = Array.isArray(srcInPlan)  ? srcInPlan.slice()  : Array(DEC_COUNT).fill(0);
+    a.outDplan     = Array.isArray(srcOutPlan) ? srcOutPlan.slice() : Array(DEC_COUNT).fill(0);
+    a.inDforecast  = Array.isArray(srcInPlan)  ? srcInPlan.slice()  : Array(DEC_COUNT).fill(0);
+    a.outDforecast = Array.isArray(srcOutPlan) ? srcOutPlan.slice() : Array(DEC_COUNT).fill(0);
+    a.inDfact      = Array(DEC_COUNT).fill(0);
+    a.outDfact     = Array(DEC_COUNT).fill(0);
+    a.inDirect     = true;
+    a.outDirect    = true;
+    a.inLines      = [];
+    a.outLines     = [];
+  });
+
+  const newProj = { id: genId(), name: p.name, type: '', start: p.start, end: p.end };
   projects.push(newProj);
   budgets[newProj.id] = newBudget;
   currentProject = projects.length - 1;
   kpMode = false;
   flushSaveData();
   renderSidebarProjects();
-  alert('Проект «' + newProj.name + '» создан!');
+  alert('Проект «' + newProj.name + '» создан на основе Версии ' + ver + '!');
   showPage('project');
 }
 
