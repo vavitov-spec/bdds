@@ -625,8 +625,8 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()" style="width:100%;font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;box-sizing:border-box">
     </div>
 
-    <button onclick="handleLogin()" style="width:100%;padding:10px;border:none;background:#1a1a18;color:#fff;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:12px">Войти</button>
-    <button onclick="handleRegister()" style="width:100%;padding:10px;border:1px solid #ddd;background:#fff;color:#1a1a18;border-radius:8px;font-family:inherit;font-size:14px;cursor:pointer">Зарегистрироваться</button>
+    <button id="login-btn" onclick="handleLogin()" style="width:100%;padding:10px;border:none;background:#1a1a18;color:#fff;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:12px">Войти</button>
+    <button id="register-btn" onclick="handleRegister()" style="width:100%;padding:10px;border:1px solid #ddd;background:#fff;color:#1a1a18;border-radius:8px;font-family:inherit;font-size:14px;cursor:pointer">Зарегистрироваться</button>
 
     <div id="login-error" style="margin-top:16px;padding:10px;border-radius:8px;background:#fdf0f0;color:#a33020;font-size:13px;display:none"></div>
   </div>
@@ -946,64 +946,64 @@ function initFirebase() {
       var user = window.auth.currentUser;
       if (!user) { resolve(false); return; }
       window.firebaseUid = user.uid;
-      window.db.doc('bdds/' + window.firebaseUid).get({ source: 'server' }).then(function(snap) {
-        console.log('[loadData] snap.exists=', snap.exists);
-        var fbData = snap.exists ? snap.data() : null;
-        // Читаем localStorage как резервную копию
-        var lsData = null;
-        try {
-          var raw = localStorage.getItem(_LS_KEY);
-          console.log('[loadData] localStorage raw length=', raw ? raw.length : 0);
-          if (raw) lsData = JSON.parse(raw);
-        } catch(e) { console.warn('[loadData] localStorage read error:', e); }
 
-        // Сравниваем данные из Firebase и localStorage для отладки
-        var fbArt0 = fbData && fbData.budgets && fbData.budgets[0] && fbData.budgets[0].articles ? fbData.budgets[0].articles.length : 'n/a';
-        var lsArt0 = lsData && lsData.budgets && lsData.budgets[0] && lsData.budgets[0].articles ? lsData.budgets[0].articles.length : 'n/a';
-        console.log('[loadData] Firebase budgets[0] articles=', fbArt0, '| localStorage budgets[0] articles=', lsArt0);
-        // Логируем первое значение из первой статьи для сравнения
-        try {
-          var fbV = fbData && fbData.budgets && fbData.budgets[0] && fbData.budgets[0].articles[0] ? JSON.stringify(fbData.budgets[0].articles[0].inDplan||[]).slice(0,60) : 'n/a';
-          var lsV = lsData && lsData.budgets && lsData.budgets[0] && lsData.budgets[0].articles[0] ? JSON.stringify(lsData.budgets[0].articles[0].inDplan||[]).slice(0,60) : 'n/a';
-          console.log('[loadData] FB inDplan[0..5]=', fbV);
-          console.log('[loadData] LS inDplan[0..5]=', lsV);
-        } catch(e) {}
+      // Локальный кэш читаем сразу — мгновенно и работает офлайн.
+      var lsData = null;
+      try {
+        var raw = localStorage.getItem(_LS_KEY);
+        if (raw) lsData = JSON.parse(raw);
+      } catch(e) { console.warn('[loadData] localStorage read error:', e); }
+      var lsValid = lsData && Array.isArray(lsData.projects) && lsData.projects.length > 0;
 
-        var fbValid = fbData && Array.isArray(fbData.projects) && fbData.projects.length > 0;
-        var lsValid = lsData && Array.isArray(lsData.projects) && lsData.projects.length > 0;
-        var d = null;
-        if (fbValid && lsValid) {
-          // Выбираем более свежую версию по updatedAt, а не вслепую localStorage.
-          // Это предотвращает перезапись свежих серверных данных устаревшим кэшем
-          // (например, после работы с другого устройства).
-          var fbT = fbData.updatedAt || 0;
-          var lsT = lsData.updatedAt || 0;
-          d = lsT > fbT ? lsData : fbData;
-          console.log('[loadData] both present, fbT=', fbT, 'lsT=', lsT, '→', d === lsData ? 'localStorage' : 'firebase');
-        } else if (fbValid) {
-          d = fbData;
-        } else if (lsValid) {
-          d = lsData;
-          console.log('[loadData] Firebase empty, using localStorage cache');
-        }
+      // Применить выбранный набор данных к глобальному состоянию.
+      function apply(d) {
+        if (!d || !Array.isArray(d.projects) || d.projects.length === 0) return false;
+        projects       = d.projects;
+        budgets        = d.budgets || {};
+        currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
+        window.assignProjectIds();
+        window.migrateBudgetsToIds();
+        window.migrateData();
+        return true;
+      }
 
-        if (d) {
-          projects       = d.projects;
-          budgets        = d.budgets || {};
-          currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
-          window.assignProjectIds();
-          window.migrateBudgetsToIds();
-          window.migrateData();
+      // Защита от зависания на плохой сети: если сервер не ответил за TIMEOUT_MS —
+      // работаем с локальным кэшем, не блокируя вход.
+      var settled = false;
+      var TIMEOUT_MS = 6000;
+      var timer = setTimeout(function() {
+        if (settled) return;
+        settled = true;
+        console.warn('[loadData] server timeout — using localStorage cache');
+        resolve(apply(lsData));
+      }, TIMEOUT_MS);
 
-          // saveData после загрузки убран — чтобы не перезаписывать Firebase загруженными данными
-          // (это могло стирать изменения сделанные непосредственно перед refresh)
-          console.log('[loadData] loaded OK, projects:', projects.length);
-          resolve(true);
-          return;
-        }
-        console.warn('[loadData] no data found, will use demo');
-        resolve(false);
-      }).catch(function(e) { console.error('[loadData] error:', e); resolve(false); });
+      // Обычный get() (кэш+сервер) вместо forced {source:'server'} — быстрее
+      // и не падает офлайн. На любой ошибке откатываемся на localStorage.
+      window.db.doc('bdds/' + window.firebaseUid).get()
+        .then(function(snap) {
+          if (settled) return;
+          settled = true; clearTimeout(timer);
+          var fbData = snap.exists ? snap.data() : null;
+          var fbValid = fbData && Array.isArray(fbData.projects) && fbData.projects.length > 0;
+          var d = null;
+          if (fbValid && lsValid) {
+            // Берём более свежую версию по updatedAt (защита от перезаписи
+            // свежих серверных данных устаревшим локальным кэшем).
+            d = (lsData.updatedAt || 0) > (fbData.updatedAt || 0) ? lsData : fbData;
+          } else if (fbValid) {
+            d = fbData;
+          } else if (lsValid) {
+            d = lsData;
+          }
+          resolve(apply(d));
+        })
+        .catch(function(e) {
+          if (settled) return;
+          settled = true; clearTimeout(timer);
+          console.error('[loadData] server error, fallback to localStorage:', e);
+          resolve(apply(lsData));
+        });
     });
   };
   // One-time auth state listener for the initial page load only.
@@ -3476,33 +3476,56 @@ function hideLoginError() {
   errorEl.style.display = 'none';
 }
 
+function _setLoginBusy(busy, label) {
+  const btn = document.getElementById('login-btn');
+  const reg = document.getElementById('register-btn');
+  if (btn) {
+    btn.disabled = busy;
+    btn.textContent = busy ? (label || 'Вход…') : 'Войти';
+    btn.style.opacity = busy ? '0.6' : '1';
+    btn.style.cursor = busy ? 'default' : 'pointer';
+  }
+  if (reg) reg.disabled = busy;
+}
+
 function handleLogin() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  
+
   if (!email || !password) {
     showLoginError('Заполните email и пароль');
     return;
   }
+  // SDK ещё грузится — раньше клик молча падал («ничего не происходит»)
+  if (!window.auth) {
+    showLoginError('Идёт подключение к серверу, попробуйте через секунду…');
+    return;
+  }
 
+  hideLoginError();
+  _setLoginBusy(true);
   window.auth.signInWithEmailAndPassword(email, password)
     .then(() => {
       hideLoginError();
-      // Auth state listener (registered once in startApp) handles the UI transition.
-      // We just call loadData directly since the user is now signed in.
-      window.loadData().then(() => {
+      window.firebaseUid = window.auth.currentUser.uid;
+      _setLoginBusy(true, 'Загрузка данных…');
+      return window.loadData().then(() => {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('main-layout').style.display = '';
         window.renderSidebarProjects();
         window.showPage('dashboard');
-        console.log('[login] rendered, projects:', projects.length, 'budgets:', Object.keys(budgets));
+        _setLoginBusy(false);
       });
     })
     .catch(error => {
+      _setLoginBusy(false);
       let msg = 'Ошибка входа';
-      if (error.code === 'auth/user-not-found') msg = 'Пользователь не найден';
-      if (error.code === 'auth/wrong-password') msg = 'Неверный пароль';
-      if (error.code === 'auth/invalid-email') msg = 'Неверный email';
+      const c = error && error.code;
+      if (c === 'auth/invalid-credential' || c === 'auth/user-not-found' || c === 'auth/wrong-password')
+        msg = 'Неверный email или пароль';
+      else if (c === 'auth/invalid-email') msg = 'Неверный формат email';
+      else if (c === 'auth/network-request-failed') msg = 'Нет соединения с сервером';
+      else if (c === 'auth/too-many-requests') msg = 'Слишком много попыток, попробуйте позже';
       showLoginError(msg);
     });
 }
