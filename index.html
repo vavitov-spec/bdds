@@ -628,6 +628,11 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
     <button id="login-btn" onclick="handleLogin()" style="width:100%;padding:10px;border:none;background:#1a1a18;color:#fff;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:12px">Войти</button>
     <button id="register-btn" onclick="handleRegister()" style="width:100%;padding:10px;border:1px solid #ddd;background:#fff;color:#1a1a18;border-radius:8px;font-family:inherit;font-size:14px;cursor:pointer">Зарегистрироваться</button>
 
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid #eee">
+      <button id="demo-btn" onclick="handleDemo()" style="width:100%;padding:10px;border:1px dashed #c9a94a;background:#fffaf0;color:#8a6d1f;border-radius:8px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer">▶ Демо-версия</button>
+      <div style="font-size:11px;color:#bbb;text-align:center;margin-top:8px">Готовые проекты для ознакомления.<br>Изменения сохраняются только в этом браузере.</div>
+    </div>
+
     <div id="login-error" style="margin-top:16px;padding:10px;border-radius:8px;background:#fdf0f0;color:#a33020;font-size:13px;display:none"></div>
   </div>
 </div>
@@ -673,6 +678,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
   <div class="main">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:0 4px">
       <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Меню">☰</button>
+      <span id="demo-badge" style="display:none;font-size:12px;color:#8a6d1f;background:#fff3cf;border:1px solid #f0d97a;padding:3px 10px;border-radius:6px">Демо-режим · данные хранятся только в этом браузере</span>
     </div>
     <div class="page" id="page-dashboard">
       <div style="display:flex;align-items:flex-end;gap:40px;margin-bottom:20px">
@@ -950,7 +956,7 @@ function initFirebase() {
       // Локальный кэш читаем сразу — мгновенно и работает офлайн.
       var lsData = null;
       try {
-        var raw = localStorage.getItem(_LS_KEY);
+        var raw = localStorage.getItem(_lsKey());
         if (raw) lsData = JSON.parse(raw);
       } catch(e) { console.warn('[loadData] localStorage read error:', e); }
       var lsValid = lsData && Array.isArray(lsData.projects) && lsData.projects.length > 0;
@@ -1028,7 +1034,9 @@ function initFirebase() {
 
   // ── Save to Firestore (debounced) ───────────────────────────────────────
   var _saveTimer = null;
-  var _LS_KEY = 'bdds_cache';
+  // В демо-режиме данные живут в отдельном ключе кэша, чтобы не смешиваться
+  // с реальной сессией пользователя.
+  function _lsKey() { return window.demoMode ? 'bdds_demo' : 'bdds_cache'; }
 
   function _setSaveIndicator(state) { // 'saving' | 'saved' | 'error'
     var el = document.getElementById('save-indicator');
@@ -1041,7 +1049,7 @@ function initFirebase() {
   window.persistDataNow = function() {
     var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
     // Всегда пишем в localStorage немедленно как резервная копия
-    try { localStorage.setItem(_LS_KEY, JSON.stringify(payload)); } catch(e) {}
+    try { localStorage.setItem(_lsKey(), JSON.stringify(payload)); } catch(e) {}
     if (!window.firebaseUid) return;
     _setSaveIndicator('saving');
     window.db.doc('bdds/' + window.firebaseUid).set(payload)
@@ -1058,7 +1066,7 @@ function initFirebase() {
     var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
     try {
       var s = JSON.stringify(payload);
-      localStorage.setItem(_LS_KEY, s);
+      localStorage.setItem(_lsKey(), s);
       console.log('[saveData] wrote localStorage, size=', s.length, 'budgets keys=', Object.keys(budgets));
     } catch(e) { console.error('[saveData] localStorage write FAILED:', e); }
     clearTimeout(_saveTimer);
@@ -1234,6 +1242,7 @@ function sectionSumEff(art, section, field) {
 // function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({projects,budgets,currentProject})); }
 
 let projects = [], budgets = {}, currentProject = 0;
+window.demoMode = false; // true — работа без облака, изменения только в localStorage
 
 // Заглушки — Firebase перезапишет после инициализации
 window.saveData = function() {};
@@ -3476,6 +3485,76 @@ function hideLoginError() {
   errorEl.style.display = 'none';
 }
 
+/* ---- ДЕМО-РЕЖИМ ---- */
+// Готовые проекты для ознакомления. Без входа в Firebase: все изменения
+// сохраняются только в localStorage (ключ bdds_demo), облако не трогаем.
+function seedDemoData() {
+  const Y = new Date().getFullYear();
+  const K = 1000; // суммы задаём в тыс., храним в рублях
+  function art(name, inM, outM) {
+    const a = newArticle(name);
+    (inM  || []).forEach((v, mi) => { if (v) a.inDplan[mi*3]  = v * K; });
+    (outM || []).forEach((v, mi) => { if (v) a.outDplan[mi*3] = v * K; });
+    // План (В2) = Бюджет; Факт частично повторяет план до текущего месяца
+    a.inDforecast  = a.inDplan.slice();
+    a.outDforecast = a.outDplan.slice();
+    const curM = new Date().getMonth();
+    a.inDplan.forEach((v, di)  => { if (Math.floor(di/3) <= curM) a.inDfact[di]  = v; });
+    a.outDplan.forEach((v, di) => { if (Math.floor(di/3) <= curM) a.outDfact[di] = v; });
+    return a;
+  }
+  const p1 = { id: genId(), name: 'ЖК «Северный» — СМР', type: 'СМР', start:{y:Y,m:0}, end:{y:Y,m:11} };
+  const p2 = { id: genId(), name: 'Проектирование ТЦ «Парус»', type: 'ПИР', start:{y:Y,m:2}, end:{y:Y,m:8} };
+  projects = [p1, p2];
+  budgets = {};
+  budgets[p1.id] = { articles: [
+    art('Авансы заказчика',  [15000,0,12000,0,0,10000,0,0,12000,0,0,18000], []),
+    art('Выполнение работ',  [0,6000,6000,8000,8000,8000,9000,9000,9000,7000,7000,5000], []),
+    art('Материалы',         [], [4000,5000,5000,6000,6000,6000,5000,5000,4000,4000,3000,3000]),
+    art('ФОТ',               [], [2400,2400,2600,2600,2600,2800,2800,2800,2800,2600,2600,2400]),
+    art('Субподряд',         [], [0,2000,2000,3000,3000,3000,4000,4000,3000,2000,2000,1600]),
+  ] };
+  budgets[p2.id] = { articles: [
+    art('Аванс по договору',        [0,0,8000,0,0,6000,0,0,4000,0,0,0], []),
+    art('Оплата за этапы',          [0,0,0,0,3000,0,4000,0,7000,0,0,0], []),
+    art('Зарплата проектировщиков', [], [0,0,1800,1800,1800,1800,1800,1800,1800,0,0,0]),
+    art('Командировки и согласования',[], [0,0,400,0,600,0,400,0,800,0,0,0]),
+  ] };
+  currentProject = 0;
+}
+
+function handleDemo() {
+  window.demoMode = true;
+  window.firebaseUid = null; // ключевое: без uid persistDataNow не пишет в Firebase
+  hideLoginError();
+  // Пробуем восстановить прошлую демо-сессию из кэша, иначе — свежие демо-данные
+  let loaded = false;
+  try {
+    const raw = localStorage.getItem('bdds_demo');
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && Array.isArray(d.projects) && d.projects.length) {
+        projects = d.projects;
+        budgets = d.budgets || {};
+        currentProject = Math.max(0, Math.min(d.currentProject || 0, projects.length - 1));
+        if (window.assignProjectIds)    window.assignProjectIds();
+        if (window.migrateBudgetsToIds) window.migrateBudgetsToIds();
+        if (window.migrateData)         window.migrateData();
+        loaded = true;
+      }
+    }
+  } catch(e) { console.warn('[demo] cache read error:', e); }
+  if (!loaded) seedDemoData();
+
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('main-layout').style.display = '';
+  const badge = document.getElementById('demo-badge');
+  if (badge) badge.style.display = '';
+  renderSidebarProjects();
+  showPage('dashboard');
+  saveData(); // фиксируем демо в localStorage
+}
+
 function _setLoginBusy(busy, label) {
   const btn = document.getElementById('login-btn');
   const reg = document.getElementById('register-btn');
@@ -3503,6 +3582,8 @@ function handleLogin() {
   }
 
   hideLoginError();
+  window.demoMode = false; // обычный вход — работаем с облаком
+  const _db = document.getElementById('demo-badge'); if (_db) _db.style.display = 'none';
   _setLoginBusy(true);
   window.auth.signInWithEmailAndPassword(email, password)
     .then(() => {
@@ -3544,6 +3625,8 @@ function handleRegister() {
     return;
   }
 
+  window.demoMode = false; // регистрация — работаем с облаком
+  const _db2 = document.getElementById('demo-badge'); if (_db2) _db2.style.display = 'none';
   window.auth.createUserWithEmailAndPassword(email, password)
     .then(() => {
       hideLoginError();
@@ -3692,23 +3775,28 @@ function handleRegister() {
 }
 
 function handleLogout() {
-  if (confirm('Вы уверены что хотите выйти?')) {
-    window.flushSaveData();
-    window.auth.signOut().then(() => {
-      window.firebaseUid = null;
-      // Чистим данные из памяти и локального кэша, чтобы следующий пользователь
-      // (особенно без своих данных) не увидел чужие проекты до загрузки.
-      projects = [];
-      budgets = {};
-      currentProject = 0;
-      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
-      document.getElementById('login-page').style.display = 'flex';
-      document.getElementById('main-layout').style.display = 'none';
-      document.getElementById('login-email').value = '';
-      document.getElementById('login-password').value = '';
-      hideLoginError();
-    });
-  }
+  if (!confirm('Вы уверены что хотите выйти?')) return;
+  window.flushSaveData();
+  const finish = () => {
+    window.firebaseUid = null;
+    // Чистим данные из памяти, чтобы следующий пользователь не увидел чужие.
+    // Демо-кэш (bdds_demo) сохраняем — чтобы можно было вернуться к нему.
+    projects = [];
+    budgets = {};
+    currentProject = 0;
+    if (!window.demoMode) { try { localStorage.removeItem('bdds_cache'); } catch(e) {} }
+    window.demoMode = false;
+    const badge = document.getElementById('demo-badge');
+    if (badge) badge.style.display = 'none';
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('main-layout').style.display = 'none';
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    hideLoginError();
+  };
+  // В демо-режиме сессии Firebase нет — просто сбрасываем UI
+  if (window.demoMode || !window.auth) { finish(); return; }
+  window.auth.signOut().then(finish).catch(finish);
 }
 
 function togglePicker(which) {
