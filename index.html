@@ -735,8 +735,8 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           <span id="kp-view-label" style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;display:none">Версии:</span>
           <div id="kp-view-btns" style="display:none;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
             <button id="kp-btn-v1" class="view-btn active" onclick="toggleView('plan')">Версия 1</button>
-            <button id="kp-btn-v2" class="view-btn active" onclick="toggleView('forecast')">Версия 2</button>
-            <button id="kp-btn-v3" class="view-btn active" onclick="toggleView('fact')">Версия 3</button>
+            <button id="kp-btn-v2" class="view-btn" onclick="toggleView('forecast')">Версия 2</button>
+            <button id="kp-btn-v3" class="view-btn" onclick="toggleView('fact')">Версия 3</button>
           </div>
           <button id="kp-to-project-btn" onclick="kpToProject()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit">→ Создать проект</button>
         </div>
@@ -956,24 +956,10 @@ function initFirebase() {
           projects       = d.projects;
           budgets        = d.budgets || {};
           currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
-          proposals      = Array.isArray(d.proposals) ? d.proposals : [];
           window.assignProjectIds();
           window.migrateBudgetsToIds();
           window.migrateData();
-          // Миграция КП: добавить inDirectId/outDirectId если их нет
-          proposals.forEach(function(prop) {
-            (prop.articles || []).forEach(function(a) {
-              if (!a.id)          a.id          = genKpId();
-              if (!a.inDirectId)  a.inDirectId  = genKpId();
-              if (!a.outDirectId) a.outDirectId = genKpId();
-              if (a.inDirect  === undefined) a.inDirect  = true;
-              if (a.outDirect === undefined) a.outDirect = true;
-              if (!Array.isArray(a.inLines))  a.inLines  = [];
-              if (!Array.isArray(a.outLines)) a.outLines = [];
-              (a.inLines  || []).forEach(function(l) { if (!l.id) l.id = genKpId(); });
-              (a.outLines || []).forEach(function(l) { if (!l.id) l.id = genKpId(); });
-            });
-          });
+
           // saveData после загрузки убран — чтобы не перезаписывать Firebase загруженными данными
           // (это могло стирать изменения сделанные непосредственно перед refresh)
           console.log('[loadData] loaded OK, projects:', projects.length);
@@ -1034,7 +1020,7 @@ function initFirebase() {
   };
   window.saveData = function() {
     // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, proposals: proposals, updatedAt: Date.now() };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
     try {
       var s = JSON.stringify(payload);
       localStorage.setItem(_LS_KEY, s);
@@ -2217,6 +2203,8 @@ function showPage(name) {
     document.getElementById('nav-payments').classList.add('active');
   } else if (name === 'kp') {
     kpMode = true;
+    // По умолчанию в КП: только Версия 1 активна
+    viewPlan = true; viewForecast = false; viewFact = false;
     document.getElementById('page-project').classList.add('active');
     document.getElementById('nav-kp').classList.add('active');
     applyKpModeUI();
@@ -2727,9 +2715,9 @@ function renderBudget() {
                 <input class="subline-name-input" value="${esc(line.name)}" placeholder="Название..." onchange="renameSubline(${ai},'${section}',${li},this.value)">
                 <button class="delete-subline-btn" onclick="deleteSubline(${ai},'${section}',${li})" title="Удалить">✕</button>
               </td>
-              <td class="sticky-tot-p total-cell" style="color:${colorP}">${lineTotal ? fmt(lineTotal) : '—'}</td>
-              <td class="sticky-tot-fc total-cell" style="color:#7a6000">${lineFCTotal ? fmt(lineFCTotal) : '—'}</td>
-              <td class="sticky-tot-f total-cell" style="color:${colorP}">${lineFTotal ? fmt(lineFTotal) : '—'}</td>
+              <td class="sticky-tot-p total-cell" id="subline-tot-p-${ai}-${section}-${li}" style="color:${colorP}">${lineTotal ? fmt(lineTotal) : '—'}</td>
+              <td class="sticky-tot-fc total-cell" id="subline-tot-fc-${ai}-${section}-${li}" style="color:#7a6000">${lineFCTotal ? fmt(lineFCTotal) : '—'}</td>
+              <td class="sticky-tot-f total-cell" id="subline-tot-f-${ai}-${section}-${li}" style="color:${colorP}">${lineFTotal ? fmt(lineFTotal) : '—'}</td>
               ${lineCells}
             </tr>`;
           });
@@ -3127,6 +3115,22 @@ function renderTotals() {
     s(`art-total-fcout-${ai}`,   months.reduce((acc,_,i) => acc + (artOutForecast[i]  || 0), 0));
     s(`art-total-factin-${ai}`,  months.reduce((acc,_,i) => acc + (artInFact[i]       || 0), 0));
     s(`art-total-factout-${ai}`, months.reduce((acc,_,i) => acc + (artOutFact[i]      || 0), 0));
+
+    // Update subline sticky-tot cells (have no IDs by default, added above)
+    ['in','out'].forEach(section => {
+      const lines = art[section + 'Lines'] || [];
+      lines.forEach((line, li) => {
+        const ldp  = ensureDec(line.dplan);
+        const ldfc = ensureDec(line.dforecast || []);
+        const ldf  = ensureDec(line.dfact);
+        const totP  = months.reduce((acc,_,mi) => acc + decSum(ldp,  mi), 0);
+        const totFC = months.reduce((acc,_,mi) => acc + decSum(ldfc, mi), 0);
+        const totF  = months.reduce((acc,_,mi) => acc + decSum(ldf,  mi), 0);
+        s(`subline-tot-p-${ai}-${section}-${li}`,  totP);
+        s(`subline-tot-fc-${ai}-${section}-${li}`, totFC);
+        s(`subline-tot-f-${ai}-${section}-${li}`,  totF);
+      });
+    });
 
     if (viewDecade) {
       if (!art.inDirect && !art.inDeleted) {
@@ -3796,7 +3800,9 @@ function confirmKpModal() {
 
 /* INIT */
 let viewPlan = true, viewForecast = true, viewFact = true, viewDecade = false;
-let kpMode = false; // true когда открыта страница КП
+let kpMode = false;     // true когда открыта страница КП
+let kpMenuOpen = false;
+function genKpId() { return 'kp' + Math.random().toString(36).slice(2,9); }
 let viewDashDecade = false;
 let viewDashBudget = false;
 let dashProjectEnabled = []; // per-project toggle, synced in renderDashboard
@@ -3825,12 +3831,19 @@ function toggleDecadeView(which) {
 
 function toggleView(which) {
   if (which === 'plan')     viewPlan     = !viewPlan;
+  if (which === 'forecast') viewForecast = !viewForecast;
   if (which === 'fact')     viewFact     = !viewFact;
+
+  // At least one column must be visible
+  if (!viewPlan && !viewForecast && !viewFact) {
+    if (which === 'plan')     viewPlan     = true;
+    if (which === 'forecast') viewForecast = true;
+    if (which === 'fact')     viewFact     = true;
+  }
 
   document.getElementById('view-btn-plan').classList.toggle('active', viewPlan);
   document.getElementById('view-btn-fact').classList.toggle('active', viewFact);
-
-  // Rebuild thead so colspans reflect new state, then reapply hide class
+  applyKpModeUI();
   renderBudget();
 }
 
