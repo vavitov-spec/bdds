@@ -117,6 +117,19 @@ tr.total-row td.sticky-tot-p { background:#daeeff; }
 tr.total-row td.sticky-tot-fc { background:#fff0c0; }
 tr.total-row td.sticky-tot-f { background:#d6f2e6; }
 
+/* Заблокированный (скрытый паролем) бюджет — ретушь данных */
+#main-table.locked tbody,
+#main-table.locked tfoot { filter: blur(7px); user-select:none; pointer-events:none; }
+#main-table.locked { position:relative; }
+.budget-lock-banner {
+  display:flex; align-items:center; gap:8px;
+  background:#fff7e6; border:1px solid #f0d9a0; color:#8a6d1f;
+  border-radius:8px; padding:8px 14px; margin-bottom:10px; font-size:13px;
+}
+/* Дашборд: строка скрытого паролем проекта — ретушь цифр (имя оставляем) */
+#dashboard-table tr.dash-locked td:not(.dash-sticky) { filter: blur(5px); user-select:none; }
+#dashboard-table tr.dash-locked td.dash-sticky { color:#999; font-style:italic; }
+
 /* plan/fact/forecast cell tint */
 td.cell-plan { background:#f5f9ff; }
 td.cell-forecast { background:#fffbea; border-right:1px solid #f0e8c0; }
@@ -721,6 +734,8 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         <div id="project-page-title" style="font-size:15px;font-weight:600"></div>
         <div id="project-page-meta" style="font-size:12px;color:#aaa"></div>
         <button id="project-edit-btn" onclick="openEditModal()" title="Редактировать проект" style="background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.color='#555';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.color='#aaa';this.style.background='none'">✏️</button>
+        <button id="project-lock-btn" onclick="toggleLock()" title="Скрыть бюджет паролем" style="background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.background='none'">🙈</button>
+        <button id="project-pw-btn" onclick="changeLockPassword()" title="Сменить пароль / снять защиту" style="display:none;background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.background='none'">🔑</button>
         <div id="save-indicator" style="font-size:11px;margin-left:auto;transition:color .3s"></div>
       </div>
       <div class="section">
@@ -746,6 +761,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           </div>
           <button id="kp-to-project-btn" onclick="kpToProject()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit">→ Создать проект</button>
         </div>
+        <div id="budget-lock-banner" class="budget-lock-banner" style="display:none">🔒 Бюджет скрыт паролем. Нажмите 🙈 в шапке, чтобы показать.</div>
         <div class="table-wrap">
           <table id="main-table">
             <thead id="main-thead"></thead>
@@ -1610,7 +1626,7 @@ function renderDashboard() {
       const pr=prior12[ai];
       const inYear = _projectMonthsForYear(p, curY).length > 0;
       const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
-      tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      tbody += `<tr${p.locked?' class="dash-locked"':''}><td class="dash-sticky left">${p.locked?'🔒 ':''}${esc(p.name)}${badge}</td>`;
       // Prior period column
       tbody += priorCellDec(pr);
       for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++)
@@ -1734,7 +1750,7 @@ function renderDashboard() {
       const nB=nets12B[ai], nP=nets12P[ai];
       const pr=prior12[ai];
       const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
-      tbody += `<tr><td class="dash-sticky left">${esc(p.name)}${badge}</td>`;
+      tbody += `<tr${p.locked?' class="dash-locked"':''}><td class="dash-sticky left">${p.locked?'🔒 ':''}${esc(p.name)}${badge}</td>`;
       // Prior period column
       tbody += priorCell(pr.budget, pr.forecast, ai);
       for(let m=0;m<12;m++)
@@ -2443,6 +2459,7 @@ function applyKpModeUI() {
   kpBtns.forEach(id  => show(id,  kpMode, true));
   show('kp-to-project-btn', kpMode);
   show('project-edit-btn',  !kpMode);
+  show('project-lock-btn',  !kpMode);
   if (kpMode) {
     // Sync KP version buttons with viewPlan/viewFact state
     const b1 = document.getElementById('kp-btn-v1');
@@ -2606,6 +2623,9 @@ function renderBudget() {
   tbl.classList.toggle('hide-plan',     !viewPlan);
   tbl.classList.toggle('hide-forecast', !viewForecast);
   tbl.classList.toggle('hide-fact',     !viewFact);
+
+  // ── Защита бюджета паролем (ретушь + блокировка правок) ──
+  applyLockState(p);
 
   let html = '';
 
@@ -2916,6 +2936,94 @@ function renderBudget() {
   requestAnimationFrame(() => fixStickyTfootRows('main-tfoot'));
   updateStickyPositions();
   initArticleDrag();
+}
+
+/* ---- ЗАЩИТА БЮДЖЕТА ПАРОЛЕМ (ретушь + блокировка) ---- */
+// Лёгкий хэш (djb2). Это НЕ криптостойкая защита: данные остаются в хранилище
+// в открытом виде, ретушь лишь скрывает их от посторонних глаз в интерфейсе.
+function _hashStr(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return 'h' + h.toString(36);
+}
+
+// Применить визуальное состояние блокировки к таблице и кнопке-«глазу».
+function applyLockState(p) {
+  const tbl    = document.getElementById('main-table');
+  const banner = document.getElementById('budget-lock-banner');
+  const btn    = document.getElementById('project-lock-btn');
+  const locked = !!(p && p.locked);
+  if (tbl) {
+    tbl.classList.toggle('locked', locked);
+    tbl.inert = locked; // блокирует фокус/клики/правки по всей таблице
+  }
+  if (banner) banner.style.display = locked ? 'flex' : 'none';
+  if (btn) {
+    btn.textContent = locked ? '🙈' : '👁';
+    btn.title = locked
+      ? 'Бюджет скрыт — нажмите, чтобы показать (нужен пароль)'
+      : (p && p.lockHash ? 'Скрыть бюджет' : 'Скрыть бюджет паролем');
+  }
+  // Кнопка смены пароля видна только когда бюджет открыт и защита установлена
+  const pwBtn = document.getElementById('project-pw-btn');
+  if (pwBtn) pwBtn.style.display = (p && p.lockHash && !locked && !kpMode) ? '' : 'none';
+}
+
+function changeLockPassword() {
+  const p = projects[currentProject];
+  if (!p || !p.lockHash) return;
+  const cur = prompt('Введите текущий пароль:');
+  if (cur == null) return;
+  if (_hashStr(cur) !== p.lockHash) { alert('Неверный текущий пароль'); return; }
+  const pw = prompt('Новый пароль (оставьте пустым, чтобы снять защиту):');
+  if (pw == null) return;
+  if (!pw.trim()) {
+    if (confirm('Снять парольную защиту с этого бюджета?')) {
+      delete p.lockHash;
+      p.locked = false;
+      saveData();
+      renderBudget();
+    }
+    return;
+  }
+  const pw2 = prompt('Повторите новый пароль:');
+  if (pw2 == null) return;
+  if (pw !== pw2) { alert('Пароли не совпадают'); return; }
+  p.lockHash = _hashStr(pw);
+  saveData();
+  renderBudget();
+  alert('Пароль изменён');
+}
+
+function toggleLock() {
+  const p = projects[currentProject];
+  if (!p) return;
+  if (p.locked) {
+    // Снятие защиты — спрашиваем пароль
+    const entered = prompt('Введите пароль, чтобы открыть бюджет:');
+    if (entered == null) return; // отмена
+    if (_hashStr(entered) === p.lockHash) {
+      p.locked = false;
+      saveData();
+      renderBudget();
+    } else {
+      alert('Неверный пароль');
+    }
+  } else {
+    // Установка защиты
+    if (!p.lockHash) {
+      const pw = prompt('Придумайте пароль для защиты бюджета:');
+      if (pw == null) return;
+      if (!pw.trim()) { alert('Пароль не может быть пустым'); return; }
+      const pw2 = prompt('Повторите пароль:');
+      if (pw2 == null) return;
+      if (pw !== pw2) { alert('Пароли не совпадают — попробуйте снова'); return; }
+      p.lockHash = _hashStr(pw);
+    }
+    p.locked = true;
+    saveData();
+    renderBudget();
+  }
 }
 
 function inputFocus(el) {
