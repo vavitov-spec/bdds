@@ -734,9 +734,9 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           <!-- Панель КП (скрыта по умолчанию) -->
           <span id="kp-view-label" style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;display:none">Версии:</span>
           <div id="kp-view-btns" style="display:none;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
-            <button id="kp-btn-v1" class="view-btn active" onclick="toggleView('plan')">Версия 1</button>
-            <button id="kp-btn-v2" class="view-btn" onclick="toggleView('forecast')">Версия 2</button>
-            <button id="kp-btn-v3" class="view-btn" onclick="toggleView('fact')">Версия 3</button>
+            <button id="kp-btn-v1" class="view-btn active" onclick="kpSelectVersion('plan')">Версия 1</button>
+            <button id="kp-btn-v2" class="view-btn" onclick="kpSelectVersion('forecast')">Версия 2</button>
+            <button id="kp-btn-v3" class="view-btn" onclick="kpSelectVersion('fact')">Версия 3</button>
           </div>
           <button id="kp-to-project-btn" onclick="kpToProject()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit">→ Создать проект</button>
         </div>
@@ -1315,7 +1315,9 @@ function toggleProjectsMenu() {
 function selectProject(i) { currentProject = i; flushSaveData(); showPage('project'); }
 
 function deleteProject(i) {
-  if (projects.length <= 1) { alert('Должен быть хотя бы один проект.'); return; }
+  // Считаем только бюджетные проекты (КП в этом же массиве, но они не в счёт)
+  const nonKpCount = projects.filter(p => !p.isKp).length;
+  if (nonKpCount <= 1) { alert('Должен быть хотя бы один проект.'); return; }
   if (!confirm(`Удалить проект «${projects[i].name}»? Все данные будут потеряны.`)) return;
   const id = projects[i].id;
   projects.splice(i, 1);
@@ -2465,16 +2467,19 @@ function confirmKpToProject() {
   const newBudget = JSON.parse(JSON.stringify(srcBudget));
 
   // Map selected version to budget/plan, clear fact
+  // Поле декадного массива для выбранной версии
+  const fld = ver === 1 ? 'dplan' : ver === 2 ? 'dforecast' : 'dfact';
   newBudget.articles.forEach(a => {
     a.id = genId();
-    // Source arrays based on version selection
-    const srcInPlan  = ver === 1 ? a.inDplan  : ver === 2 ? a.inDforecast  : a.inDfact;
-    const srcOutPlan = ver === 1 ? a.outDplan : ver === 2 ? a.outDforecast : a.outDfact;
+    // Агрегируем выбранную версию по подстрокам (sectionSum36), а не читаем
+    // сырой a.inDplan — в режиме подстрок он обнулён, и данные потерялись бы.
+    const srcIn  = sectionSum36(a, 'in',  fld);
+    const srcOut = sectionSum36(a, 'out', fld);
     // Version → бюджет AND план, факт пустой
-    a.inDplan      = Array.isArray(srcInPlan)  ? srcInPlan.slice()  : Array(DEC_COUNT).fill(0);
-    a.outDplan     = Array.isArray(srcOutPlan) ? srcOutPlan.slice() : Array(DEC_COUNT).fill(0);
-    a.inDforecast  = Array.isArray(srcInPlan)  ? srcInPlan.slice()  : Array(DEC_COUNT).fill(0);
-    a.outDforecast = Array.isArray(srcOutPlan) ? srcOutPlan.slice() : Array(DEC_COUNT).fill(0);
+    a.inDplan      = srcIn.slice();
+    a.outDplan     = srcOut.slice();
+    a.inDforecast  = srcIn.slice();
+    a.outDforecast = srcOut.slice();
     a.inDfact      = Array(DEC_COUNT).fill(0);
     a.outDfact     = Array(DEC_COUNT).fill(0);
     a.inDirect     = true;
@@ -3742,6 +3747,12 @@ document.addEventListener('click', e => {
   ['start','end'].forEach(w => {
     const wrap = document.getElementById('wrap-'+w);
     if (wrap && !wrap.contains(e.target)) document.getElementById('picker-'+w).classList.add('hidden');
+    // КП-пикеры дат — тот же механизм закрытия по клику вне
+    const kpWrap = document.getElementById('kp-wrap-'+w);
+    if (kpWrap && !kpWrap.contains(e.target)) {
+      const kpPick = document.getElementById('kp-picker-'+w);
+      if (kpPick) kpPick.classList.add('hidden');
+    }
   });
 });
 
@@ -3905,6 +3916,15 @@ function toggleDecadeView(which) {
   viewDecade = (which === 'decade');
   document.getElementById('view-btn-month').classList.toggle('active', !viewDecade);
   document.getElementById('view-btn-decade').classList.toggle('active', viewDecade);
+  renderBudget();
+}
+
+// КП: версии — single-select (как сегментированный переключатель), а не мультитоггл
+function kpSelectVersion(which) {
+  viewPlan     = (which === 'plan');
+  viewForecast = (which === 'forecast');
+  viewFact     = (which === 'fact');
+  applyKpModeUI();
   renderBudget();
 }
 
