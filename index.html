@@ -1468,7 +1468,7 @@ function renderDashboard() {
   // Render project toggles panel
   const togglesEl = document.getElementById('dash-project-toggles');
   if (togglesEl) {
-    togglesEl.innerHTML = projects.map((p, pi) => `
+    togglesEl.innerHTML = projects.map((p, pi) => ({p, pi})).filter(({p}) => !p.isKp).map(({p, pi}) => `
       <div class="dash-proj-toggle-row">
         <label class="tog">
           <input type="checkbox" ${dashProjectEnabled[pi] ? 'checked' : ''}
@@ -1480,7 +1480,7 @@ function renderDashboard() {
   }
 
   // Only process enabled projects (keep original pi for compute functions)
-  const activeProjects = projects.map((p,pi) => ({p,pi})).filter(({pi}) => dashProjectEnabled[pi]);
+  const activeProjects = projects.map((p,pi) => ({p,pi})).filter(({p,pi}) => !p.isKp && dashProjectEnabled[pi]);
   const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
   const fmtD = (v) => {
