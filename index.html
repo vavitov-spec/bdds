@@ -2292,9 +2292,9 @@ function showPage(name) {
     kpMenuOpen = false;
     document.getElementById('kp-submenu').style.display = 'none';
     document.getElementById('kp-toggle').classList.remove('open');
-    // Сбрасываем состояние колонок до дефолта для бюджетов
-    viewPlan = true; viewForecast = true; viewFact = false;
-    document.getElementById('view-btn-plan').classList.add('active');
+    // Сбрасываем состояние колонок до дефолта для бюджетов: только «План»
+    viewPlan = false; viewForecast = true; viewFact = false;
+    document.getElementById('view-btn-plan').classList.remove('active');
     document.getElementById('view-btn-forecast').classList.add('active');
     document.getElementById('view-btn-fact').classList.remove('active');
     document.getElementById('page-project').classList.add('active');
@@ -4157,7 +4157,7 @@ function confirmKpModal() {
 }
 
 /* INIT */
-let viewPlan = true, viewForecast = true, viewFact = true, viewDecade = false;
+let viewPlan = false, viewForecast = true, viewFact = false, viewDecade = false;
 let kpMode = false;     // true когда открыта страница КП
 let kpMenuOpen = false;
 let selectedKpType = null;
