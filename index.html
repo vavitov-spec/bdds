@@ -2275,9 +2275,11 @@ function showPage(name) {
     document.getElementById('page-payments').classList.add('active');
     document.getElementById('nav-payments').classList.add('active');
   } else if (name === 'kp') {
+    // Сбрасываем на «Версия 1» только при первом входе в КП-режим
+    if (!kpMode) {
+      viewPlan = true; viewForecast = false; viewFact = false;
+    }
     kpMode = true;
-    // По умолчанию в КП: только Версия 1 активна
-    viewPlan = true; viewForecast = false; viewFact = false;
     document.getElementById('page-project').classList.add('active');
     document.getElementById('nav-kp').classList.add('active');
     applyKpModeUI();
