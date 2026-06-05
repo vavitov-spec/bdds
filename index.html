@@ -760,6 +760,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
             <button id="kp-btn-v3" class="view-btn" onclick="toggleView('fact')">Версия 3</button>
           </div>
           <button id="kp-to-project-btn" onclick="kpToProject()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit">→ Создать проект</button>
+          <button id="kp-v1-to-v2-btn" onclick="kpV1toV2()" style="display:none;font-size:12px;padding:4px 12px;background:#eaf4ff;border:1px solid #7ab8e8;border-radius:7px;color:#1a5fa3;cursor:pointer;font-family:inherit" title="Скопировать данные Версии 1 в Версию 2">В1 → В2</button>
           <button id="plan-to-budget-btn" onclick="planToBudget()" style="display:none;font-size:12px;padding:4px 12px;background:#fff8e8;border:1px solid #e8c96e;border-radius:7px;color:#7a5500;cursor:pointer;font-family:inherit" title="Скопировать данные Плана в Бюджет">План → Бюджет</button>
         </div>
         <div id="budget-lock-banner" class="budget-lock-banner" style="display:none">🔒 Бюджет скрыт паролем. Нажмите 🙈 в шапке, чтобы показать.</div>
@@ -2475,6 +2476,7 @@ function applyKpModeUI() {
   kpUI.forEach(id    => show(id,  kpMode));
   kpBtns.forEach(id  => show(id,  kpMode, true));
   show('kp-to-project-btn',  kpMode);
+  show('kp-v1-to-v2-btn',    kpMode);
   show('plan-to-budget-btn', !kpMode);
   show('project-edit-btn',   !kpMode);
   show('project-lock-btn',  !kpMode);
@@ -2541,6 +2543,20 @@ function confirmKpToProject() {
   renderSidebarProjects();
   alert('Проект «' + newProj.name + '» создан на основе Версии ' + ver + '!');
   showPage('project');
+}
+
+function kpV1toV2() {
+  const p = projects[currentProject]; if (!p || !p.isKp) return;
+  if (!confirm('Скопировать данные Версии 1 в Версию 2? Текущие данные Версии 2 будут перезаписаны.')) return;
+  const b = getBudget();
+  b.articles.forEach(art => {
+    art.inDforecast      = ensureDec(art.inDplan).slice();
+    art.outDforecast     = ensureDec(art.outDplan).slice();
+    (art.inLines  || []).forEach(l => { l.dforecast = ensureDec(l.dplan).slice(); });
+    (art.outLines || []).forEach(l => { l.dforecast = ensureDec(l.dplan).slice(); });
+  });
+  saveData();
+  renderBudget();
 }
 
 function planToBudget() {
