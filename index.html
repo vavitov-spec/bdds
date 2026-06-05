@@ -760,6 +760,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
             <button id="kp-btn-v3" class="view-btn" onclick="toggleView('fact')">Версия 3</button>
           </div>
           <button id="kp-to-project-btn" onclick="kpToProject()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit">→ Создать проект</button>
+          <button id="plan-to-budget-btn" onclick="planToBudget()" style="display:none;font-size:12px;padding:4px 12px;background:#fff8e8;border:1px solid #e8c96e;border-radius:7px;color:#7a5500;cursor:pointer;font-family:inherit" title="Скопировать данные Плана в Бюджет">План → Бюджет</button>
         </div>
         <div id="budget-lock-banner" class="budget-lock-banner" style="display:none">🔒 Бюджет скрыт паролем. Нажмите 🙈 в шапке, чтобы показать.</div>
         <div class="table-wrap">
@@ -2473,8 +2474,9 @@ function applyKpModeUI() {
   projBtns.forEach(id => show(id, !kpMode, true));
   kpUI.forEach(id    => show(id,  kpMode));
   kpBtns.forEach(id  => show(id,  kpMode, true));
-  show('kp-to-project-btn', kpMode);
-  show('project-edit-btn',  !kpMode);
+  show('kp-to-project-btn',  kpMode);
+  show('plan-to-budget-btn', !kpMode);
+  show('project-edit-btn',   !kpMode);
   show('project-lock-btn',  !kpMode);
   if (kpMode) {
     // Sync KP version buttons with viewPlan/viewFact state
@@ -2539,6 +2541,22 @@ function confirmKpToProject() {
   renderSidebarProjects();
   alert('Проект «' + newProj.name + '» создан на основе Версии ' + ver + '!');
   showPage('project');
+}
+
+function planToBudget() {
+  const p = projects[currentProject]; if (!p) return;
+  if (!confirm('Скопировать данные столбца «План» в «Бюджет»? Текущие данные бюджета будут перезаписаны.')) return;
+  const b = getBudget();
+  b.articles.forEach(art => {
+    // Direct mode: copy forecast arrays to plan arrays
+    art.inDplan      = ensureDec(art.inDforecast).slice();
+    art.outDplan     = ensureDec(art.outDforecast).slice();
+    // Sublines: copy each subline's dforecast to dplan
+    (art.inLines  || []).forEach(l => { l.dplan = ensureDec(l.dforecast || []).slice(); });
+    (art.outLines || []).forEach(l => { l.dplan = ensureDec(l.dforecast || []).slice(); });
+  });
+  saveData();
+  renderBudget();
 }
 
 /* ---- BUDGET TABLE ---- */
