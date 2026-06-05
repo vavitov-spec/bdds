@@ -1488,9 +1488,20 @@ function renderDashboard() {
   const DEC_LABELS = ['1–10','11–20','21–31'];
   document.getElementById('dashboard-year-label').textContent = curY + ' год';
 
-  // Sync dashProjectEnabled with projects list (keep existing, add true for new)
-  while (dashProjectEnabled.length < projects.length) dashProjectEnabled.push(true);
-  dashProjectEnabled.length = projects.length;
+  // Sync dashProjectEnabled only for non-KP projects (by project id)
+  // Use id-keyed map to survive reordering/deletion
+  if (!window._dashProjEnabledMap) window._dashProjEnabledMap = {};
+  projects.forEach(p => {
+    if (!p.isKp && window._dashProjEnabledMap[p.id] === undefined)
+      window._dashProjEnabledMap[p.id] = true;
+  });
+  // Remove deleted projects from map
+  const activeIds = new Set(projects.filter(p=>!p.isKp).map(p=>p.id));
+  Object.keys(window._dashProjEnabledMap).forEach(id => {
+    if (!activeIds.has(id)) delete window._dashProjEnabledMap[id];
+  });
+  // Keep dashProjectEnabled as pi-indexed for backward compat, rebuild from map
+  dashProjectEnabled = projects.map(p => p.isKp ? false : (window._dashProjEnabledMap[p.id] !== false));
 
   // Render project toggles panel
   const togglesEl = document.getElementById('dash-project-toggles');
@@ -1499,7 +1510,7 @@ function renderDashboard() {
       <div class="dash-proj-toggle-row">
         <label class="tog">
           <input type="checkbox" ${dashProjectEnabled[pi] ? 'checked' : ''}
-            onchange="dashProjectEnabled[${pi}]=this.checked; renderDashboard()">
+            onchange="dashProjectEnabled[${pi}]=this.checked; if(window._dashProjEnabledMap) window._dashProjEnabledMap['${p.id}']=this.checked; renderDashboard()">
           <span class="tog-slider"></span>
         </label>
         <span class="dash-proj-name${dashProjectEnabled[pi] ? '' : ' disabled'}" title="${esc(p.name)}">${esc(p.name)}</span>
@@ -2274,6 +2285,9 @@ function showPage(name) {
     renderBudget();
   } else {
     kpMode = false;
+    kpMenuOpen = false;
+    document.getElementById('kp-submenu').style.display = 'none';
+    document.getElementById('kp-toggle').classList.remove('open');
     // Сбрасываем состояние колонок до дефолта для бюджетов
     viewPlan = true; viewForecast = true; viewFact = false;
     document.getElementById('view-btn-plan').classList.add('active');
@@ -4151,6 +4165,7 @@ function toggleView(which) {
   }
 
   document.getElementById('view-btn-plan').classList.toggle('active', viewPlan);
+  document.getElementById('view-btn-forecast').classList.toggle('active', viewForecast);
   document.getElementById('view-btn-fact').classList.toggle('active', viewFact);
   applyKpModeUI();
   renderBudget();
