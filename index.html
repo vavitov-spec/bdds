@@ -951,6 +951,11 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 })();
 
 function initFirebase() {
+  if (typeof firebase === 'undefined') {
+    console.error('[initFirebase] Firebase scripts failed to load.');
+    document.body.innerHTML = '<p style="color:red;text-align:center;padding:40px">Ошибка загрузки Firebase. Проверьте интернет-соединение и перезагрузите страницу.</p>';
+    return;
+  }
   try { firebase.app().delete().catch(function(){}); } catch(e) {}
   firebase.initializeApp({
     apiKey: "AIzaSyDXkHVg3ucKGiG6QF3SFxds7MuTJ95Wx60",
@@ -967,11 +972,14 @@ function initFirebase() {
     window.auth  = firebase.auth();
 
     // Создать индикатор загрузки Firebase в header
-    var ind = document.createElement('div');
-    ind.id = 'firebase-loading';
-    ind.className = 'firebase-loading';
-    ind.innerHTML = '<span class="spinner"></span><span>Загрузка Firebase...</span>';
-    document.querySelector('.header').appendChild(ind);
+    var headerEl = document.querySelector('.header');
+    if (headerEl) {
+      var ind = document.createElement('div');
+      ind.id = 'firebase-loading';
+      ind.className = 'firebase-loading';
+      ind.innerHTML = '<span class="spinner"></span><span>Загрузка Firebase...</span>';
+      headerEl.appendChild(ind);
+    }
 
   // ── Load from Firestore ─────────────────────────────────────────────────
   // loadData reads from Firestore for the currently signed-in user.
