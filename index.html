@@ -10,6 +10,10 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a18;font-size
 .layout{display:flex;flex:1;overflow:hidden}
 .header{background:#fff;border-bottom:1px solid #e5e5e0;padding:0 24px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 .header h1{font-size:16px;font-weight:500}
+.firebase-loading{font-size:12px;color:#8a6d1f;background:#fff7e6;padding:4px 10px;border-radius:6px;display:none;align-items:center;gap:6px}
+.firebase-loading.show{display:flex}
+.firebase-loading.spinner::before{content:'';width:10px;height:10px;border:2px solid #8a6d1f;border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e0;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:#555;font-size:14px;user-select:none}
 .nav-item:hover{background:#f8f8f5}
@@ -962,11 +966,19 @@ function initFirebase() {
     window.db    = firebase.firestore();
     window.auth  = firebase.auth();
 
+    // Создать индикатор загрузки Firebase в header
+    var ind = document.createElement('div');
+    ind.id = 'firebase-loading';
+    ind.className = 'firebase-loading';
+    ind.innerHTML = '<span class="spinner"></span><span>Загрузка Firebase...</span>';
+    document.querySelector('.header').appendChild(ind);
+
   // ── Load from Firestore ─────────────────────────────────────────────────
   // loadData reads from Firestore for the currently signed-in user.
   // Uses auth.currentUser directly — no listener accumulation.
   window.loadData = function() {
     return new Promise(function(resolve) {
+      showFirebaseLoading(); // показать индикатор загрузки
       var user = window.auth.currentUser;
       if (!user) { resolve(false); return; }
       window.firebaseUid = user.uid;
@@ -992,14 +1004,18 @@ function initFirebase() {
       }
 
       // Защита от зависания на плохой сети: если сервер не ответил за TIMEOUT_MS —
-      // работаем с локальным кэшем, не блокируя вход.
+      // показываем localStorage кэш, но продолжаем ждать Firebase (двухфазная загрузка).
       var settled = false;
-      var TIMEOUT_MS = 6000;
+      var uiRendered = false;
+      var TIMEOUT_MS = 15000; // увеличено с 6000 до 15 секунд
       var timer = setTimeout(function() {
         if (settled) return;
-        settled = true;
-        console.warn('[loadData] server timeout — using localStorage cache');
-        resolve(apply(lsData));
+        // Показываем localStorage как временный fallback, но не отменяем ожидание Firebase
+        if (lsValid && !uiRendered) {
+          console.warn('[loadData] server slow — показываем кэш, продолжаем ждать Firebase...');
+          apply(lsData);
+          uiRendered = true;
+        }
       }, TIMEOUT_MS);
 
       // Обычный get() (кэш+сервер) вместо forced {source:'server'} — быстрее
@@ -1012,15 +1028,16 @@ function initFirebase() {
           var fbValid = fbData && Array.isArray(fbData.projects) && fbData.projects.length > 0;
           var d = null;
           if (fbValid && lsValid) {
-            // Берём более свежую версию по updatedAt (защита от перезаписи
-            // свежих серверных данных устаревшим локальным кэшем).
-            d = (lsData.updatedAt || 0) > (fbData.updatedAt || 0) ? lsData : fbData;
+            // FIREBASE ВСЕГОГЛАВНЫЙ ИСТОЧНИК ИСТИНЫ — Firebase всегда берётся,
+            // localStorage только fallback при отсутствии данных в Firebase.
+            d = fbData;
           } else if (fbValid) {
             d = fbData;
           } else if (lsValid) {
             d = lsData;
           }
           resolve(apply(d));
+          hideFirebaseLoading(); // скрыть индикатор после загрузки
         })
         .catch(function(e) {
           if (settled) return;
@@ -1052,9 +1069,12 @@ function initFirebase() {
 
   // ── Save to Firestore (debounced) ───────────────────────────────────────
   var _saveTimer = null;
-  // В демо-режиме данные живут в отдельном ключе кэша, чтобы не смешиваться
-  // с реальной сессией пользователя.
-  function _lsKey() { return window.demoMode ? 'bdds_demo' : 'bdds_cache'; }
+  // Ключ localStorage зависит от режима и uid — изолируем данные разных пользователей
+  function _lsKey() {
+    if (window.demoMode) return 'bdds_demo';
+    if (window.firebaseUid) return 'bdds_cache_' + window.firebaseUid;
+    return 'bdds_cache';
+  }
 
   function _setSaveIndicator(state) { // 'saving' | 'saved' | 'error'
     var el = document.getElementById('save-indicator');
@@ -1090,7 +1110,14 @@ function initFirebase() {
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(window.persistDataNow, 500);
   };
-  window.addEventListener('beforeunload', function() { window.flushSaveData(); });
+  window.addEventListener('beforeunload', function(e) {
+      if (_saveTimer) {
+        console.log('[beforeunload] flushing save data...');
+        window.flushSaveData();
+        // Не блокируем закрытие, но гарантируем save
+        setTimeout(function(){ e.returnValue = 'Сохранение...'; }, 10);
+      }
+    });
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   // Одноразовая миграция: если месячные данные есть, а декадные нет —
@@ -3747,6 +3774,8 @@ function handleLogin() {
     .then(() => {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
+      // Чистим старый shared-ключ, чтобы он не «просачивался» между пользователями
+      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
       _setLoginBusy(true, 'Загрузка данных…');
       return window.loadData().then(() => {
         document.getElementById('login-page').style.display = 'none';
@@ -3789,6 +3818,7 @@ function handleRegister() {
     .then(() => {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
+      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
       var demoY = new Date().getFullYear();
       var curM = new Date().getMonth(); // текущий месяц для разбивки факт/план
       var pa = { id: genId(), name: 'Жилой комплекс «Берёзки»', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} };
@@ -3935,6 +3965,7 @@ function handleRegister() {
 function handleLogout() {
   if (!confirm('Вы уверены что хотите выйти?')) return;
   window.flushSaveData();
+  const uid = window.firebaseUid; // запоминаем до сброса
   const finish = () => {
     window.firebaseUid = null;
     // Чистим данные из памяти, чтобы следующий пользователь не увидел чужие.
@@ -3942,7 +3973,10 @@ function handleLogout() {
     projects = [];
     budgets = {};
     currentProject = 0;
-    if (!window.demoMode) { try { localStorage.removeItem('bdds_cache'); } catch(e) {} }
+    if (!window.demoMode) {
+      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
+      if (uid) { try { localStorage.removeItem('bdds_cache_' + uid); } catch(e) {} }
+    }
     window.demoMode = false;
     const badge = document.getElementById('demo-badge');
     if (badge) badge.style.display = 'none';
