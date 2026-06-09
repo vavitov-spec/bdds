@@ -10,10 +10,6 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a18;font-size
 .layout{display:flex;flex:1;overflow:hidden}
 .header{background:#fff;border-bottom:1px solid #e5e5e0;padding:0 24px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 .header h1{font-size:16px;font-weight:500}
-.firebase-loading{font-size:12px;color:#8a6d1f;background:#fff7e6;padding:4px 10px;border-radius:6px;display:none;align-items:center;gap:6px}
-.firebase-loading.show{display:flex}
-.firebase-loading.spinner::before{content:'';width:10px;height:10px;border:2px solid #8a6d1f;border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 .sidebar{width:220px;background:#fff;border-right:1px solid #e5e5e0;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:#555;font-size:14px;user-select:none}
 .nav-item:hover{background:#f8f8f5}
@@ -950,141 +946,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
   loadNext(0);
 })();
 
-// ── Firebase refs (уровень модуля — доступны сразу после initFirebase) ─────
-window.db   = null;
-window.auth = null;
-
-// ── Firebase loading indicator ─────────────────────────────────────────────
-function showFirebaseLoading() {
-  var el = document.getElementById('firebase-loading');
-  if (el) el.classList.add('show');
-}
-function hideFirebaseLoading() {
-  var el = document.getElementById('firebase-loading');
-  if (el) el.classList.remove('show');
-}
-
-// ── Load from Firestore ─────────────────────────────────────────────────────
-// loadData reads from Firestore for the currently signed-in user.
-// Вынесена на уровень модуля — доступна сразу после initFirebase().
-window.loadData = function() {
-  return new Promise(function(resolve) {
-    if (!window.db || !window.auth) { resolve(false); return; }
-    showFirebaseLoading(); // показать индикатор загрузки
-    var user = window.auth.currentUser;
-    if (!user) { resolve(false); return; }
-    window.firebaseUid = user.uid;
-
-    // Локальный кэш читаем сразу — мгновенно и работает офлайн.
-    var lsData = null;
-    try {
-      var raw = localStorage.getItem(_lsKey());
-      if (raw) lsData = JSON.parse(raw);
-    } catch(e) { console.warn('[loadData] localStorage read error:', e); }
-    var lsValid = lsData && Array.isArray(lsData.projects) && lsData.projects.length > 0;
-
-    // Применить выбранный набор данных к глобальному состоянию.
-    function apply(d) {
-      if (!d || !Array.isArray(d.projects) || d.projects.length === 0) return false;
-      projects       = d.projects;
-      budgets        = d.budgets || {};
-      currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
-      window.assignProjectIds();
-      window.migrateBudgetsToIds();
-      window.migrateData();
-      return true;
-    }
-
-    // Защита от зависания на плохой сети: если сервер не ответил за TIMEOUT_MS —
-    // показываем localStorage кэш, но продолжаем ждать Firebase (двухфазная загрузка).
-    var settled = false;
-    var uiRendered = false;
-    var TIMEOUT_MS = 15000;
-    var timer = setTimeout(function() {
-      if (settled) return;
-      if (lsValid && !uiRendered) {
-        console.warn('[loadData] server slow — показываем кэш, продолжаем ждать Firebase...');
-        apply(lsData);
-        uiRendered = true;
-      }
-    }, TIMEOUT_MS);
-
-    window.db.doc('bdds/' + window.firebaseUid).get()
-      .then(function(snap) {
-        if (settled) return;
-        settled = true; clearTimeout(timer);
-        var fbData = snap.exists ? snap.data() : null;
-        var fbValid = fbData && Array.isArray(fbData.projects) && fbData.projects.length > 0;
-        var d = null;
-        if (fbValid && lsValid)      { d = fbData; }
-        else if (fbValid)            { d = fbData; }
-        else if (lsValid)            { d = lsData; }
-        resolve(apply(d));
-        hideFirebaseLoading();
-      })
-      .catch(function(e) {
-        if (settled) return;
-        settled = true; clearTimeout(timer);
-        console.error('[loadData] server error, fallback to localStorage:', e);
-        resolve(apply(lsData));
-      });
-  });
-};
-
-// ── Save to Firestore (debounced) ───────────────────────────────────────────
-var _saveTimer = null;
-function _lsKey() {
-  if (window.demoMode) return 'bdds_demo';
-  if (window.firebaseUid) return 'bdds_cache_' + window.firebaseUid;
-  return 'bdds_cache';
-}
-
-function _setSaveIndicator(state) {
-  var el = document.getElementById('save-indicator');
-  if (!el) return;
-  if (state === 'saving') { el.textContent = '⏳ Сохранение…'; el.style.color = '#aaa'; }
-  else if (state === 'saved') { el.textContent = '✓ Сохранено'; el.style.color = '#0a6e4e'; setTimeout(function(){ el.textContent=''; }, 2500); }
-  else { el.textContent = '⚠ Ошибка сохранения'; el.style.color = '#c0392b'; }
-}
-
-window.persistDataNow = function() {
-  var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
-  try { localStorage.setItem(_lsKey(), JSON.stringify(payload)); } catch(e) {}
-  if (!window.firebaseUid) return;
-  _setSaveIndicator('saving');
-  window.db.doc('bdds/' + window.firebaseUid).set(payload)
-    .then(function() { _setSaveIndicator('saved'); })
-    .catch(function(e) { console.error('Save error:', e); _setSaveIndicator('error'); });
-};
-window.flushSaveData = function() {
-  clearTimeout(_saveTimer);
-  _saveTimer = null;
-  window.persistDataNow();
-};
-window.saveData = function() {
-  var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
-  try {
-    var s = JSON.stringify(payload);
-    localStorage.setItem(_lsKey(), s);
-    console.log('[saveData] wrote localStorage, size=', s.length, 'budgets keys=', Object.keys(budgets));
-  } catch(e) { console.error('[saveData] localStorage write FAILED:', e); }
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(window.persistDataNow, 500);
-};
-window.addEventListener('beforeunload', function(e) {
-    if (_saveTimer) {
-      console.log('[beforeunload] flushing save data...');
-      window.flushSaveData();
-      setTimeout(function(){ e.returnValue = 'Сохранение...'; }, 10);
-    }
-  });
-
 function initFirebase() {
-  if (typeof firebase === 'undefined') {
-    console.error('[initFirebase] Firebase scripts failed to load.');
-    document.body.innerHTML = '<p style="color:red;text-align:center;padding:40px">Ошибка загрузки Firebase. Проверьте интернет-соединение и перезагрузите страницу.</p>';
-    return;
-  }
   try { firebase.app().delete().catch(function(){}); } catch(e) {}
   firebase.initializeApp({
     apiKey: "AIzaSyDXkHVg3ucKGiG6QF3SFxds7MuTJ95Wx60",
@@ -1097,36 +959,230 @@ function initFirebase() {
   startApp();
 
   function startApp() {
-    window.db   = firebase.firestore();
-    window.auth = firebase.auth();
+    window.db    = firebase.firestore();
+    window.auth  = firebase.auth();
 
-    // Создать индикатор загрузки Firebase в header
-    var headerEl = document.querySelector('.header');
-    if (headerEl) {
-      var ind = document.createElement('div');
-      ind.id = 'firebase-loading';
-      ind.className = 'firebase-loading';
-      ind.innerHTML = '<span class="spinner"></span><span>Загрузка Firebase...</span>';
-      headerEl.appendChild(ind);
-    }
+  // ── Load from Firestore ─────────────────────────────────────────────────
+  // loadData reads from Firestore for the currently signed-in user.
+  // Uses auth.currentUser directly — no listener accumulation.
+  window.loadData = function() {
+    return new Promise(function(resolve) {
+      var user = window.auth.currentUser;
+      if (!user) { resolve(false); return; }
+      window.firebaseUid = user.uid;
 
-    // One-time auth state listener (Firebase Compat SDK не поддерживает {once:true})
-    var _unsubAuth = window.auth.onAuthStateChanged(function(user) {
-      _unsubAuth();
-      if (user) {
-        window.firebaseUid = user.uid;
-        window.loadData().then(function() {
-          document.getElementById('login-page').style.display = 'none';
-          document.getElementById('main-layout').style.display = '';
-          window.renderSidebarProjects();
-          window.showPage('dashboard');
-        });
-      } else {
-        window.firebaseUid = null;
-        document.getElementById('login-page').style.display = 'flex';
-        document.getElementById('main-layout').style.display = 'none';
+      // Локальный кэш читаем сразу — мгновенно и работает офлайн.
+      var lsData = null;
+      try {
+        var raw = localStorage.getItem(_lsKey());
+        if (raw) lsData = JSON.parse(raw);
+      } catch(e) { console.warn('[loadData] localStorage read error:', e); }
+      var lsValid = lsData && Array.isArray(lsData.projects) && lsData.projects.length > 0;
+
+      // Применить выбранный набор данных к глобальному состоянию.
+      function apply(d) {
+        if (!d || !Array.isArray(d.projects) || d.projects.length === 0) return false;
+        projects       = d.projects;
+        budgets        = d.budgets || {};
+        currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
+        window.assignProjectIds();
+        window.migrateBudgetsToIds();
+        window.migrateData();
+        return true;
       }
+
+      // Защита от зависания на плохой сети: если сервер не ответил за TIMEOUT_MS —
+      // работаем с локальным кэшем, не блокируя вход.
+      var settled = false;
+      var TIMEOUT_MS = 6000;
+      var timer = setTimeout(function() {
+        if (settled) return;
+        settled = true;
+        console.warn('[loadData] server timeout — using localStorage cache');
+        resolve(apply(lsData));
+      }, TIMEOUT_MS);
+
+      // Обычный get() (кэш+сервер) вместо forced {source:'server'} — быстрее
+      // и не падает офлайн. На любой ошибке откатываемся на localStorage.
+      window.db.doc('bdds/' + window.firebaseUid).get()
+        .then(function(snap) {
+          if (settled) return;
+          settled = true; clearTimeout(timer);
+          var fbData = snap.exists ? snap.data() : null;
+          var fbValid = fbData && Array.isArray(fbData.projects) && fbData.projects.length > 0;
+          var d = null;
+          if (fbValid && lsValid) {
+            // Берём более свежую версию по updatedAt (защита от перезаписи
+            // свежих серверных данных устаревшим локальным кэшем).
+            d = (lsData.updatedAt || 0) > (fbData.updatedAt || 0) ? lsData : fbData;
+          } else if (fbValid) {
+            d = fbData;
+          } else if (lsValid) {
+            d = lsData;
+          }
+          resolve(apply(d));
+        })
+        .catch(function(e) {
+          if (settled) return;
+          settled = true; clearTimeout(timer);
+          console.error('[loadData] server error, fallback to localStorage:', e);
+          resolve(apply(lsData));
+        });
     });
+  };
+  // One-time auth state listener for the initial page load only.
+  // Firebase Compat SDK не поддерживает {once:true} — отписываемся вручную.
+  var _unsubAuth = window.auth.onAuthStateChanged(function(user) {
+    _unsubAuth(); // сразу отписаться, чтобы сработало ровно один раз
+    if (user) {
+      window.firebaseUid = user.uid;
+      window.loadData().then(function() {
+        // Если в Firebase данных нет — показываем пустое приложение, ничего не перезаписываем
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('main-layout').style.display = '';
+        window.renderSidebarProjects();
+        window.showPage('dashboard');
+      });
+    } else {
+      window.firebaseUid = null;
+      document.getElementById('login-page').style.display = 'flex';
+      document.getElementById('main-layout').style.display = 'none';
+    }
+  });
+
+  // ── Save to Firestore (debounced) ───────────────────────────────────────
+  var _saveTimer = null;
+  // В демо-режиме данные живут в отдельном ключе кэша, чтобы не смешиваться
+  // с реальной сессией пользователя.
+  function _lsKey() { return window.demoMode ? 'bdds_demo' : 'bdds_cache'; }
+
+  function _setSaveIndicator(state) { // 'saving' | 'saved' | 'error'
+    var el = document.getElementById('save-indicator');
+    if (!el) return;
+    if (state === 'saving') { el.textContent = '⏳ Сохранение…'; el.style.color = '#aaa'; }
+    else if (state === 'saved') { el.textContent = '✓ Сохранено'; el.style.color = '#0a6e4e'; setTimeout(function(){ el.textContent=''; }, 2500); }
+    else { el.textContent = '⚠ Ошибка сохранения'; el.style.color = '#c0392b'; }
+  }
+
+  window.persistDataNow = function() {
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
+    // Всегда пишем в localStorage немедленно как резервная копия
+    try { localStorage.setItem(_lsKey(), JSON.stringify(payload)); } catch(e) {}
+    if (!window.firebaseUid) return;
+    _setSaveIndicator('saving');
+    window.db.doc('bdds/' + window.firebaseUid).set(payload)
+      .then(function() { _setSaveIndicator('saved'); })
+      .catch(function(e) { console.error('Save error:', e); _setSaveIndicator('error'); });
+  };
+  window.flushSaveData = function() {
+    clearTimeout(_saveTimer);
+    _saveTimer = null;
+    window.persistDataNow();
+  };
+  window.saveData = function() {
+    // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
+    try {
+      var s = JSON.stringify(payload);
+      localStorage.setItem(_lsKey(), s);
+      console.log('[saveData] wrote localStorage, size=', s.length, 'budgets keys=', Object.keys(budgets));
+    } catch(e) { console.error('[saveData] localStorage write FAILED:', e); }
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(window.persistDataNow, 500);
+  };
+  window.addEventListener('beforeunload', function() { window.flushSaveData(); });
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  // Одноразовая миграция: если месячные данные есть, а декадные нет —
+  // копируем месячное значение в первую декаду (D1). Декадные данные — главные.
+  function _migrateMonthlyToDec(monthly, dec) {
+    if (!Array.isArray(monthly) || !Array.isArray(dec)) return;
+    for (var mi = 0; mi < monthly.length && mi < MONTHS_COUNT; mi++) {
+      var v = monthly[mi] || 0;
+      if (v !== 0 && (dec[mi*3]||0) === 0 && (dec[mi*3+1]||0) === 0 && (dec[mi*3+2]||0) === 0) {
+        dec[mi*3] = v;
+      }
+    }
+  }
+
+  // ── Migrate data ────────────────────────────────────────────────────────
+  window.migrateData = function() {
+    Object.values(budgets).forEach(function(b) {
+      (b.articles || []).forEach(function(a) {
+        // Старый формат (поле a.in) → конвертируем в lines
+        if (a.in !== undefined) {
+          var inDplan  = (Array.isArray(a.inDplan)  && a.inDplan.length  === DEC_COUNT) ? a.inDplan  : Array(DEC_COUNT).fill(0);
+          var inDfact  = (Array.isArray(a.inDfact)  && a.inDfact.length  === DEC_COUNT) ? a.inDfact  : Array(DEC_COUNT).fill(0);
+          var outDplan = (Array.isArray(a.outDplan) && a.outDplan.length === DEC_COUNT) ? a.outDplan : Array(DEC_COUNT).fill(0);
+          var outDfact = (Array.isArray(a.outDfact) && a.outDfact.length === DEC_COUNT) ? a.outDfact : Array(DEC_COUNT).fill(0);
+          a.inLines  = [{ name: 'Поступление 1', plan: a.in,  fact: a.factIn  || Array(MONTHS_COUNT).fill(0), dplan: inDplan,  dfact: inDfact  }];
+          a.outLines = [{ name: 'Выплата 1',     plan: a.out, fact: a.factOut || Array(MONTHS_COUNT).fill(0), dplan: outDplan, dfact: outDfact }];
+          delete a.in; delete a.out; delete a.factIn; delete a.factOut;
+        }
+        if (a.inDirect  === undefined) a.inDirect  = true;
+        if (a.outDirect === undefined) a.outDirect = true;
+        if (a.inOpen    === undefined) a.inOpen    = true;
+        if (a.outOpen   === undefined) a.outOpen   = true;
+        if (a.inDeleted === undefined) a.inDeleted = false;
+        // Расширяем декадные массивы до DEC_COUNT
+        a.inDplan      = ensureDec(a.inDplan);
+        a.inDforecast  = ensureDec(a.inDforecast);
+        a.inDfact      = ensureDec(a.inDfact);
+        a.outDplan     = ensureDec(a.outDplan);
+        a.outDforecast = ensureDec(a.outDforecast);
+        a.outDfact     = ensureDec(a.outDfact);
+        // Миграция: старые месячные данные → D1 декадных массивов (если декад нет)
+        _migrateMonthlyToDec(a.inForecast,  a.inDforecast);
+        _migrateMonthlyToDec(a.outForecast, a.outDforecast);
+        _migrateMonthlyToDec(a.inPlan,      a.inDplan);
+        _migrateMonthlyToDec(a.outPlan,     a.outDplan);
+        _migrateMonthlyToDec(a.inFact,      a.inDfact);
+        _migrateMonthlyToDec(a.outFact,     a.outDfact);
+        // Строки (lines): расширяем декадные массивы и мигрируем месячные
+        (a.inLines || []).forEach(function(l) {
+          l.dplan     = ensureDec(l.dplan);
+          l.dforecast = ensureDec(l.dforecast);
+          l.dfact     = ensureDec(l.dfact);
+          _migrateMonthlyToDec(l.plan,     l.dplan);
+          _migrateMonthlyToDec(l.forecast, l.dforecast);
+          _migrateMonthlyToDec(l.fact,     l.dfact);
+        });
+        (a.outLines || []).forEach(function(l) {
+          l.dplan     = ensureDec(l.dplan);
+          l.dforecast = ensureDec(l.dforecast);
+          l.dfact     = ensureDec(l.dfact);
+          _migrateMonthlyToDec(l.plan,     l.dplan);
+          _migrateMonthlyToDec(l.forecast, l.dforecast);
+          _migrateMonthlyToDec(l.fact,     l.dfact);
+        });
+        // Декадные массивы — единственный источник истины. После переноса
+        // удаляем устаревшие месячные дубликаты (меньше данных, нет рассинхрона).
+        delete a.inPlan;  delete a.inForecast;  delete a.inFact;
+        delete a.outPlan; delete a.outForecast; delete a.outFact;
+        (a.inLines  || []).forEach(function(l) { delete l.plan; delete l.forecast; delete l.fact; });
+        (a.outLines || []).forEach(function(l) { delete l.plan; delete l.forecast; delete l.fact; });
+      });
+    });
+  };
+
+  // ── Стабильные ID проектов + перенос бюджетов на ключи-ID (вместо индексов) ──
+  window.assignProjectIds = function() {
+    (projects || []).forEach(function(p) { if (p && !p.id) p.id = genId(); });
+  };
+  window.migrateBudgetsToIds = function() {
+    var keys = Object.keys(budgets);
+    if (!keys.length) return;
+    var allNumeric    = keys.every(function(k) { return /^\d+$/.test(k); });
+    var alreadyIdKeyed = projects.some(function(p) { return p && p.id && budgets.hasOwnProperty(p.id); });
+    if (allNumeric && !alreadyIdKeyed) {
+      var newB = {};
+      projects.forEach(function(p, i) {
+        if (budgets.hasOwnProperty(i)) newB[p.id] = budgets[i];
+      });
+      budgets = newB;
+    }
+  };
+
   } // end startApp()
 }
 // article.inDirect  — true: данные вбиваются прямо в строку, подстрок нет
@@ -3691,8 +3747,6 @@ function handleLogin() {
     .then(() => {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
-      // Чистим старый shared-ключ, чтобы он не «просачивался» между пользователями
-      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
       _setLoginBusy(true, 'Загрузка данных…');
       return window.loadData().then(() => {
         document.getElementById('login-page').style.display = 'none';
@@ -3704,7 +3758,6 @@ function handleLogin() {
     })
     .catch(error => {
       _setLoginBusy(false);
-      console.error('[handleLogin] Firebase auth error:', error && error.code, error && error.message);
       let msg = 'Ошибка входа';
       const c = error && error.code;
       if (c === 'auth/invalid-credential' || c === 'auth/user-not-found' || c === 'auth/wrong-password')
@@ -3712,7 +3765,6 @@ function handleLogin() {
       else if (c === 'auth/invalid-email') msg = 'Неверный формат email';
       else if (c === 'auth/network-request-failed') msg = 'Нет соединения с сервером';
       else if (c === 'auth/too-many-requests') msg = 'Слишком много попыток, попробуйте позже';
-      else msg = 'Ошибка входа: ' + (error && error.message || c || 'неизвестно');
       showLoginError(msg);
     });
 }
@@ -3737,7 +3789,6 @@ function handleRegister() {
     .then(() => {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
-      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
       var demoY = new Date().getFullYear();
       var curM = new Date().getMonth(); // текущий месяц для разбивки факт/план
       var pa = { id: genId(), name: 'Жилой комплекс «Берёзки»', type: 'СМР', start: {y:demoY,m:0}, end: {y:demoY,m:11} };
@@ -3884,7 +3935,6 @@ function handleRegister() {
 function handleLogout() {
   if (!confirm('Вы уверены что хотите выйти?')) return;
   window.flushSaveData();
-  const uid = window.firebaseUid; // запоминаем до сброса
   const finish = () => {
     window.firebaseUid = null;
     // Чистим данные из памяти, чтобы следующий пользователь не увидел чужие.
@@ -3892,10 +3942,7 @@ function handleLogout() {
     projects = [];
     budgets = {};
     currentProject = 0;
-    if (!window.demoMode) {
-      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
-      if (uid) { try { localStorage.removeItem('bdds_cache_' + uid); } catch(e) {} }
-    }
+    if (!window.demoMode) { try { localStorage.removeItem('bdds_cache'); } catch(e) {} }
     window.demoMode = false;
     const badge = document.getElementById('demo-badge');
     if (badge) badge.style.display = 'none';
