@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- БЕЗОПАСНОСТЬ: Firebase API-ключ намеренно публичен для браузерного SDK.
+     Защита данных обеспечивается правилами Firestore и Firebase App Check.
+     Убедитесь, что в Firebase Console настроены:
+     1) Firestore Rules: разрешают чтение/запись только авторизованному пользователю (request.auth.uid)
+     2) Authentication: ограничен список разрешённых доменов
+     3) App Check: включён для защиты от злоупотреблений -->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self' https://*.firebaseapp.com https://*.googleapis.com https://*.gstatic.com https://www.gstatic.com;
+           script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.googleapis.com;
+           style-src 'self' 'unsafe-inline';
+           connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firestore.googleapis.com wss://*.firebaseio.com;
+           img-src 'self' data:;
+           font-src 'self';">
 <title>БДДС — Планирование бюджета</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -744,7 +757,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           <span id="proj-view-label" style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
           <div id="proj-view-btns" style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
             <button id="view-btn-plan" class="view-btn active" onclick="toggleView('plan')">Бюджет</button>
-            <button id="view-btn-forecast" class="view-btn active" style="cursor:default;opacity:0.7">План</button>
+            <button id="view-btn-forecast" class="view-btn active" onclick="toggleView('forecast')">План</button>
             <button id="view-btn-fact" class="view-btn active" onclick="toggleView('fact')">Факт</button>
           </div>
           <span id="proj-detail-label" style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-left:4px">Детализация:</span>
@@ -981,7 +994,11 @@ function initFirebase() {
 
       // Применить выбранный набор данных к глобальному состоянию.
       function apply(d) {
-        if (!d || !Array.isArray(d.projects) || d.projects.length === 0) return false;
+        if (!d || !Array.isArray(d.projects) || d.projects.length === 0) {
+          // Нет данных для этого пользователя — сбрасываем память в чистое состояние
+          projects = []; budgets = {}; currentProject = 0;
+          return false;
+        }
         projects       = d.projects;
         budgets        = d.budgets || {};
         currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
@@ -1006,8 +1023,6 @@ function initFirebase() {
       // и не падает офлайн. На любой ошибке откатываемся на localStorage.
       window.db.doc('bdds/' + window.firebaseUid).get()
         .then(function(snap) {
-          if (settled) return;
-          settled = true; clearTimeout(timer);
           var fbData = snap.exists ? snap.data() : null;
           var fbValid = fbData && Array.isArray(fbData.projects) && fbData.projects.length > 0;
           var d = null;
@@ -1020,6 +1035,18 @@ function initFirebase() {
           } else if (lsValid) {
             d = lsData;
           }
+          if (settled) {
+            // Таймаут уже сработал — приложение загружено с localStorage.
+            // Если сервер вернул более свежие данные, применяем их и перерисовываем.
+            if (fbValid && d === fbData && (fbData.updatedAt || 0) > (lsData ? (lsData.updatedAt || 0) : 0)) {
+              console.log('[loadData] server returned fresher data after timeout — applying');
+              apply(fbData);
+              try { window.renderSidebarProjects && window.renderSidebarProjects(); } catch(e) {}
+              try { window.renderBudget && window.renderBudget(); } catch(e) {}
+            }
+            return;
+          }
+          settled = true; clearTimeout(timer);
           resolve(apply(d));
         })
         .catch(function(e) {
@@ -1028,6 +1055,7 @@ function initFirebase() {
           console.error('[loadData] server error, fallback to localStorage:', e);
           resolve(apply(lsData));
         });
+
     });
   };
   // One-time auth state listener for the initial page load only.
@@ -1054,7 +1082,11 @@ function initFirebase() {
   var _saveTimer = null;
   // В демо-режиме данные живут в отдельном ключе кэша, чтобы не смешиваться
   // с реальной сессией пользователя.
-  function _lsKey() { return window.demoMode ? 'bdds_demo' : 'bdds_cache'; }
+  function _lsKey() { 
+    if (window.demoMode) return 'bdds_demo';
+    // Ключ привязан к uid — разные пользователи не видят кэш друг друга
+    return window.firebaseUid ? ('bdds_cache_' + window.firebaseUid) : 'bdds_cache';
+  }
 
   function _setSaveIndicator(state) { // 'saving' | 'saved' | 'error'
     var el = document.getElementById('save-indicator');
@@ -1351,6 +1383,11 @@ function deleteProject(i) {
   if (id) delete budgets[id]; // бюджеты ключуются по id — переиндексация не нужна
   if (currentProject === i)      currentProject = Math.min(i, projects.length - 1);
   else if (currentProject > i)   currentProject--; // остаёмся на том же проекте
+  // Убедимся, что currentProject не указывает на КП-проект
+  if (projects[currentProject] && projects[currentProject].isKp) {
+    const nonKp = projects.map((p,idx) => ({p,idx})).filter(({p}) => !p.isKp);
+    currentProject = nonKp.length > 0 ? nonKp[0].idx : 0;
+  }
   saveData();
   renderSidebarProjects(); renderBudget();
 }
@@ -1512,7 +1549,7 @@ function renderDashboard() {
       <div class="dash-proj-toggle-row">
         <label class="tog">
           <input type="checkbox" ${dashProjectEnabled[pi] ? 'checked' : ''}
-            onchange="dashProjectEnabled[${pi}]=this.checked; if(window._dashProjEnabledMap) window._dashProjEnabledMap['${p.id}']=this.checked; renderDashboard()">
+            onchange="dashProjectEnabled[${pi}]=this.checked; if(window._dashProjEnabledMap) window._dashProjEnabledMap['${esc(p.id)}']=this.checked; renderDashboard()">
           <span class="tog-slider"></span>
         </label>
         <span class="dash-proj-name${dashProjectEnabled[pi] ? '' : ' disabled'}" title="${esc(p.name)}">${esc(p.name)}</span>
@@ -1826,7 +1863,11 @@ function renderCumulChart(cumul, cumulFC, curM) {
   const hCells   = firstRow ? Array.from(firstRow.querySelectorAll('th')) : [];
   // First th is the sticky «Проект», second is the prior period column, rest are 12 months
   const monthThs = hCells.slice(2); // skip sticky + prior period
-  if (monthThs.length !== 12) return; // table not yet rendered
+  if (monthThs.length !== 12) {
+    // Таблица ещё не отрисована — повторим через следующий кадр
+    requestAnimationFrame(() => renderCumulChart(cumul, cumulFC, curM));
+    return;
+  }
 
   // x positions of month columns — используем offsetLeft чтобы не зависеть от скролла
   const tableOffsetLeft = tbl ? tbl.getBoundingClientRect().left - canvas.getBoundingClientRect().left : 0;
@@ -1876,9 +1917,13 @@ function renderCumulChart(cumul, cumulFC, curM) {
   // round grid values to nice intervals
   function niceGrid(vMin, vMax, steps) {
     const span = vMax - vMin;
+    if (span <= 0 || !isFinite(span)) {
+      // Нулевой или некорректный диапазон — возвращаем несколько фиктивных меток вокруг vMin
+      return Array.from({length: steps + 1}, (_, i) => vMin + i);
+    }
     const rawStep = span / steps;
     const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    const n = Math.ceil(rawStep / pow);
+    const n = Math.max(1, Math.ceil(rawStep / pow)); // защита от n=0
     const niceStep = n * pow;
     const ticks = [];
     for (let i = 0; i <= steps; i++) {
@@ -2099,9 +2144,12 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   const steps = 4;
   function niceGrid(vMn, vMx, stp) {
     const span = vMx - vMn;
+    if (span <= 0 || !isFinite(span)) {
+      return Array.from({length: stp + 1}, (_, i) => vMn + i);
+    }
     const rawStep = span / stp;
     const pow = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    const n = Math.ceil(rawStep / pow);
+    const n = Math.max(1, Math.ceil(rawStep / pow));
     const niceStep = n * pow;
     const arr = [];
     for (let i = 0; i <= stp; i++) arr.push(Math.round(vMn / niceStep) * niceStep + i * niceStep);
@@ -3747,6 +3795,9 @@ function handleLogin() {
     .then(() => {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
+      // Сбрасываем данные предыдущего пользователя из памяти и старый кэш
+      projects = []; budgets = {}; currentProject = 0;
+      try { localStorage.removeItem('bdds_cache'); } catch(e) {}
       _setLoginBusy(true, 'Загрузка данных…');
       return window.loadData().then(() => {
         document.getElementById('login-page').style.display = 'none';
