@@ -243,6 +243,20 @@ tr.cumul-row td.cell-fact { background:#e4f5ee; border-top:3px double #b0a8d8; }
 
 .month-input{width:90px;text-align:right;font-size:13px;padding:2px 5px;border:1px solid #e0e0d8;border-radius:5px;background:transparent;color:#1a1a18;font-family:inherit}
 .month-input:focus{outline:none;border-color:#999;background:#fff}
+/* Примечания к ячейкам */
+td.has-note{position:relative}
+td.has-note::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-top:7px solid #e0932f;border-left:7px solid transparent;pointer-events:none}
+#note-fab{position:absolute;z-index:900;display:none;width:13px;height:13px;line-height:13px;text-align:center;font-size:8px;cursor:pointer;border-radius:3px;background:#fff;border:1px solid #e0c48a;box-shadow:0 1px 2px rgba(0,0,0,.15);user-select:none}
+#note-fab.visible{display:block}
+#note-pop{position:absolute;z-index:950;width:240px;background:#fff;border:1px solid #d8d8d0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:8px;font-family:inherit}
+#note-pop.hidden{display:none}
+#note-pop textarea{width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;font-size:13px;padding:6px;border:1px solid #e0e0d8;border-radius:5px;color:#1a1a18}
+#note-pop textarea:focus{outline:none;border-color:#999}
+.note-pop-actions{display:flex;gap:6px;margin-top:6px;align-items:center}
+.note-pop-actions button{font-family:inherit;font-size:12px;padding:4px 10px;border-radius:5px;cursor:pointer;border:1px solid #d8d8d0;background:#f7f7f4;color:#333}
+.note-pop-actions .note-save{background:#eaf7ef;border-color:#8fce9f;color:#1a6e3e}
+.note-pop-actions .note-del{background:#fdeeee;border-color:#e2a3a3;color:#a33}
+.note-pop-actions .note-close{margin-left:auto;padding:4px 8px;font-size:15px;line-height:1}
 .row-name-input{border:none;background:none;font-size:13px;width:140px;color:#1a1a18;font-family:inherit;padding:2px 0;font-weight:600}
 .row-name-input:focus{outline:none;border-bottom:1px solid #ccc}
 .total-cell{min-width:72px;font-weight:600}
@@ -3034,6 +3048,7 @@ function renderBudget() {
   requestAnimationFrame(() => fixStickyTfootRows('main-tfoot'));
   updateStickyPositions();
   initArticleDrag();
+  decorateNotes();
 }
 
 /* ---- ЗАЩИТА БЮДЖЕТА ПАРОЛЕМ (ретушь + блокировка) ---- */
@@ -3166,6 +3181,126 @@ function setCellFormula(el, raw) {
     delete b._formulas[key];                    // число реально другое — формулы больше нет
   }
 }
+
+/* ── Примечания к ячейкам ────────────────────────────────────────────────────
+   Текст-заметка на любой ячейке. Хранится в бюджете (_notes) — сохраняется и
+   синхронизируется вместе с данными. Ключ ячейки — тот же cellKey, что у формул.
+   Индикатор — цветной уголок (td.has-note), текст — во всплывающей подсказке,
+   редактирование — по значку 📝 (появляется при наведении/фокусе) → мини-окно. */
+function noteFor(el) {
+  const b = getBudget();
+  return (b && b._notes) ? (b._notes[cellKey(el)] || '') : '';
+}
+function setNote(el, text) {
+  const b = getBudget();
+  if (!b) return;
+  const key = cellKey(el);
+  text = (text || '').trim();
+  if (text) { if (!b._notes) b._notes = {}; b._notes[key] = text; }
+  else if (b._notes) { delete b._notes[key]; }
+  saveData();
+  decorateNotes();
+}
+function decorateNotes() {
+  const b = getBudget();
+  const notes = (b && b._notes) || {};
+  document.querySelectorAll('.month-input').forEach(function(inp) {
+    const n = notes[cellKey(inp)];
+    const td = inp.closest('td');
+    if (n) {
+      if (td) td.classList.add('has-note');
+      inp.setAttribute('title', n);          // подсказка при наведении
+    } else {
+      if (td) td.classList.remove('has-note');
+      inp.removeAttribute('title');
+    }
+  });
+}
+
+var _noteTarget = null; // ячейка (input), к которой относятся значок/окно
+function _noteEnsureUI() {
+  if (document.getElementById('note-fab')) return;
+  var fab = document.createElement('div');
+  fab.id = 'note-fab';
+  fab.textContent = '📝';
+  fab.title = 'Примечание';
+  fab.addEventListener('mousedown', function(e) { e.preventDefault(); }); // не терять фокус ячейки
+  fab.addEventListener('click', function(e) { e.stopPropagation(); if (_noteTarget) openNotePopover(_noteTarget); });
+  document.body.appendChild(fab);
+
+  var pop = document.createElement('div');
+  pop.id = 'note-pop';
+  pop.className = 'hidden';
+  pop.innerHTML =
+    '<textarea id="note-pop-text" rows="3" placeholder="Примечание к ячейке…"></textarea>' +
+    '<div class="note-pop-actions">' +
+      '<button type="button" class="note-save" onclick="saveNotePopover()">Сохранить</button>' +
+      '<button type="button" class="note-del" onclick="deleteNotePopover()">Удалить</button>' +
+      '<button type="button" class="note-close" onclick="closeNotePopover()" title="Закрыть">×</button>' +
+    '</div>';
+  pop.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+  document.body.appendChild(pop);
+}
+function _showNoteFab(inp) {
+  _noteEnsureUI();
+  _noteTarget = inp;
+  var fab = document.getElementById('note-fab');
+  var r = inp.getBoundingClientRect();
+  fab.style.left = (window.scrollX + r.right - 12) + 'px';
+  fab.style.top  = (window.scrollY + r.top - 2) + 'px';
+  fab.classList.add('visible');
+}
+function _hideNoteFab() {
+  var fab = document.getElementById('note-fab');
+  if (fab) fab.classList.remove('visible');
+}
+function openNotePopover(inp) {
+  _noteEnsureUI();
+  _noteTarget = inp;
+  var pop = document.getElementById('note-pop');
+  var ta = document.getElementById('note-pop-text');
+  ta.value = noteFor(inp);
+  pop.classList.remove('hidden');
+  var r = inp.getBoundingClientRect();
+  var maxLeft = window.scrollX + document.documentElement.clientWidth - 252;
+  var left = Math.min(window.scrollX + r.left, maxLeft);
+  pop.style.left = Math.max(8, left) + 'px';
+  pop.style.top  = (window.scrollY + r.bottom + 4) + 'px';
+  ta.focus();
+}
+function closeNotePopover() {
+  var pop = document.getElementById('note-pop');
+  if (pop) pop.classList.add('hidden');
+}
+function saveNotePopover() {
+  if (_noteTarget) setNote(_noteTarget, document.getElementById('note-pop-text').value);
+  closeNotePopover();
+}
+function deleteNotePopover() {
+  if (_noteTarget) setNote(_noteTarget, '');
+  closeNotePopover();
+}
+(function _initNotes() {
+  function wire() {
+    document.addEventListener('mouseover', function(e) {
+      var inp = e.target.closest ? e.target.closest('.month-input') : null;
+      if (inp) { _showNoteFab(inp); return; }
+      // мышь не на ячейке, не на значке и не на окне — прячем значок
+      if (e.target.id !== 'note-fab' && !(e.target.closest && e.target.closest('#note-pop'))) _hideNoteFab();
+    });
+    document.addEventListener('focusin', function(e) {
+      if (e.target.classList && e.target.classList.contains('month-input')) _showNoteFab(e.target);
+    });
+    document.addEventListener('mousedown', function(e) {
+      var pop = document.getElementById('note-pop');
+      if (pop && !pop.classList.contains('hidden') && !pop.contains(e.target) && e.target.id !== 'note-fab') closeNotePopover();
+    });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeNotePopover(); });
+    window.addEventListener('scroll', _hideNoteFab, true); // при прокрутке позиция значка устаревает
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
 
 /* Безопасный вычислитель простых арифметических выражений в ячейках.
    Поддерживает + - * / ( ) и десятичные (точка или запятая).
