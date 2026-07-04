@@ -3125,12 +3125,126 @@ function toggleLock() {
 }
 
 function inputFocus(el) {
+  const f = getCellFormula(el);
+  if (f) { el.value = f; el.select(); return; } // при клике показываем исходную формулу
   const num = parseFloat(el.value.replace(/\s/g,'').replace(',','.')) || 0;
   el.value = num ? String(num) : '';
   el.select();
 }
 
-function parseInput(val) { return parseFloat(val.replace(/\s/g,'').replace(',','.')) || 0; }
+/* ── Формулы в ячейках ──────────────────────────────────────────────────────
+   Если в ячейку ввели выражение (100*4), запоминаем его текст, чтобы показать
+   при следующем клике. Хранится в бюджете (_formulas) — переживает перерисовку,
+   сохранение и синхронизацию. Ключ ячейки берём из её атрибута onblur. */
+function cellKey(el) {
+  return (el.getAttribute('onblur') || '').replace(/[^A-Za-z0-9]+/g, '_');
+}
+function getCellFormula(el) {
+  const b = getBudget();
+  return (b && b._formulas) ? b._formulas[cellKey(el)] : undefined;
+}
+function setCellFormula(el, raw) {
+  const b = getBudget();
+  if (!b) return;
+  const key = cellKey(el);
+  let s = String(raw).replace(/\s/g, '').replace(/,/g, '.');
+  if (s.charAt(0) === '=') s = s.slice(1); // =100*4 — тоже формула
+  const isPlain = s === '' || /^-?\d*\.?\d+$/.test(s);
+  if (!isPlain && isFinite(evalExpr(s))) {
+    if (!b._formulas) b._formulas = {};
+    b._formulas[key] = String(raw).trim();     // настоящее выражение — запоминаем
+    return;
+  }
+  // Пришло обычное число. Но не стираем формулу, если это её же подставленная
+  // сумма (повторный blur после Enter даёт готовое число вместо выражения).
+  const existing = b._formulas && b._formulas[key];
+  if (existing) {
+    let es = String(existing).replace(/\s/g, '').replace(/,/g, '.');
+    if (es.charAt(0) === '=') es = es.slice(1);
+    const ev = evalExpr(es);
+    if (isFinite(ev) && Math.round(ev) === Math.round(parseFloat(s) || 0)) return; // та же сумма — формулу оставляем
+    delete b._formulas[key];                    // число реально другое — формулы больше нет
+  }
+}
+
+/* Безопасный вычислитель простых арифметических выражений в ячейках.
+   Поддерживает + - * / ( ) и десятичные (точка или запятая).
+   eval/new Function не используем — они запрещены CSP (нет 'unsafe-eval'). */
+function evalExpr(str) {
+  const tokens = [];
+  let i = 0;
+  while (i < str.length) {
+    const c = str[i];
+    if ((c >= '0' && c <= '9') || c === '.') {
+      let num = '';
+      while (i < str.length && ((str[i] >= '0' && str[i] <= '9') || str[i] === '.')) num += str[i++];
+      const v = parseFloat(num);
+      if (isNaN(v)) return NaN;
+      tokens.push({ t: 'num', v: v });
+      continue;
+    }
+    if ('+-*/()'.indexOf(c) !== -1) { tokens.push({ t: 'op', v: c }); i++; continue; }
+    return NaN; // недопустимый символ
+  }
+  let pos = 0;
+  const peek = () => tokens[pos];
+  function parseExpr() {            // сложение / вычитание
+    let left = parseTerm();
+    if (left === null || isNaN(left)) return NaN;
+    while (peek() && peek().t === 'op' && (peek().v === '+' || peek().v === '-')) {
+      const op = tokens[pos++].v;
+      const right = parseTerm();
+      if (right === null || isNaN(right)) return NaN;
+      left = op === '+' ? left + right : left - right;
+    }
+    return left;
+  }
+  function parseTerm() {            // умножение / деление
+    let left = parseFactor();
+    if (left === null || isNaN(left)) return null;
+    while (peek() && peek().t === 'op' && (peek().v === '*' || peek().v === '/')) {
+      const op = tokens[pos++].v;
+      const right = parseFactor();
+      if (right === null || isNaN(right)) return null;
+      left = op === '*' ? left * right : left / right;
+    }
+    return left;
+  }
+  function parseFactor() {          // унарный знак, число, скобки
+    const tk = peek();
+    if (!tk) return null;
+    if (tk.t === 'op' && (tk.v === '+' || tk.v === '-')) {
+      pos++;
+      const f = parseFactor();
+      if (f === null || isNaN(f)) return null;
+      return tk.v === '-' ? -f : f;
+    }
+    if (tk.t === 'op' && tk.v === '(') {
+      pos++;
+      const e = parseExpr();
+      if (isNaN(e)) return null;
+      if (!peek() || peek().v !== ')') return null;
+      pos++;
+      return e;
+    }
+    if (tk.t === 'num') { pos++; return tk.v; }
+    return null;
+  }
+  const result = parseExpr();
+  if (pos !== tokens.length) return NaN; // остались лишние токены
+  return result;
+}
+
+function parseInput(val) {
+  if (val == null) return 0;
+  let s = String(val).replace(/\s/g, '').replace(/,/g, '.');
+  if (s.charAt(0) === '=') s = s.slice(1); // допускаем ввод в стиле Excel: =100*4
+  if (s === '') return 0;
+  if (/^-?\d*\.?\d+$/.test(s)) return parseFloat(s) || 0; // быстрый путь: обычное число
+  const r = evalExpr(s);                                   // выражение: 100*4, 200+130 и т.п.
+  if (isNaN(r)) return parseFloat(s) || 0;                 // не выражение — запасной путь, как раньше
+  return isFinite(r) ? r : 0;                              // деление на ноль и пр. → 0
+}
 
 /* Прямой ввод (direct mode) — пишем в d1 декадного массива */
 function directInput(ai, section, field, mi, val) {
@@ -3172,6 +3286,7 @@ function sublineBlur(el, ai, section, li, field, mi) {
     return;
   }
   line[df][mi*3] = num;
+  setCellFormula(el, el.value);
   el.value = num ? fmt(num) : '';
   saveData();
   renderTotals();
@@ -3200,6 +3315,7 @@ function decDirectBlur(el, ai, section, field, di) {
   const KEY = section + field.charAt(0).toUpperCase()+field.slice(1);
   if (!Array.isArray(art[KEY]) || art[KEY].length!==DEC_COUNT) art[KEY]=Array(DEC_COUNT).fill(0);
   art[KEY][di] = num;
+  setCellFormula(el, el.value);
   el.value = num ? fmt(num) : '';
   saveData(); renderTotals();
 }
@@ -3214,6 +3330,7 @@ function decSublineBlur(el, ai, section, li, field, di) {
   const line = getBudget().articles[ai][section+'Lines'][li];
   if (!Array.isArray(line[field])||line[field].length!==DEC_COUNT) line[field]=Array(DEC_COUNT).fill(0);
   line[field][di] = num;
+  setCellFormula(el, el.value);
   el.value = num ? fmt(num) : '';
   updateAggregateCell(ai, section, field, di, line);
   saveData(); renderTotals();
@@ -3259,6 +3376,7 @@ function directBlur(el, ai, section, field, mi) {
     return;
   }
   art[dfKey][mi*3] = num;
+  setCellFormula(el, el.value);
   el.value = num ? fmt(num) : '';
   saveData(); renderTotals();
 }
