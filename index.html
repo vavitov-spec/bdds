@@ -67,13 +67,13 @@ td.month-plan-head{border-left:2px solid #d8d8d0}
 td.sticky-name {
   position:sticky; left:0; z-index:3;
   background:#fff;
-  min-width:200px; max-width:200px;
+  min-width:250px; max-width:250px;
   border-right:2px solid #d8d8d0;
   vertical-align:middle;
 }
 .sticky-tot-p,
 td.sticky-tot-p {
-  position:sticky; left:var(--sticky-tot-p-left, 200px); z-index:3;
+  position:sticky; left:var(--sticky-tot-p-left, 250px); z-index:3;
   background:#eaf4ff;
   min-width:88px; width:88px;
   border-right:1px solid #c5d8ee;
@@ -170,12 +170,16 @@ tr.subline-in td.sticky-tot-f{background:#e0f5eb}
 tr.subline-out td.sticky-tot-p{background:#f2eeff}
 tr.subline-out td.sticky-tot-fc{background:#fef8e0}
 tr.subline-out td.sticky-tot-f{background:#fef2ec}
-td.subline-label{padding-left:52px;color:#555;font-size:12px}
+td.subline-label{padding-left:24px;color:#555;font-size:12px}
 .subline-name-input{border:none;background:none;font-size:12px;width:120px;color:#555;font-family:inherit;padding:2px 0}
 .subline-name-input:focus{outline:none;border-bottom:1px solid #ccc}
+.subline-vat{appearance:none;-webkit-appearance:none;-moz-appearance:none;border:1px solid #e0e0d8;background:transparent;font-size:8px;color:#777;font-family:inherit;border-radius:3px;padding:1px 3px;cursor:pointer;max-width:52px;text-align:center;text-align-last:center;position:absolute;right:6px;top:50%;transform:translateY(-50%)}
+.subline-vat:focus{outline:none;border-color:#999}
+table.hide-vat .subline-vat{display:none}
 tr.add-subline-row td{background:transparent;border-bottom:none}
-.add-subline-btn{font-size:11px;padding:3px 10px;cursor:pointer;border-radius:5px;background:none;border:1px dashed #ccc;color:#999;font-family:inherit;margin-left:52px}
+.add-subline-btn{font-size:8px;padding:3px 10px;cursor:pointer;border-radius:5px;background:none;border:1px dashed #ccc;color:#999;font-family:inherit;margin-left:52px}
 .add-subline-btn:hover{border-color:#888;color:#555;background:#fafaf8}
+.add-subline-btn--right{position:absolute;right:6px;top:50%;transform:translateY(-50%);margin-left:0}
 .toggle-btn{background:none;border:none;cursor:pointer;font-size:10px;color:#aaa;padding:0 4px;line-height:1;vertical-align:middle;transition:transform .15s;display:inline-block}
 .toggle-btn.open{transform:rotate(90deg)}
 .drag-handle{display:inline-block;cursor:grab;color:#ccc;font-size:13px;padding:0 5px 0 0;line-height:1;vertical-align:middle;user-select:none}
@@ -192,8 +196,20 @@ tr.dragging-article td{opacity:0.35}
 .proj-drag-handle:active{cursor:grabbing}
 .delete-subline-btn{font-size:10px;padding:1px 5px;cursor:pointer;border-radius:4px;background:none;border:none;color:#ccc;font-family:inherit}
 .delete-subline-btn:hover{color:#c0392b;background:#fdf0f0}
+/* Крестики удаления в таблице бюджета — видны только при наведении/фокусе на название */
+#main-table td.sticky-name .delete-btn,
+#main-table td.sticky-name .add-subline-btn,
+#main-table td.sticky-name .delete-subline-btn{opacity:0;transition:opacity .12s;pointer-events:none}
+#main-table td.sticky-name:hover .delete-btn,
+#main-table td.sticky-name:hover .add-subline-btn,
+#main-table td.sticky-name:hover .delete-subline-btn,
+#main-table td.sticky-name:focus-within .delete-btn,
+#main-table td.sticky-name:focus-within .add-subline-btn,
+#main-table td.sticky-name:focus-within .delete-subline-btn{opacity:1;pointer-events:auto}
 .collapse-art-btn{font-size:11px;padding:1px 6px;cursor:pointer;border-radius:4px;background:none;border:1px solid #d0d0c8;color:#888;font-family:inherit;margin-left:6px;line-height:1.4;transition:all .15s}
 .collapse-art-btn:hover{border-color:#999;color:#333;background:#f0f0ec}
+.vat-toggle-btn{float:right;margin-left:0;font-size:8px;padding:1px 3px;border-radius:3px;line-height:1.4}
+.vat-toggle-btn.active{border-color:#1a5fa3;color:#1a5fa3;background:#eaf3fb}
 
 /* Total rows */
 tr.total-row td{font-weight:600;border-top:2px solid #d8d8d0;background:#fafaf8;color:#555}
@@ -1186,6 +1202,7 @@ function initFirebase() {
         _migrateMonthlyToDec(a.outFact,     a.outDfact);
         // Строки (lines): расширяем декадные массивы и мигрируем месячные
         (a.inLines || []).forEach(function(l) {
+          if (l.vat === undefined || l.vat === null) l.vat = 22; // НДС по умолчанию
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
@@ -1194,6 +1211,7 @@ function initFirebase() {
           _migrateMonthlyToDec(l.fact,     l.dfact);
         });
         (a.outLines || []).forEach(function(l) {
+          if (l.vat === undefined || l.vat === null) l.vat = 22; // НДС по умолчанию
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
@@ -1245,6 +1263,7 @@ function genId() {
 function newLine(name) {
   return {
     name: name || '',
+    vat: 22, // ставка НДС по умолчанию, %
     dplan: Array(DEC_COUNT).fill(0), dforecast: Array(DEC_COUNT).fill(0), dfact: Array(DEC_COUNT).fill(0)
   };
 }
@@ -2713,8 +2732,10 @@ function renderBudget() {
   const totLabelP  = kpMode ? 'В1' : 'бюджет';
   const totLabelFC = kpMode ? 'В2' : 'план';
   const totLabelF  = kpMode ? 'В3' : 'факт';
+  const anyArtOpen = articles.some(art =>
+    (!art.inDirect && art.inOpen) || (!art.outDirect && art.outOpen));
   const FIXED_COLS = `
-    <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:200px">Статья <button class="collapse-art-btn" title="Свернуть все подстроки" onclick="collapseAllArticles()">↑</button></th>
+    <th class="left sticky-name" rowspan="${viewDecade?3:2}" style="min-width:250px">Статья <button class="collapse-art-btn" title="${anyArtOpen?'Свернуть все подстроки':'Развернуть все подстроки'}" onclick="collapseAllArticles()">${anyArtOpen?'↑':'↓'}</button><button class="collapse-art-btn vat-toggle-btn${showVat?' active':''}" title="${showVat?'Скрыть НДС':'Показать НДС'}" onclick="toggleVat()">НДС</button></th>
     <th class="sticky-tot-p" style="background:#daeeff;color:#1a5fa3;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">${totLabelP}</small></th>
     <th class="sticky-tot-fc" style="background:#fff0c0;color:#7a6000;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">${totLabelFC}</small></th>
     <th class="sticky-tot-f" style="background:#d6f2e6;color:#0a6e4e;min-width:88px" rowspan="${viewDecade?3:2}">Итого<br><small style="font-weight:400">${totLabelF}</small></th>`;
@@ -2735,6 +2756,7 @@ function renderBudget() {
   tbl.classList.toggle('hide-plan',     !viewPlan);
   tbl.classList.toggle('hide-forecast', !viewForecast);
   tbl.classList.toggle('hide-fact',     !viewFact);
+  tbl.classList.toggle('hide-vat',      !showVat);
 
   // ── Защита бюджета паролем (ретушь + блокировка правок) ──
   applyLockState(p);
@@ -2780,8 +2802,6 @@ function renderBudget() {
       const tagCls   = isIn ? 'tag-in'        : 'tag-out';
       const tagTxt   = isIn ? '▲ Поступление' : '▼ Выплата';
       const subCls   = isIn ? 'sub-in'        : 'sub-out';
-      const bgAdd    = isIn ? '#f6fcfa'        : '#fdf8f6';
-      const btnTxt   = isIn ? '+ подстроку поступления' : '+ подстроку выплаты';
 
       if (direct) {
         // ── DIRECT MODE ──
@@ -2835,7 +2855,7 @@ function renderBudget() {
           <td class="left sticky-name sub-label">
             <span class="sub-type-tag ${tagCls}">${tagTxt}</span>
             ${isIn ? '<button class="delete-btn" style="margin-left:6px" onclick="deleteInRow(' + ai + ')" title="Удалить поступления">✕</button>' : ''}
-            <button class="add-subline-btn" style="margin-left:8px" onclick="addSubline(${ai},'${section}')" title="Разбить на подстроки">+ подстроки</button>
+            <button class="add-subline-btn add-subline-btn--right" onclick="addSubline(${ai},'${section}')" title="Разбить на строки">+ строка</button>
           </td>
           <td class="sticky-tot-p total-cell" style="color:${colorP}" id="art-total-${isIn?'in':'out'}-${ai}">${total ? fmt(total) : '—'}</td>
           <td class="sticky-tot-fc total-cell" style="color:#7a6000" id="art-total-${isIn?'fcin':'fcout'}-${ai}">${fcTotal ? fmt(fcTotal) : '—'}</td>
@@ -2867,6 +2887,7 @@ function renderBudget() {
             <button class="toggle-btn${art[section+'Open']?' open':''}" onclick="toggleSection(${ai},'${section}')" title="Раскрыть/скрыть">▶</button>
             <span class="sub-type-tag ${tagCls}">${tagTxt}</span>
             ${isIn ? '<button class="delete-btn" style="margin-left:6px" onclick="deleteInRow(' + ai + ')" title="Удалить поступления">✕</button>' : ''}
+            <button class="add-subline-btn add-subline-btn--right" onclick="addSubline(${ai},'${section}')" title="Разбить на строки">+ строка</button>
           </td>
           <td class="sticky-tot-p total-cell" style="color:${colorP}" id="art-total-${isIn?'in':'out'}-${ai}">${total ? fmt(total) : '—'}</td>
           <td class="sticky-tot-fc total-cell" style="color:#7a6000" id="art-total-${isIn?'fcin':'fcout'}-${ai}">${fcTotal ? fmt(fcTotal) : '—'}</td>
@@ -2929,6 +2950,11 @@ function renderBudget() {
               <td class="left sticky-name subline-label">
                 <input class="subline-name-input" value="${esc(line.name)}" placeholder="Название..." onchange="renameSubline(${ai},'${section}',${li},this.value)">
                 <button class="delete-subline-btn" onclick="deleteSubline(${ai},'${section}',${li})" title="Удалить">✕</button>
+                <select class="subline-vat" title="Ставка НДС" onchange="setSublineVat(${ai},'${section}',${li},this.value)">
+                  <option value="22"${sublineVat(line)===22?' selected':''}>НДС 22%</option>
+                  <option value="5"${sublineVat(line)===5?' selected':''}>НДС 5%</option>
+                  <option value="0"${sublineVat(line)===0?' selected':''}>НДС 0%</option>
+                </select>
               </td>
               <td class="sticky-tot-p total-cell" id="subline-tot-p-${ai}-${section}-${li}" style="color:${colorP}">${lineTotal ? fmt(lineTotal) : '—'}</td>
               <td class="sticky-tot-fc total-cell" id="subline-tot-fc-${ai}-${section}-${li}" style="color:#7a6000">${lineFCTotal ? fmt(lineFCTotal) : '—'}</td>
@@ -2936,12 +2962,6 @@ function renderBudget() {
               ${lineCells}
             </tr>`;
           });
-          html += `<tr class="add-subline-row" data-art-child="${ai}">
-            <td class="sticky-name" style="background:${bgAdd}">
-              <button class="add-subline-btn" onclick="addSubline(${ai},'${section}')">${btnTxt}</button>
-            </td>
-            <td colspan="${MC * colsPerMonth + 3}" style="background:${bgAdd}"></td>
-          </tr>`;
         }
       }
     };
@@ -3246,7 +3266,7 @@ function _showNoteFab(inp) {
   _noteTarget = inp;
   var fab = document.getElementById('note-fab');
   var r = inp.getBoundingClientRect();
-  fab.style.left = (window.scrollX + r.right - 12) + 'px';
+  fab.style.left = (window.scrollX + r.left - 1) + 'px';
   fab.style.top  = (window.scrollY + r.top - 2) + 'px';
   fab.classList.add('visible');
 }
@@ -3586,6 +3606,16 @@ function renameSubline(ai, section, li, val) {
   getBudget().articles[ai][section+'Lines'][li].name = val;
   saveData();
 }
+/* НДС подстроки: нормализованное значение (по умолчанию 22%) */
+function sublineVat(line) {
+  return (line && (line.vat === 0 || line.vat)) ? line.vat : 22;
+}
+function setSublineVat(ai, section, li, val) {
+  const line = getBudget().articles[ai][section+'Lines'][li];
+  if (!line) return;
+  line.vat = parseInt(val, 10) || 0;
+  saveData();
+}
 function toggleSection(ai, section) {
   const art = getBudget().articles[ai];
   const key = section + 'Open';
@@ -3595,12 +3625,29 @@ function toggleSection(ai, section) {
 }
 
 function collapseAllArticles() {
-  getBudget().articles.forEach(art => {
-    if (!art.inDirect)  art.inOpen  = false;
-    if (!art.outDirect) art.outOpen = false;
+  const arts = getBudget().articles;
+  // Есть ли хоть одна раскрытая секция с подстроками
+  const anyOpen = arts.some(art =>
+    (!art.inDirect  && art.inOpen) ||
+    (!art.outDirect && art.outOpen));
+  // Если что-то раскрыто — сворачиваем всё, иначе разворачиваем всё
+  arts.forEach(art => {
+    if (!art.inDirect)  art.inOpen  = !anyOpen;
+    if (!art.outDirect) art.outOpen = !anyOpen;
   });
   saveData();
   renderBudget();
+}
+
+function toggleVat() {
+  showVat = !showVat;
+  const tbl = document.getElementById('main-table');
+  if (tbl) tbl.classList.toggle('hide-vat', !showVat);
+  const btn = document.querySelector('.vat-toggle-btn');
+  if (btn) {
+    btn.classList.toggle('active', showVat);
+    btn.title = showVat ? 'Скрыть НДС' : 'Показать НДС';
+  }
 }
 
 function updateStickyPositions() {
@@ -3611,16 +3658,16 @@ function updateStickyPositions() {
   const root  = document.documentElement.style;
   if (!thead) {
     // Фолбэк до первого рендера таблицы
-    root.setProperty('--sticky-tot-p-left',  '200px');
-    root.setProperty('--sticky-tot-fc-left', (200 + (viewPlan ? 88 : 0)) + 'px');
-    root.setProperty('--sticky-tot-f-left',  (200 + (viewPlan ? 88 : 0) + (viewForecast ? 88 : 0)) + 'px');
+    root.setProperty('--sticky-tot-p-left',  '250px');
+    root.setProperty('--sticky-tot-fc-left', (250 + (viewPlan ? 88 : 0)) + 'px');
+    root.setProperty('--sticky-tot-f-left',  (250 + (viewPlan ? 88 : 0) + (viewForecast ? 88 : 0)) + 'px');
     return;
   }
   const nameTh = thead.querySelector('th.sticky-name');
   const pTh    = thead.querySelector('th.sticky-tot-p');
   const fcTh   = thead.querySelector('th.sticky-tot-fc');
   // offsetWidth скрытых (display:none) колонок = 0, что корректно обнуляет смещение
-  const nameW = nameTh ? nameTh.offsetWidth : 200;
+  const nameW = nameTh ? nameTh.offsetWidth : 250;
   const pW    = pTh    ? pTh.offsetWidth    : 0;
   const fcW   = fcTh   ? fcTh.offsetWidth   : 0;
   root.setProperty('--sticky-tot-p-left',  nameW + 'px');
@@ -4462,6 +4509,7 @@ function confirmKpModal() {
 
 /* INIT */
 let viewPlan = false, viewForecast = true, viewFact = false, viewDecade = false;
+let showVat = false;    // показывать ли селекторы НДС в подстроках
 let kpMode = false;     // true когда открыта страница КП
 let kpMenuOpen = false;
 let selectedKpType = null;
