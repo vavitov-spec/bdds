@@ -359,12 +359,7 @@ table.hide-fact td.sticky-tot-f,
 table.hide-fact th.decade-sub-head.month-fact-head,
 table.hide-fact td.cell-dfact { display:none }
 
-/* DASHBOARD PROJECT TOGGLES */
-.dash-proj-toggle-row { display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid #f0f0ec; }
-.dash-proj-toggle-row:last-child { border-bottom:none; }
-.dash-proj-name { font-size:12px; color:#444; flex:1; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dash-proj-name.disabled { color:#bbb; }
-/* Toggle switch */
+/* Toggle switch (ползунки проектов в таблице дашборда) */
 .tog { position:relative; display:inline-block; width:30px; height:17px; flex-shrink:0; }
 .tog input { opacity:0; width:0; height:0; }
 .tog-slider { position:absolute; inset:0; background:#ccc; border-radius:17px; transition:.2s; cursor:pointer; }
@@ -423,9 +418,6 @@ table.hide-fact td.cell-dfact { display:none }
 #dashboard-table tr.dash-total td.dash-sticky { background:#fafaf8; }
 #dashboard-table tr.dash-cumul td { font-weight:600; background:#f5f0ff; color:#3d1a8a; border-top:1px solid #ddd8f5; font-size:12px; }
 #dashboard-table tr.dash-cumul td.dash-sticky { background:#ede8ff; color:#3d1a8a; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; font-size:12px; }
-/* project type badge reuse */
-#dashboard-table .proj-badge { font-size:10px; padding:1px 6px; border-radius:4px; background:#f0f0ec; color:#888; margin-left:6px; font-weight:400; }
-
 /* ── КП TABLE ── */
 #kp-table { table-layout:auto; width:auto; }
 #kp-table th { text-align:right; font-weight:500; color:#888; padding:5px 8px; border-bottom:2px solid #e5e5e0; white-space:nowrap; font-size:12px; background:#fafaf8; position:sticky; top:0; z-index:3; }
@@ -787,7 +779,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           </div>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Накопительный денежный поток (в тыс. руб)</div>
+          <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px;position:sticky;left:266px;z-index:2;background:#fff;display:inline-block;padding-right:8px">Накопительный денежный поток (в тыс. руб)</div>
           <div id="dash-chart-wrap" style="position:relative;min-width:0;z-index:1">
             <canvas id="cumul-chart" style="display:block"></canvas>
           </div>
@@ -1346,9 +1338,6 @@ function sectionSum(art, section, field) {
 function sectionSumEff(art, section, field) {
   return sectionSum(art, section, field);
 }
-// old localStorage version — kept for reference
-// const STORAGE_KEY = 'bdds_data';
-// function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({projects,budgets,currentProject})); }
 
 let projects = [], budgets = {}, currentProject = 0;
 window.demoMode = false; // true — работа без облака, изменения только в localStorage
@@ -1642,15 +1631,15 @@ function renderRevenuePie() {
   const totalEl = document.getElementById('rev-total');
   if (totalEl) totalEl.textContent = total ? fmtM(total) + ' млн' : '—';
 
-  // Круговая диаграмма (SVG) с подписями сумм (млн) и процентов на секторах
+  // Круговая диаграмма (SVG) с подписями типа и суммы (млн) на секторах
   const pieWrap = document.getElementById('rev-pie-wrap');
   if (pieWrap) {
     const size = 150, cx = 75, cy = 75, r = 72;
-    const sliceLabel = (type, val, pct, lx, ly, fill) => {
+    const sliceLabel = (type, val, lx, ly, fill) => {
       const light = _revIsLight(fill);
       const tc = light ? '#2a2a28' : '#fff';
       const st = light ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.3)';
-      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" fill="${tc}" style="paint-order:stroke;stroke:${st};stroke-width:2.5px"><tspan x="${lx.toFixed(1)}" dy="-13" font-size="11" font-weight="700">${esc(type)}</tspan><tspan x="${lx.toFixed(1)}" dy="13" font-size="12" font-weight="700">${fmtM(val)} млн</tspan><tspan x="${lx.toFixed(1)}" dy="12" font-size="10" font-weight="600">${pct}%</tspan></text>`;
+      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" fill="${tc}" style="paint-order:stroke;stroke:${st};stroke-width:2.5px"><tspan x="${lx.toFixed(1)}" dy="-6" font-size="11" font-weight="700">${esc(type)}</tspan><tspan x="${lx.toFixed(1)}" dy="14" font-size="12" font-weight="700">${fmtM(val)} млн</tspan></text>`;
     };
     const OP = ` fill-opacity="${REV_FILL_OPACITY}"`;
     let svg;
@@ -1658,7 +1647,7 @@ function renderRevenuePie() {
       svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#eee"/>`;
     } else if (entries.length === 1) {
       const [type, val] = entries[0];
-      svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${_revColor(type, 0)}"${OP}/>` + sliceLabel(type, val, 100, cx, cy, _revColor(type, 0));
+      svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${_revColor(type, 0)}"${OP}/>` + sliceLabel(type, val, cx, cy, _revColor(type, 0));
     } else {
       let ang = -Math.PI / 2;
       svg = entries.map(([type, val], i) => {
@@ -1671,7 +1660,7 @@ function renderRevenuePie() {
         const lx = cx + lr * Math.cos(mid), ly = cy + lr * Math.sin(mid);
         const path = `<path d="M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${_revColor(type, i)}"${OP}/>`;
         ang = a2;
-        return path + sliceLabel(type, val, Math.round(frac * 100), lx, ly, _revColor(type, i));
+        return path + sliceLabel(type, val, lx, ly, _revColor(type, i));
       }).join('');
     }
     pieWrap.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${svg}</svg>`;
@@ -2064,7 +2053,6 @@ function renderCumulChart(cumul, cumulFC, curM) {
   const vRange = vMax - vMin;
 
   // Y axis label area to the left of first column
-  const yLabelRight = colX[0] - 8;
 
   const toX = (m) => colX[m];
   const toY = (v) => PAD.top + (1 - (v - vMin) / vRange) * cH;
@@ -2290,7 +2278,6 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   const vMax   = maxVal + pad;
   const vRange = vMax - vMin;
 
-  const yLabelRight = colX[0] - 8;
   const toX = (d) => colX[d] !== undefined ? colX[d] : colX[0];
   const toY = (v) => PAD.top + (1 - (v - vMin) / vRange) * cH;
   const zeroY = toY(0);
