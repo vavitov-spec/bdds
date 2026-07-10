@@ -242,6 +242,11 @@ tr.net-row td.sticky-tot-f { background:#e4f8f0; border-top:2px solid #d8d8d0; c
 tr.net-row td.cell-plan { background:#f5f9ff; border-top:2px solid #d8d8d0; }
 tr.net-row td.cell-forecast { background:#fffbea; border-top:2px solid #d8d8d0; }
 tr.net-row td.cell-fact { background:#f5fdf9; border-top:2px solid #d8d8d0; }
+/* Итоговые строки НДС — видны только при включённом тумблере НДС */
+tr.vat-summary-row td { font-size:13px; font-weight:600; background:#faf7ef; }
+tr.vat-summary-row td.left, tr.vat-summary-row td.sticky-name { color:#7a6000; text-transform:none; letter-spacing:normal; background:#faf7ef; }
+tr.vat-summary-row td.sticky-tot-p, tr.vat-summary-row td.sticky-tot-fc, tr.vat-summary-row td.sticky-tot-f { background:#fbf6e8; }
+#main-table.hide-vat tr.vat-summary-row { display:none; }
 
 /* Накопительный поток */
 tr.cumul-row td {
@@ -3052,6 +3057,8 @@ function renderBudget() {
       <td colspan="${MC * colsPerMonth}"></td>
     </tr>`;
 
+  const vatSummary = computeVatSummary(articles, months);
+
   const footerHtml = `
     <tr class="total-row" id="grand-in-row">
       <td class="left sticky-name">Итого поступления</td>
@@ -3080,6 +3087,20 @@ function renderBudget() {
       <td class="sticky-tot-fc total-cell" id="g-cumul-forecast" style="color:${netColor(runFC)}">${fmt(runFC)}</td>
       <td class="sticky-tot-f total-cell" id="g-cumul-fact" style="color:${netColor(runF)}">${fmt(runF)}</td>
       ${cumulMonthCells}
+    </tr>
+    <tr class="vat-summary-row" id="grand-vat-row">
+      <td class="left sticky-name">НДС к начислению</td>
+      <td class="sticky-tot-p total-cell" id="g-vat-plan">${fmt(vatSummary.plan)}</td>
+      <td class="sticky-tot-fc total-cell" id="g-vat-forecast">${fmt(vatSummary.forecast)}</td>
+      <td class="sticky-tot-f total-cell" id="g-vat-fact">${fmt(vatSummary.fact)}</td>
+      <td colspan="${MC * colsPerMonth}"></td>
+    </tr>
+    <tr class="vat-summary-row" id="grand-profit-row">
+      <td class="left sticky-name">Прибыль после НДС</td>
+      <td class="sticky-tot-p total-cell" id="g-profit-plan" style="color:${netColor(netSum - vatSummary.plan)}">${fmt(netSum - vatSummary.plan)}</td>
+      <td class="sticky-tot-fc total-cell" id="g-profit-forecast" style="color:${netColor(netFCSum - vatSummary.forecast)}">${fmt(netFCSum - vatSummary.forecast)}</td>
+      <td class="sticky-tot-f total-cell" id="g-profit-fact" style="color:${netColor(netFactSum - vatSummary.fact)}">${fmt(netFactSum - vatSummary.fact)}</td>
+      <td colspan="${MC * colsPerMonth}"></td>
     </tr>`;
 
   document.getElementById('articles-body').innerHTML = html;
@@ -3648,6 +3669,7 @@ function setSublineVat(ai, section, li, val) {
   if (!line) return;
   line.vat = parseInt(val, 10) || 0;
   saveData();
+  renderTotals(); // обновить итоговые строки НДС
 }
 /* НДС статьи без подстрок (прямой ввод): хранится в art.inVat / art.outVat */
 function articleVat(art, section) {
@@ -3659,6 +3681,35 @@ function setArticleVat(ai, section, val) {
   if (!art) return;
   art[section + 'Vat'] = parseInt(val, 10) || 0;
   saveData();
+  renderTotals(); // обновить итоговые строки НДС
+}
+/* Итоговый НДС к начислению по каждому виду (План/Прогноз/Факт):
+   сумма (строка поступления × её ставка НДС) минус сумма (строка выплаты × её ставка НДС).
+   Если у статьи нет подстрок — берётся сама статья × её ставка НДС. */
+function computeVatSummary(articles, months) {
+  const fieldOf = { plan: 'dplan',  forecast: 'dforecast',  fact: 'dfact'  };
+  const capOf   = { plan: 'Dplan',  forecast: 'Dforecast',  fact: 'Dfact'  };
+  const decTotal = (arr) => months.reduce((a, _, mi) => a + decSum(ensureDec(arr), mi), 0);
+  const vat = { plan: 0, forecast: 0, fact: 0 };
+  articles.forEach(art => {
+    ['in', 'out'].forEach(section => {
+      if (section === 'in' && art.inDeleted) return;
+      const sign = section === 'in' ? 1 : -1;
+      // НДС уже включён в суммы — выделяем его: сумма × ставка/(100+ставка)
+      const extractVat = (total, rate) => rate ? total * rate / (100 + rate) : 0;
+      ['plan', 'forecast', 'fact'].forEach(view => {
+        if (art[section + 'Direct']) {
+          const total = decTotal(art[section + capOf[view]]);
+          vat[view] += sign * extractVat(total, articleVat(art, section));
+        } else {
+          (art[section + 'Lines'] || []).forEach(line => {
+            vat[view] += sign * extractVat(decTotal(line[fieldOf[view]]), sublineVat(line));
+          });
+        }
+      });
+    });
+  });
+  return vat;
 }
 function toggleSection(ai, section) {
   const art = getBudget().articles[ai];
@@ -3692,6 +3743,8 @@ function toggleVat() {
     btn.classList.toggle('active', showVat);
     btn.title = showVat ? 'Скрыть НДС' : 'Показать НДС';
   }
+  // Появляются/скрываются итоговые строки НДС — пересчитать sticky-смещения tfoot
+  requestAnimationFrame(() => fixStickyTfootRows('main-tfoot'));
 }
 
 function updateStickyPositions() {
@@ -3828,6 +3881,15 @@ function renderTotals() {
   sv('g-net-plan',     ns,   netColor(ns));
   sv('g-net-forecast', nfcs, netColor(nfcs));
   sv('g-net-fact',     nfs,  netColor(nfs));
+
+  // Итоговые строки НДС
+  const vatSummary = computeVatSummary(articles, months);
+  sv('g-vat-plan',     vatSummary.plan);
+  sv('g-vat-forecast', vatSummary.forecast);
+  sv('g-vat-fact',     vatSummary.fact);
+  sv('g-profit-plan',     ns  - vatSummary.plan,     netColor(ns  - vatSummary.plan));
+  sv('g-profit-forecast', nfcs - vatSummary.forecast, netColor(nfcs - vatSummary.forecast));
+  sv('g-profit-fact',     nfs - vatSummary.fact,     netColor(nfs - vatSummary.fact));
 
   const updateRow = (rowId, arrP, arrFC, arrF, colorFnP, colorFnF) => {
     const row = document.getElementById(rowId);
