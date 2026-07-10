@@ -175,6 +175,10 @@ td.subline-label{padding-left:24px;color:#555;font-size:12px}
 .subline-name-input:focus{outline:none;border-bottom:1px solid #ccc}
 .subline-vat{appearance:none;-webkit-appearance:none;-moz-appearance:none;border:1px solid #e0e0d8;background:transparent;font-size:8px;color:#777;font-family:inherit;border-radius:3px;padding:1px 3px;cursor:pointer;max-width:52px;text-align:center;text-align-last:center;position:absolute;right:6px;top:50%;transform:translateY(-50%)}
 .subline-vat:focus{outline:none;border-color:#999}
+/* Прямая строка: когда показан НДС (right:6px), кнопка «+ строка» ужимается до «+» и встаёт слева от НДС */
+#main-table:not(.hide-vat) .add-subline-btn--right.add-subline-btn--vat{right:62px;padding:3px 7px}
+#main-table:not(.hide-vat) .add-subline-btn--vat > .add-txt{display:none}
+#main-table:not(.hide-vat) .add-subline-btn--vat::before{content:"+";font-weight:700}
 table.hide-vat .subline-vat{display:none}
 tr.add-subline-row td{background:transparent;border-bottom:none}
 .add-subline-btn{font-size:8px;padding:3px 10px;cursor:pointer;border-radius:5px;background:none;border:1px dashed #ccc;color:#999;font-family:inherit;margin-left:52px}
@@ -736,13 +740,13 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
   </div>
 
   <div class="main">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:0 4px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;padding:0 4px">
       <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Меню">☰</button>
       <span id="demo-badge" style="display:none;font-size:12px;color:#8a6d1f;background:#fff3cf;border:1px solid #f0d97a;padding:3px 10px;border-radius:6px">Демо-режим · данные хранятся только в этом браузере</span>
     </div>
     <div class="page" id="page-dashboard">
-      <div style="display:flex;align-items:flex-end;gap:40px;margin-bottom:20px">
-        <div><div style="font-size:20px;font-weight:500;margin-bottom:4px">Дашборд</div><div style="font-size:13px;color:#aaa" id="dashboard-year-label"></div></div>
+      <div style="display:flex;align-items:center;gap:24px;margin-bottom:10px">
+        <div style="display:flex;align-items:baseline;gap:8px"><div style="font-size:15px;font-weight:600">Дашборд</div><div style="font-size:12px;color:#aaa" id="dashboard-year-label"></div></div>
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:12px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Вид:</span>
           <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
@@ -2862,7 +2866,12 @@ function renderBudget() {
           <td class="left sticky-name sub-label">
             <span class="sub-type-tag ${tagCls}">${tagTxt}</span>
             ${isIn ? '<button class="delete-btn" style="margin-left:6px" onclick="deleteInRow(' + ai + ')" title="Удалить поступления">✕</button>' : ''}
-            <button class="add-subline-btn add-subline-btn--right" onclick="addSubline(${ai},'${section}')" title="Разбить на строки">+ строка</button>
+            <button class="add-subline-btn add-subline-btn--right add-subline-btn--vat" onclick="addSubline(${ai},'${section}')" title="Разбить на строки"><span class="add-txt">+ строка</span></button>
+            <select class="subline-vat" title="Ставка НДС" onchange="setArticleVat(${ai},'${section}',this.value)">
+              <option value="22"${articleVat(art,section)===22?' selected':''}>НДС 22%</option>
+              <option value="5"${articleVat(art,section)===5?' selected':''}>НДС 5%</option>
+              <option value="0"${articleVat(art,section)===0?' selected':''}>НДС 0%</option>
+            </select>
           </td>
           <td class="sticky-tot-p total-cell" style="color:${colorP}" id="art-total-${isIn?'in':'out'}-${ai}">${total ? fmt(total) : '—'}</td>
           <td class="sticky-tot-fc total-cell" style="color:#7a6000" id="art-total-${isIn?'fcin':'fcout'}-${ai}">${fcTotal ? fmt(fcTotal) : '—'}</td>
@@ -3564,6 +3573,7 @@ function addSubline(ai, section) {
     // данные из прямой строки переносим в первую подстроку
     const label = section === 'in' ? 'Поступление 1' : 'Выплата 1';
     const firstLine = newLine(label);
+    firstLine.vat       = articleVat(art, section); // сохраняем ставку НДС прямой строки
     firstLine.dplan     = ensureDec(art[section + 'Dplan']).slice();
     firstLine.dforecast = ensureDec(art[section + 'Dforecast']).slice();
     firstLine.dfact     = ensureDec(art[section + 'Dfact']).slice();
@@ -3595,6 +3605,7 @@ function deleteSubline(ai, section, li) {
   if (art[key].length <= 1) {
     // Последняя подстрока — переносим данные обратно в direct mode
     if (confirm('Удалить подстроки и вернуться к прямому вводу? Данные этой подстроки сохранятся.')) {
+      art[section + 'Vat']      = sublineVat(art[key][0]); // возвращаем ставку НДС в прямую строку
       art[section + 'Dplan']    = ensureDec(art[key][0].dplan).slice();
       art[section + 'Dforecast']= ensureDec(art[key][0].dforecast).slice();
       art[section + 'Dfact']    = ensureDec(art[key][0].dfact).slice();
@@ -3636,6 +3647,17 @@ function setSublineVat(ai, section, li, val) {
   const line = getBudget().articles[ai][section+'Lines'][li];
   if (!line) return;
   line.vat = parseInt(val, 10) || 0;
+  saveData();
+}
+/* НДС статьи без подстрок (прямой ввод): хранится в art.inVat / art.outVat */
+function articleVat(art, section) {
+  const v = art && art[section + 'Vat'];
+  return (v === 0 || v) ? v : 22;
+}
+function setArticleVat(ai, section, val) {
+  const art = getBudget().articles[ai];
+  if (!art) return;
+  art[section + 'Vat'] = parseInt(val, 10) || 0;
   saveData();
 }
 function toggleSection(ai, section) {
