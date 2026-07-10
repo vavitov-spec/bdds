@@ -371,6 +371,12 @@ table.hide-fact td.cell-dfact { display:none }
 .tog-slider:before { content:''; position:absolute; width:13px; height:13px; left:2px; bottom:2px; background:#fff; border-radius:50%; transition:.2s; }
 .tog input:checked + .tog-slider { background:#4caf7d; }
 .tog input:checked + .tog-slider:before { transform:translateX(13px); }
+/* Ползунок проекта внутри таблицы дашборда */
+#dashboard-table td.dash-sticky .dash-name-cell { display:flex; align-items:center; gap:8px; }
+#dashboard-table td.dash-sticky .dash-proj-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#dashboard-table tr.dash-proj-off td:not(.dash-sticky) { opacity:.4; }
+#dashboard-table tr.dash-proj-off .dash-proj-label { color:#bbb; }
+#dashboard-table tr.dash-total td.dash-sticky.left, #dashboard-table tr.dash-cumul td.dash-sticky.left { padding-left:42px; }
 
 /* DASHBOARD TABLE */
 #dash-scroll-wrap { overflow-x:auto; overflow-y:visible; }
@@ -770,14 +776,21 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
   <div style="display:flex;gap:16px;align-items:flex-start">
     <div id="dash-scroll-wrap" style="overflow-x:auto;overflow-y:visible;flex:1;min-width:0">
       <table id="dashboard-table"><thead id="dashboard-thead"></thead><tbody id="dashboard-body"></tbody></table>
-      <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-top:24px;margin-bottom:14px;position:sticky;left:0">Накопительный денежный поток (в тыс. руб)</div>
-      <div style="display:flex;gap:16px;align-items:flex-start">
-        <div id="dash-project-panel" style="width:180px;flex-shrink:0;background:#fafaf8;border:1px solid #e5e5e0;border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;gap:0;position:sticky;left:0;z-index:2">
-          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:10px">Проекты</div>
-          <div id="dash-project-toggles" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div style="display:flex;gap:16px;align-items:flex-start;margin-top:24px">
+        <div id="dash-revenue-panel" style="width:250px;flex-shrink:0;position:sticky;left:0;z-index:2;background:#fafaf8;border:1px solid #e5e5e0;border-radius:10px;padding:12px 14px">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-bottom:2px">Плановая выручка в <span id="rev-year"></span>г</div>
+          <div id="rev-total" style="font-size:20px;font-weight:600;color:#185FA5;margin-bottom:8px">—</div>
+          <div id="rev-pie-wrap" style="display:flex;justify-content:center;margin-bottom:10px"></div>
+          <div style="display:flex;gap:4px;background:#f0f0ec;border-radius:8px;padding:3px">
+            <button id="rev-btn-plan" class="view-btn" onclick="setRevenueSource('plan')" style="flex:1">Бюджет</button>
+            <button id="rev-btn-forecast" class="view-btn active" onclick="setRevenueSource('forecast')" style="flex:1">План</button>
+          </div>
         </div>
-        <div id="dash-chart-wrap" style="position:relative;flex:1;min-width:0;z-index:1">
-          <canvas id="cumul-chart" style="display:block"></canvas>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:14px">Накопительный денежный поток (в тыс. руб)</div>
+          <div id="dash-chart-wrap" style="position:relative;min-width:0;z-index:1">
+            <canvas id="cumul-chart" style="display:block"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -1567,6 +1580,109 @@ function computePriorPeriodCumul(pi) {
   return { budget: sumB, forecast: sumP };
 }
 
+/* Выручка (поступления) проекта за год по источнику: 'plan' | 'forecast' | 'fact' */
+function computeProjectRevenueYear(pi, dashY, field) {
+  const b = budgets[(projects[pi] || {}).id];
+  const p = projects[pi];
+  if (!b || !b.articles || !p || !p.start) return 0;
+  dashY = dashY ?? new Date().getFullYear();
+  const projY = _projectMonthsForYear(p, dashY);
+  if (!projY.length) return 0;
+  let sum = 0;
+  b.articles.forEach(a => {
+    const ip = sectionSum(a, 'in', field);
+    projY.forEach(({ projIdx }) => { sum += ip[projIdx] || 0; });
+  });
+  return sum;
+}
+
+// Палитра подобрана и провалидирована по dataviz-скилу (light, поверхность #fafaf8):
+// проходит lightness/chroma/контраст≥3:1/CVD ΔE≫12. Сдержанные jewel-тона.
+// Пастельно-прозрачная гамма (зелёный/жёлтый/фиолетовый), заливка полупрозрачная
+const REV_TYPE_COLORS = { 'СМР': '#3FB582', 'ПИР': '#E7B23C', 'Поставка': '#4C9BD6' };
+const REV_PALETTE = ['#C15FA0', '#5B8FD0', '#8FBF4F', '#E7853C', '#7A8CA0'];
+const REV_FILL_OPACITY = 0.8;
+function _revColor(type, i) { return REV_TYPE_COLORS[type] || REV_PALETTE[i % REV_PALETTE.length]; }
+// Эффективная светлота цвета с учётом прозрачности заливки на светлой панели (#fafaf8)
+function _revIsLight(hex) {
+  const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const f = x => x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  const L = 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  return L * REV_FILL_OPACITY + 0.976 * (1 - REV_FILL_OPACITY) > 0.5; // светлый → тёмный текст
+}
+
+function setRevenueSource(field) {
+  revenueSource = field;
+  renderRevenuePie();
+}
+
+function renderRevenuePie() {
+  const curY = new Date().getFullYear();
+  const yearEl = document.getElementById('rev-year');
+  if (yearEl) yearEl.textContent = curY;
+  const bP = document.getElementById('rev-btn-plan'), bF = document.getElementById('rev-btn-forecast');
+  if (bP) bP.classList.toggle('active', revenueSource === 'plan');
+  if (bF) bF.classList.toggle('active', revenueSource === 'forecast');
+
+  // Сумма выручки по типам проектов (кроме КП и выключенных ползунком)
+  const byType = {};
+  projects.forEach((p, pi) => {
+    if (p.isKp) return;
+    if (!dashProjectEnabled[pi]) return; // выключенный проект не учитывается
+    const rev = computeProjectRevenueYear(pi, curY, revenueSource);
+    if (rev <= 0) return;
+    const t = p.type || 'Без типа';
+    byType[t] = (byType[t] || 0) + rev;
+  });
+  const entries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  // Миллионы с одной десятой долей (напр. 11,0)
+  const fmtM = v => (v / 1e6).toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+  const totalEl = document.getElementById('rev-total');
+  if (totalEl) totalEl.textContent = total ? fmtM(total) + ' млн' : '—';
+
+  // Круговая диаграмма (SVG) с подписями сумм (млн) и процентов на секторах
+  const pieWrap = document.getElementById('rev-pie-wrap');
+  if (pieWrap) {
+    const size = 150, cx = 75, cy = 75, r = 72;
+    const sliceLabel = (type, val, pct, lx, ly, fill) => {
+      const light = _revIsLight(fill);
+      const tc = light ? '#2a2a28' : '#fff';
+      const st = light ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.3)';
+      return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" fill="${tc}" style="paint-order:stroke;stroke:${st};stroke-width:2.5px"><tspan x="${lx.toFixed(1)}" dy="-13" font-size="11" font-weight="700">${esc(type)}</tspan><tspan x="${lx.toFixed(1)}" dy="13" font-size="12" font-weight="700">${fmtM(val)} млн</tspan><tspan x="${lx.toFixed(1)}" dy="12" font-size="10" font-weight="600">${pct}%</tspan></text>`;
+    };
+    const OP = ` fill-opacity="${REV_FILL_OPACITY}"`;
+    let svg;
+    if (!total) {
+      svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#eee"/>`;
+    } else if (entries.length === 1) {
+      const [type, val] = entries[0];
+      svg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${_revColor(type, 0)}"${OP}/>` + sliceLabel(type, val, 100, cx, cy, _revColor(type, 0));
+    } else {
+      let ang = -Math.PI / 2;
+      svg = entries.map(([type, val], i) => {
+        const frac = val / total;
+        const a2 = ang + frac * 2 * Math.PI;
+        const x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang);
+        const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+        const large = frac > 0.5 ? 1 : 0;
+        const mid = (ang + a2) / 2, lr = r * 0.6;
+        const lx = cx + lr * Math.cos(mid), ly = cy + lr * Math.sin(mid);
+        const path = `<path d="M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${_revColor(type, i)}"${OP}/>`;
+        ang = a2;
+        return path + sliceLabel(type, val, Math.round(frac * 100), lx, ly, _revColor(type, i));
+      }).join('');
+    }
+    pieWrap.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${svg}</svg>`;
+  }
+}
+
+function dashToggleProject(pi, id, checked) {
+  dashProjectEnabled[pi] = checked;
+  if (window._dashProjEnabledMap) window._dashProjEnabledMap[id] = checked;
+  renderDashboard();
+}
 function renderDashboard() {
   const curY = new Date().getFullYear();
   const curM = new Date().getMonth();
@@ -1588,22 +1704,14 @@ function renderDashboard() {
   // Keep dashProjectEnabled as pi-indexed for backward compat, rebuild from map
   dashProjectEnabled = projects.map(p => p.isKp ? false : (window._dashProjEnabledMap[p.id] !== false));
 
-  // Render project toggles panel
-  const togglesEl = document.getElementById('dash-project-toggles');
-  if (togglesEl) {
-    togglesEl.innerHTML = projects.map((p, pi) => ({p, pi})).filter(({p}) => !p.isKp).map(({p, pi}) => `
-      <div class="dash-proj-toggle-row">
-        <label class="tog">
-          <input type="checkbox" ${dashProjectEnabled[pi] ? 'checked' : ''}
-            onchange="dashProjectEnabled[${pi}]=this.checked; if(window._dashProjEnabledMap) window._dashProjEnabledMap['${esc(p.id)}']=this.checked; renderDashboard()">
-          <span class="tog-slider"></span>
-        </label>
-        <span class="dash-proj-name${dashProjectEnabled[pi] ? '' : ' disabled'}" title="${esc(p.name)}">${esc(p.name)}</span>
-      </div>`).join('');
-  }
-
-  // Only process enabled projects (keep original pi for compute functions)
-  const activeProjects = projects.map((p,pi) => ({p,pi})).filter(({p,pi}) => !p.isKp && dashProjectEnabled[pi]);
+  // Все проекты дашборда (не КП). Ползунок у каждой строки управляет участием в итогах/графике.
+  const dashAll = projects.map((p,pi) => ({p,pi})).filter(({p}) => !p.isKp);
+  // Ячейка «Проект» с ползунком слева от названия
+  const stickyProjCell = (p, pi) => {
+    return `<td class="dash-sticky left"><span class="dash-name-cell">` +
+      `<label class="tog" onclick="event.stopPropagation()"><input type="checkbox" ${dashProjectEnabled[pi] ? 'checked' : ''} onchange="dashToggleProject(${pi},'${esc(p.id)}',this.checked)"><span class="tog-slider"></span></label>` +
+      `<span class="dash-proj-label" title="${esc(p.name)}">${p.locked ? '🔒 ' : ''}${esc(p.name)}</span></span></td>`;
+  };
   const MNAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
   const fmtD = (v) => {
@@ -1656,18 +1764,20 @@ function renderDashboard() {
     document.getElementById('dashboard-thead').innerHTML = thead;
     requestAnimationFrame(() => fixStickyTheadRows('dashboard-thead', 'dashboard-table'));
 
-    // DATA (only enabled projects)
-    const nets36B  = activeProjects.map(({pi}) => computeProjectNetDec36(pi, curY));
-    const nets36P  = activeProjects.map(({pi}) => computeProjectNetDec36Forecast(pi, curY));
+    // DATA — считаем по ВСЕМ проектам (для строк), итоги суммируем только по включённым
+    const nets36B  = dashAll.map(({pi}) => computeProjectNetDec36(pi, curY));
+    const nets36P  = dashAll.map(({pi}) => computeProjectNetDec36Forecast(pi, curY));
     // Prior period: cumulative of ALL 36 decades of previous year
-    const prior12  = activeProjects.map(({pi}) => computePriorPeriodCumul(pi));
+    const prior12  = dashAll.map(({pi}) => computePriorPeriodCumul(pi));
     const totB36   = Array(DEC_COUNT_YEAR).fill(0);
     const totP36   = Array(DEC_COUNT_YEAR).fill(0);
-    nets36B.forEach(n => { for (let d=0;d<DEC_COUNT_YEAR;d++) totB36[d] += n[d]||0; });
-    nets36P.forEach(n => { for (let d=0;d<DEC_COUNT_YEAR;d++) totP36[d] += n[d]||0; });
-    // Company prior period totals
     let compPriorB = 0, compPriorP = 0;
-    prior12.forEach(p => { compPriorB += p.budget; compPriorP += p.forecast; });
+    dashAll.forEach(({pi}, ai) => {
+      if (!dashProjectEnabled[pi]) return; // выключенный проект не участвует в итогах/графике
+      const nB = nets36B[ai], nP = nets36P[ai];
+      for (let d=0;d<DEC_COUNT_YEAR;d++) { totB36[d] += nB[d]||0; totP36[d] += nP[d]||0; }
+      compPriorB += prior12[ai].budget; compPriorP += prior12[ai].forecast;
+    });
 
     // Full cumulative arrays for current year (DEC_COUNT_YEAR = 36 decades)
     const fullCB=[],fullCP=[];
@@ -1717,12 +1827,12 @@ function renderDashboard() {
       return budgetTd + `<td class="dash-dec-cell" style="${style}">${fmtD(vP)}</td>`;
     };
 
-    activeProjects.forEach(({p,pi}, ai) => {
+    dashAll.forEach(({p,pi}, ai) => {
       const nB=nets36B[ai], nP=nets36P[ai];
       const pr=prior12[ai];
       const inYear = _projectMonthsForYear(p, curY).length > 0;
-      const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
-      tbody += `<tr${p.locked?' class="dash-locked"':''}><td class="dash-sticky left">${p.locked?'🔒 ':''}${esc(p.name)}${badge}</td>`;
+      const rowCls = [p.locked?'dash-locked':'', dashProjectEnabled[pi]?'':'dash-proj-off'].filter(Boolean).join(' ');
+      tbody += `<tr${rowCls?` class="${rowCls}"`:''}>${stickyProjCell(p, pi)}`;
       // Prior period column
       tbody += priorCellDec(pr);
       for(let d=startDecIdx;d<startDecIdx+SHOWN_DEC;d++)
@@ -1788,18 +1898,21 @@ function renderDashboard() {
     document.getElementById('dashboard-thead').innerHTML = thead;
     requestAnimationFrame(() => fixStickyTheadRows('dashboard-thead', 'dashboard-table'));
 
-    // DATA (only enabled projects)
-    const nets12B  = activeProjects.map(({pi}) => computeProjectNet12(pi, curY));
-    const nets12P  = activeProjects.map(({pi}) => computeProjectNet12Forecast(pi, curY));
+    // DATA — считаем по ВСЕМ проектам (для строк), итоги суммируем только по включённым
+    const nets12B  = dashAll.map(({pi}) => computeProjectNet12(pi, curY));
+    const nets12P  = dashAll.map(({pi}) => computeProjectNet12Forecast(pi, curY));
     // Prior period cumulative for each project
-    const prior12  = activeProjects.map(({pi}) => computePriorPeriodCumul(pi));
+    const prior12  = dashAll.map(({pi}) => computePriorPeriodCumul(pi));
     const totB     = Array(12).fill(null);
     const totP     = Array(12).fill(null);
     // Company totals for prior period
     let compPriorB = 0, compPriorP = 0;
-    prior12.forEach(p => { compPriorB += p.budget; compPriorP += p.forecast; });
-    nets12B.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totB[m] = (totB[m] ?? 0) + n[m]; });
-    nets12P.forEach(n => { for(let m=0;m<12;m++) if (n[m] !== null) totP[m] = (totP[m] ?? 0) + n[m]; });
+    dashAll.forEach(({pi}, ai) => {
+      if (!dashProjectEnabled[pi]) return; // выключенный проект не участвует в итогах/графике
+      compPriorB += prior12[ai].budget; compPriorP += prior12[ai].forecast;
+      const nB = nets12B[ai], nP = nets12P[ai];
+      for(let m=0;m<12;m++){ if (nB[m] !== null) totB[m] = (totB[m] ?? 0) + nB[m]; if (nP[m] !== null) totP[m] = (totP[m] ?? 0) + nP[m]; }
+    });
 
     const cumB=[],cumP=[];
     let rB=compPriorB, rP=compPriorP;
@@ -1842,11 +1955,11 @@ function renderDashboard() {
       return budgetTd + `<td style="${style}">${fmtD(vP)}</td>`;
     };
 
-    activeProjects.forEach(({p,pi}, ai) => {
+    dashAll.forEach(({p,pi}, ai) => {
       const nB=nets12B[ai], nP=nets12P[ai];
       const pr=prior12[ai];
-      const badge = p.type?`<span class="proj-badge">${esc(p.type)}</span>`:'';
-      tbody += `<tr${p.locked?' class="dash-locked"':''}><td class="dash-sticky left">${p.locked?'🔒 ':''}${esc(p.name)}${badge}</td>`;
+      const rowCls = [p.locked?'dash-locked':'', dashProjectEnabled[pi]?'':'dash-proj-off'].filter(Boolean).join(' ');
+      tbody += `<tr${rowCls?` class="${rowCls}"`:''}>${stickyProjCell(p, pi)}`;
       // Prior period column
       tbody += priorCell(pr.budget, pr.forecast, ai);
       for(let m=0;m<12;m++)
@@ -1888,6 +2001,7 @@ function renderDashboard() {
     document.getElementById('dashboard-body').innerHTML = tbody;
     requestAnimationFrame(() => renderCumulChart(cumB, cumP, curM));
   }
+  renderRevenuePie();
 }
 
 
@@ -1988,12 +2102,12 @@ function renderCumulChart(cumul, cumulFC, curM) {
     ctx.moveTo(xLeft, y);
     ctx.lineTo(xRight, y);
     ctx.stroke();
-    // Y labels
+    // Y labels — справа (слева уходят под панель выручки)
     const lbl = String(Math.round(v));
     ctx.fillStyle = '#bbb';
     ctx.font = '10px system-ui,sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(lbl, yLabelRight, y + 3.5);
+    ctx.textAlign = 'left';
+    ctx.fillText(lbl, xRight + 6, y + 3.5);
   });
 
   // ── Zero line ────────────────────────────────────────────────
@@ -2008,8 +2122,8 @@ function renderCumulChart(cumul, cumulFC, curM) {
   ctx.restore();
   ctx.fillStyle = '#888';
   ctx.font = 'bold 10px system-ui,sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('0', yLabelRight, zeroY + 3.5);
+  ctx.textAlign = 'left';
+  ctx.fillText('0', xRight + 6, zeroY + 3.5);
 
   // ── Filled areas — по линии план (valsFC) ───────────────────
   const fillData = cumulFC ? valsFC : vals;
@@ -2211,8 +2325,8 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
     const lbl = String(Math.round(v));
     ctx.fillStyle = '#bbb';
     ctx.font = '10px system-ui,sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(lbl, yLabelRight, y + 3.5);
+    ctx.textAlign = 'left';
+    ctx.fillText(lbl, xRight + 6, y + 3.5);
   });
 
   // ── Zero line ──────────────────────────────────────────────
@@ -2227,8 +2341,8 @@ function renderCumulChartDec(cumulArr, cumulArrFC, shownDec) {
   ctx.restore();
   ctx.fillStyle = '#888';
   ctx.font = 'bold 10px system-ui,sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('0', yLabelRight, zeroY + 3.5);
+  ctx.textAlign = 'left';
+  ctx.fillText('0', xRight + 6, zeroY + 3.5);
 
   // ── Filled areas — по линии план (valsFC) ───────────────────
   const valsScaled = cumulArr.map(v => v === null ? null : v / 1000);
@@ -4622,6 +4736,7 @@ let selectedKpType = null;
 function genKpId() { return 'kp' + Math.random().toString(36).slice(2,9); }
 let viewDashDecade = false;
 let viewDashBudget = false;
+let revenueSource = 'forecast'; // источник для круговой диаграммы выручки: 'plan' (Бюджет) | 'forecast' (План)
 let dashProjectEnabled = []; // per-project toggle, synced in renderDashboard
 
 function toggleDashView(which) {
