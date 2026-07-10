@@ -697,6 +697,10 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
 
 <div class="layout" style="display:none" id="main-layout">
   <div class="sidebar">
+    <div class="sidebar-brand" style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e5e5e0;">
+      <img src="data:image/png;base64,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" alt="Vector" style="height:22px;width:22px;object-fit:contain;">
+      <span style="font-size:15px;font-weight:700;color:#185FA5;">Vector</span>
+    </div>
     <div class="nav-item" id="nav-dashboard" onclick="showPage('dashboard')">
       <span class="icon">📊</span><span class="label">Дашборд</span>
     </div>
@@ -2817,16 +2821,19 @@ function renderBudget() {
                 value="${vp?fmt(vp):''}" placeholder="0"
                 onfocus="inputFocus(this)"
                 onblur="decDirectBlur(this,${ai},'${section}','dplan',${di})"
+                onkeydown="decCellKeydown(event,this)"
                 oninput="decDirectInput(${ai},'${section}','dplan',${di},this.value)"></td>` +
               `<td class="cell-forecast"><input class="month-input" type="text" inputmode="numeric"
                 value="${vfc?fmt(vfc):''}" placeholder="0" style="color:#7a6000"
                 onfocus="inputFocus(this)"
                 onblur="decDirectBlur(this,${ai},'${section}','dforecast',${di})"
+                onkeydown="decCellKeydown(event,this)"
                 oninput="decDirectInput(${ai},'${section}','dforecast',${di},this.value)"></td>` +
               `<td class="cell-dfact cell-fact"><input class="month-input" type="text" inputmode="numeric"
                 value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
                 onfocus="inputFocus(this)"
                 onblur="decDirectBlur(this,${ai},'${section}','dfact',${di})"
+                onkeydown="decCellKeydown(event,this)"
                 oninput="decDirectInput(${ai},'${section}','dfact',${di},this.value)"></td>`;
             }).join('');
           } else {
@@ -2909,16 +2916,19 @@ function renderBudget() {
                       value="${vp?fmt(vp):''}" placeholder="0"
                       onfocus="inputFocus(this)"
                       onblur="decSublineBlur(this,${ai},'${section}',${li},'dplan',${di})"
+                      onkeydown="decCellKeydown(event,this)"
                       oninput="decSublineInput(${ai},'${section}',${li},'dplan',${di},this.value)"></td>` +
                     `<td class="cell-forecast"><input class="month-input" type="text" inputmode="numeric"
                       value="${vfc?fmt(vfc):''}" placeholder="0" style="color:#7a6000"
                       onfocus="inputFocus(this)"
                       onblur="decSublineBlur(this,${ai},'${section}',${li},'dforecast',${di})"
+                      onkeydown="decCellKeydown(event,this)"
                       oninput="decSublineInput(${ai},'${section}',${li},'dforecast',${di},this.value)"></td>` +
                     `<td class="cell-dfact cell-fact"><input class="month-input" type="text" inputmode="numeric"
                       value="${vf?fmt(vf):''}" placeholder="0" style="color:${colorP}"
                       onfocus="inputFocus(this)"
                       onblur="decSublineBlur(this,${ai},'${section}',${li},'dfact',${di})"
+                      onkeydown="decCellKeydown(event,this)"
                       oninput="decSublineInput(${ai},'${section}',${li},'dfact',${di},this.value)"></td>`;
                 }).join('');
               } else {
@@ -3456,6 +3466,16 @@ function sublineKeydown(event, el, ai, section, li, field, mi) {
   }
 }
 
+/* Enter в декадной ячейке: фиксируем значение (сработает onblur) и переходим к следующей */
+function decCellKeydown(event, el) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const allInputs = Array.from(document.querySelectorAll('.month-input'));
+    const idx = allInputs.indexOf(el);
+    if (idx >= 0 && idx + 1 < allInputs.length) allInputs[idx + 1].focus();
+    else el.blur();
+  }
+}
 /* Decade direct input handlers */
 function decDirectInput(ai, section, field, di, val) {
   const art = getBudget().articles[ai];
