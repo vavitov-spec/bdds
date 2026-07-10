@@ -1,0 +1,9 @@
+# Служебные файлы — только на сервере, на GitHub не отправляются
+.DS_Store
+.server.log
+CLAUDE.md
+README-синхронизация.md
+обновить.sh
+отправить.sh
+.claude/
+.vscode/

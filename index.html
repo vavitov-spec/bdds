@@ -3585,6 +3585,8 @@ function deleteSubline(ai, section, li) {
     }
     return;
   }
+  const rowName = (art[key][li] && art[key][li].name) ? art[key][li].name : 'подстроку';
+  if (!confirm('Удалить строку «' + rowName + '»? Данные этой строки будут потеряны.')) return;
   art[key].splice(li, 1);
   saveData();
   renderBudget();
