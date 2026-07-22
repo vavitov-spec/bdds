@@ -200,16 +200,29 @@ tr.dragging-article td{opacity:0.35}
 .proj-drag-handle:active{cursor:grabbing}
 .delete-subline-btn{font-size:10px;padding:1px 5px;cursor:pointer;border-radius:4px;background:none;border:none;color:#ccc;font-family:inherit}
 .delete-subline-btn:hover{color:#c0392b;background:#fdf0f0}
+.hashtag-btn{font-size:10px;padding:1px 5px;cursor:pointer;border-radius:4px;background:none;border:none;color:#ccc;font-family:inherit}
+.hashtag-btn:hover{color:#1a5fa3;background:#eaf4ff}
+.hashtag-btn.has-keywords{color:#1a6fa3;opacity:1 !important;pointer-events:auto !important}
 /* Крестики удаления в таблице бюджета — видны только при наведении/фокусе на название */
 #main-table td.sticky-name .delete-btn,
 #main-table td.sticky-name .add-subline-btn,
-#main-table td.sticky-name .delete-subline-btn{opacity:0;transition:opacity .12s;pointer-events:none}
+#main-table td.sticky-name .delete-subline-btn,
+#main-table td.sticky-name .hashtag-btn{opacity:0;transition:opacity .12s;pointer-events:none}
 #main-table td.sticky-name:hover .delete-btn,
 #main-table td.sticky-name:hover .add-subline-btn,
 #main-table td.sticky-name:hover .delete-subline-btn,
+#main-table td.sticky-name:hover .hashtag-btn,
 #main-table td.sticky-name:focus-within .delete-btn,
 #main-table td.sticky-name:focus-within .add-subline-btn,
-#main-table td.sticky-name:focus-within .delete-subline-btn{opacity:1;pointer-events:auto}
+#main-table td.sticky-name:focus-within .delete-subline-btn,
+#main-table td.sticky-name:focus-within .hashtag-btn{opacity:1;pointer-events:auto}
+#keywords-popover{position:fixed;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.15);padding:10px;z-index:300;width:260px}
+#keywords-popover.hidden{display:none}
+#keywords-popover textarea{width:100%;box-sizing:border-box;font-size:12px;font-family:inherit;border:1px solid #e0e0d8;border-radius:6px;padding:6px;resize:vertical;min-height:50px}
+#keywords-popover .kw-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+#keywords-popover .kw-hint{font-size:10px;color:#999}
+#keywords-popover .kw-save{font-size:12px;padding:4px 10px;border:none;border-radius:6px;background:#1a1a18;color:#fff;cursor:pointer}
+#keywords-popover .kw-save:hover{background:#333}
 .collapse-art-btn{font-size:11px;padding:1px 6px;cursor:pointer;border-radius:4px;background:none;border:1px solid #d0d0c8;color:#888;font-family:inherit;margin-left:6px;line-height:1.4;transition:all .15s}
 .collapse-art-btn:hover{border-color:#999;color:#333;background:#f0f0ec}
 .vat-toggle-btn{float:right;margin-left:0;font-size:8px;padding:1px 3px;border-radius:3px;line-height:1.4}
@@ -836,7 +849,23 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
     </div>
 
     <div class="page" id="page-payments">
-      <div class="empty-state"><div class="big">💳</div><p>Платежи — раздел в разработке</p></div>
+      <div class="section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <label for="payments-file-input" style="font-size:12px;padding:4px 12px;background:#eef4ff;border:1px solid #9ec3e8;border-radius:7px;color:#1a4d8f;cursor:pointer;font-family:inherit" title="Импортировать банковскую выписку (1С-обмен)">📄 Загрузить выписку</label>
+          <input type="file" id="payments-file-input" accept=".txt" onchange="handlePaymentsFileChange(event)" style="display:none">
+          <span id="payments-file-error" style="color:#a33020;font-size:13px"></span>
+        </div>
+        <div id="payments-summary" style="font-size:13px;color:#666;margin-bottom:10px"></div>
+        <div class="table-wrap">
+          <table id="payments-table" style="width:100%;font-size:12px;border-collapse:collapse">
+            <thead><tr style="background:#f5f5f3">
+              <th style="padding:6px">Дата</th><th>Сумма</th><th>Напр.</th>
+              <th>Назначение платежа</th><th>Проект</th><th>Статья</th><th>Декада</th><th></th>
+            </tr></thead>
+            <tbody id="payments-table-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -928,6 +957,15 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <button class="btn-cancel" onclick="closeKpVerModal()">Отмена</button>
       <button class="btn-create" onclick="confirmKpToProject()">Создать проект</button>
     </div>
+  </div>
+</div>
+
+<!-- KEYWORDS POPOVER (авто-сопоставление платежей подстроке) -->
+<div id="keywords-popover" class="hidden" onclick="event.stopPropagation()">
+  <textarea id="keywords-popover-input" placeholder="ООО Ромашка, договор 12, 7712345678"></textarea>
+  <div class="kw-footer">
+    <span class="kw-hint">через запятую</span>
+    <button class="kw-save" onclick="saveKeywordsPopover()">Сохранить</button>
   </div>
 </div>
 
@@ -1044,12 +1082,14 @@ function initFirebase() {
       function apply(d) {
         if (!d || !Array.isArray(d.projects) || d.projects.length === 0) {
           // Нет данных для этого пользователя — сбрасываем память в чистое состояние
-          projects = []; budgets = {}; currentProject = 0;
+          projects = []; budgets = {}; currentProject = 0; bankOps = []; matchRules = [];
           return false;
         }
         projects       = d.projects;
         budgets        = d.budgets || {};
         currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
+        bankOps        = d.bankOps || [];
+        matchRules     = d.matchRules || [];
         window.assignProjectIds();
         window.migrateBudgetsToIds();
         window.migrateData();
@@ -1145,7 +1185,7 @@ function initFirebase() {
   }
 
   window.persistDataNow = function() {
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, bankOps: bankOps, matchRules: matchRules, updatedAt: Date.now() };
     // Всегда пишем в localStorage немедленно как резервная копия
     try { localStorage.setItem(_lsKey(), JSON.stringify(payload)); } catch(e) {}
     if (!window.firebaseUid) return;
@@ -1161,7 +1201,7 @@ function initFirebase() {
   };
   window.saveData = function() {
     // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
-    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, updatedAt: Date.now() };
+    var payload = { projects: projects, budgets: budgets, currentProject: currentProject, bankOps: bankOps, matchRules: matchRules, updatedAt: Date.now() };
     try {
       var s = JSON.stringify(payload);
       localStorage.setItem(_lsKey(), s);
@@ -1221,6 +1261,7 @@ function initFirebase() {
         // Строки (lines): расширяем декадные массивы и мигрируем месячные
         (a.inLines || []).forEach(function(l) {
           if (l.vat === undefined || l.vat === null) l.vat = 22; // НДС по умолчанию
+          if (!Array.isArray(l.keywords)) l.keywords = [];
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
@@ -1230,6 +1271,7 @@ function initFirebase() {
         });
         (a.outLines || []).forEach(function(l) {
           if (l.vat === undefined || l.vat === null) l.vat = 22; // НДС по умолчанию
+          if (!Array.isArray(l.keywords)) l.keywords = [];
           l.dplan     = ensureDec(l.dplan);
           l.dforecast = ensureDec(l.dforecast);
           l.dfact     = ensureDec(l.dfact);
@@ -1282,6 +1324,7 @@ function newLine(name) {
   return {
     name: name || '',
     vat: 22, // ставка НДС по умолчанию, %
+    keywords: [], // ключевые слова для авто-сопоставления банковских платежей (название компании, номер договора, ИНН и т.п.)
     dplan: Array(DEC_COUNT).fill(0), dforecast: Array(DEC_COUNT).fill(0), dfact: Array(DEC_COUNT).fill(0)
   };
 }
@@ -1340,6 +1383,8 @@ function sectionSumEff(art, section, field) {
 }
 
 let projects = [], budgets = {}, currentProject = 0;
+let bankOps = [];      // накопительный журнал операций из банковских выписок (across all projects)
+let matchRules = [];   // глобальные правила авто-сопоставления: назначение платежа → проект+статья
 window.demoMode = false; // true — работа без облака, изменения только в localStorage
 
 // Заглушки — Firebase перезапишет после инициализации
@@ -2471,6 +2516,7 @@ function showPage(name) {
   } else if (name === 'payments') {
     document.getElementById('page-payments').classList.add('active');
     document.getElementById('nav-payments').classList.add('active');
+    renderPaymentsPage();
   } else if (name === 'kp') {
     // Сбрасываем на «Версия 1» только при первом входе в КП-режим
     if (!kpMode) {
@@ -3074,6 +3120,7 @@ function renderBudget() {
             html += `<tr class="${subRowCls}" data-art-child="${ai}">
               <td class="left sticky-name subline-label">
                 <input class="subline-name-input" value="${esc(line.name)}" placeholder="Название..." onchange="renameSubline(${ai},'${section}',${li},this.value)">
+                <button class="hashtag-btn${(line.keywords&&line.keywords.length)?' has-keywords':''}" onclick="toggleKeywordsPopover(event,${ai},'${section}',${li})" title="Ключевые слова для авто-сопоставления платежей">#</button>
                 <button class="delete-subline-btn" onclick="deleteSubline(${ai},'${section}',${li})" title="Удалить">✕</button>
                 <select class="subline-vat" title="Ставка НДС" onchange="setSublineVat(${ai},'${section}',${li},this.value)">
                   <option value="22"${sublineVat(line)===22?' selected':''}>НДС 22%</option>
@@ -3661,6 +3708,429 @@ function updateAggregateCell(ai, section, field, di, changedLine) {
   if (el) el.textContent = vp ? fmt(vp) : '—';
 }
 
+/* ---------------------------------------------------------------------
+   ИМПОРТ БАНКОВСКОЙ ВЫПИСКИ (формат 1С-обмен, 1CClientBankExchange)
+--------------------------------------------------------------------- */
+
+function readBankFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('не удалось прочитать файл'));
+    reader.onload = () => {
+      try { resolve(decodeBankBytes(new Uint8Array(reader.result))); }
+      catch (e) { reject(e); }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function decodeBankBytes(bytes) {
+  if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+    return new TextDecoder('utf-8').decode(bytes); // BOM — точно UTF-8
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (e) {
+    return new TextDecoder('windows-1251').decode(bytes); // родная кодировка 1С-обмена
+  }
+}
+
+function parseBankDate(s) {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(s || '').trim());
+  if (!m) return null;
+  const d = new Date(+m[3], +m[2] - 1, +m[1]);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function parseBankNumber(s) {
+  const v = parseFloat(String(s || '').trim().replace(',', '.'));
+  return isFinite(v) ? v : null;
+}
+
+/* Разбор построчного формата "Ключ=Значение" с секциями СекцияДокумент..КонецДокумента */
+function parseClientBankExchange(text) {
+  const lines = text.split(/\r\n|\r|\n/);
+  let ownAccount = null;
+  let inDoc = false;
+  let cur = null;
+  const transactions = [];
+  const warnings = [];
+
+  function flushDoc() {
+    if (!cur) return;
+    const amount = parseBankNumber(cur['Сумма']);
+    const date = parseBankDate(cur['Дата']);
+    if (amount == null || date == null) {
+      warnings.push('Пропущен документ №' + (cur['Номер'] || '?') + ' — нет даты или суммы');
+      cur = null;
+      return;
+    }
+    // Направление определяем сравнением счетов плательщика/получателя с нашим расчётным счётом
+    let direction = null, counterpartyName = '';
+    if (ownAccount && cur['ПолучательСчет'] === ownAccount) {
+      direction = 'in';
+      counterpartyName = cur['Плательщик1'] || cur['Плательщик'] || '';
+    } else if (ownAccount && cur['ПлательщикСчет'] === ownAccount) {
+      direction = 'out';
+      counterpartyName = cur['Получатель1'] || cur['Получатель'] || '';
+    }
+    transactions.push({
+      date, amount: Math.abs(amount), direction,
+      purpose: (cur['НазначениеПлатежа'] || '').trim(),
+      counterpartyName,
+      docNumber: cur['Номер'] || null
+    });
+    cur = null;
+  }
+
+  lines.forEach(raw => {
+    const line = raw.trim();
+    if (!line) return;
+    const eq = line.indexOf('=');
+    if (eq < 0) {
+      if (line === 'КонецДокумента') { flushDoc(); inDoc = false; }
+      return; // прочие маркеры без "=" (СекцияРасчСчет, КонецРасчСчет, КонецВыписки, заголовок файла)
+    }
+    const key = line.slice(0, eq).trim();
+    const val = line.slice(eq + 1).trim();
+    if (key === 'СекцияДокумент') { inDoc = true; cur = {}; return; }
+    if (key === 'РасчСчет' && !inDoc) { ownAccount = val; return; }
+    if (inDoc && cur) cur[key] = val;
+  });
+
+  return { ownAccount, transactions, warnings };
+}
+
+/* Индекс декады (0..179) для календарной даты в рамках периода проекта, или null вне периода */
+function decadeIndexForDate(project, date) {
+  if (!project || !project.start || !project.end) return null;
+  const mi = (date.getFullYear() - project.start.y) * 12 + (date.getMonth() - project.start.m);
+  if (mi < 0 || mi >= MONTHS_COUNT) return null;
+  const endMi = (project.end.y - project.start.y) * 12 + (project.end.m - project.start.m);
+  if (mi > endMi) return null;
+  const day = date.getDate();
+  const d = day <= 10 ? 0 : day <= 20 ? 1 : 2;
+  return mi * 3 + d;
+}
+
+function normalizePurpose(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[^a-zа-я0-9]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/* Сопоставление операции проекту+статье: сначала сохранённые правила (обучение на ручных правках
+   в журнале «Платежи»), затем — вхождение имени проекта/статьи в назначение платежа */
+function matchProjectAndArticle(tx) {
+  const norm = normalizePurpose(tx.purpose);
+  const normFull = normalizePurpose([tx.purpose, tx.counterpartyName, tx.docNumber].filter(Boolean).join(' '));
+  const empty = { projectId: null, articleIndex: null, articleName: null, li: null, lineName: null };
+  if (!norm && !normFull) return empty;
+
+  // 1) Сохранённые правила — учатся на ручных правках в «Платежах» (полное назначение платежа)
+  const rules = matchRules
+    .filter(r => tx.direction == null || r.direction === tx.direction)
+    .filter(r => norm.includes(r.pattern))
+    .sort((a, b) => b.pattern.length - a.pattern.length);
+  if (rules.length) {
+    const r = rules[0];
+    let project = projects.find(p => p.id === r.projectId);
+    if (!project) project = projects.find(p => p.name === r.projectName);
+    if (project) {
+      const budget = getBudgetFor(projects.indexOf(project));
+      const idx = budget.articles.findIndex(a => a.name === r.articleName);
+      return { projectId: project.id, articleIndex: idx >= 0 ? idx : null, articleName: idx >= 0 ? r.articleName : null, li: null, lineName: null };
+    }
+  }
+
+  // 2) Ключевые слова подстрок (название компании, номер договора, ИНН и т.п.) — заданы вручную заранее
+  let bestKw = null, bestKwLen = 0;
+  projects.forEach(p => {
+    const budget = getBudgetFor(projects.indexOf(p));
+    budget.articles.forEach((a, ai) => {
+      ['in', 'out'].forEach(section => {
+        if (tx.direction && section !== tx.direction) return;
+        (a[section + 'Lines'] || []).forEach((line, li) => {
+          (line.keywords || []).forEach(kw => {
+            const nk = normalizePurpose(kw);
+            if (nk.length < 2) return;
+            if (normFull.includes(nk) && nk.length > bestKwLen) {
+              bestKw = { projectId: p.id, articleIndex: ai, articleName: a.name, li, lineName: line.name };
+              bestKwLen = nk.length;
+            }
+          });
+        });
+      });
+    });
+  });
+  if (bestKw) return bestKw;
+
+  // 3) Фолбэк — совпадение имени проекта, затем имени статьи внутри него
+  let bestProject = null, bestLen = 0;
+  projects.forEach(p => {
+    const pn = normalizePurpose(p.name);
+    if (pn.length < 3) return;
+    if (norm.includes(pn) && pn.length > bestLen) { bestProject = p; bestLen = pn.length; }
+  });
+  if (!bestProject) return empty;
+
+  const budget = getBudgetFor(projects.indexOf(bestProject));
+  let bestArt = null, bestArtLen = 0;
+  budget.articles.forEach((a, i) => {
+    if (tx.direction === 'in' && a.inDeleted) return;
+    const an = normalizePurpose(a.name);
+    if (an.length < 3) return; // короткие имена — риск ложных совпадений
+    if (norm.includes(an) && an.length > bestArtLen) { bestArt = i; bestArtLen = an.length; }
+  });
+  return {
+    projectId: bestProject.id,
+    articleIndex: bestArt,
+    articleName: bestArt != null ? budget.articles[bestArt].name : null,
+    li: null, lineName: null
+  };
+}
+
+/* Ключ операции для дедупликации при повторной/пересекающейся загрузке выписки */
+function bankOpKey(op) {
+  return [op.y, op.m, op.d, op.amount, op.direction, op.docNumber || '', normalizePurpose(op.purpose)].join('|');
+}
+
+/* Куда именно (проект/раздел/статья/подстрока/декада) сейчас должна писаться операция */
+function computeOpTarget(op) {
+  if (op.projectId == null || op.articleIndex == null || !op.direction || op.di == null) return null;
+  const budget = budgets[op.projectId];
+  const art = budget && budget.articles[op.articleIndex];
+  if (!art) return null;
+  const lines = art[op.direction + 'Lines'] || [];
+  const hasLines = art[op.direction + 'Direct'] === false && lines.length > 0;
+  if (!hasLines) return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li: null, di: op.di };
+  // Резолвим конкретную подстроку по имени (устойчиво к перестановкам/переименованиям), иначе — первая
+  let li = 0;
+  if (op.lineName) {
+    const idx = lines.findIndex(l => l.name === op.lineName);
+    if (idx >= 0) li = idx;
+  }
+  return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li, di: op.di };
+}
+function targetKey(t) {
+  return t ? [t.projectId, t.section, t.articleIndex, t.li == null ? 'd' : t.li, t.di].join('|') : null;
+}
+
+/* Пересчитывает одну декадную ячейку факта как сумму всех bankOps, которые сейчас на неё указывают */
+function recomputeTarget(target) {
+  if (!target) return;
+  const budget = budgets[target.projectId];
+  const art = budget && budget.articles[target.articleIndex];
+  if (!art) return;
+  const sum = bankOps.reduce((s, o) => targetKey(computeOpTarget(o)) === targetKey(target) ? s + o.amount : s, 0);
+  if (target.li == null) {
+    art[target.section + 'Dfact'] = ensureDec(art[target.section + 'Dfact']);
+    art[target.section + 'Dfact'][target.di] = sum;
+  } else {
+    const line = art[target.section + 'Lines'][target.li];
+    line.dfact = ensureDec(line.dfact);
+    line.dfact[target.di] = sum;
+  }
+}
+
+/* Вызывать вокруг любой правки одной операции: oldTarget — снимок цели ДО правки полей op.* */
+function applyOpWrite(op, oldTarget) {
+  const newTarget = computeOpTarget(op);
+  if (targetKey(oldTarget) !== targetKey(newTarget)) recomputeTarget(oldTarget);
+  recomputeTarget(newTarget);
+}
+
+/* ---- Вкладка «Платежи»: накопительный журнал банковских операций ---- */
+
+async function handlePaymentsFileChange(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const err = document.getElementById('payments-file-error');
+  if (err) err.textContent = '';
+  try {
+    const text = await readBankFile(file);
+    const parsed = parseClientBankExchange(text);
+    if (!parsed.transactions.length) {
+      if (err) err.textContent = 'В файле не найдено ни одной операции.';
+      event.target.value = '';
+      return;
+    }
+    const existingKeys = new Set(bankOps.map(bankOpKey));
+    let added = 0, duplicates = 0, unresolved = 0;
+    parsed.transactions.forEach(tx => {
+      const op = {
+        id: genId(),
+        y: tx.date.getFullYear(), m: tx.date.getMonth(), d: tx.date.getDate(),
+        amount: tx.amount, direction: tx.direction,
+        purpose: tx.purpose, counterpartyName: tx.counterpartyName, docNumber: tx.docNumber,
+        projectId: null, articleIndex: null, articleName: null, li: null, lineName: null, di: null,
+        manuallyEdited: false
+      };
+      if (existingKeys.has(bankOpKey(op))) { duplicates++; return; }
+      existingKeys.add(bankOpKey(op));
+      const match = matchProjectAndArticle(tx);
+      op.projectId = match.projectId;
+      op.articleIndex = match.articleIndex;
+      op.articleName = match.articleName;
+      op.li = match.li;
+      op.lineName = match.lineName;
+      if (op.projectId) {
+        const project = projects.find(p => p.id === op.projectId);
+        op.di = decadeIndexForDate(project, new Date(op.y, op.m, op.d));
+      }
+      if (!op.projectId || op.articleIndex == null) unresolved++;
+      bankOps.push(op);
+      applyOpWrite(op, null);
+      added++;
+    });
+    event.target.value = '';
+    saveData();
+    renderPaymentsPage();
+    renderBudget();
+    renderTotals();
+    showToast(`Загружено новых операций: ${added}. Дублей пропущено: ${duplicates}. Требуют разметки: ${unresolved}.`);
+  } catch (e) {
+    if (err) err.textContent = 'Не удалось разобрать файл: ' + e.message;
+    event.target.value = '';
+  }
+}
+
+function paymentsProjectOptionsHtml(selectedId) {
+  let html = '<option value="">— не определён —</option>';
+  projects.forEach(p => {
+    html += `<option value="${p.id}"${p.id === selectedId ? ' selected' : ''}>${esc(p.name)}</option>`;
+  });
+  return html;
+}
+
+function paymentsArticleOptionsHtml(op) {
+  if (!op.projectId) return '<option value="">—</option>';
+  const budget = budgets[op.projectId];
+  if (!budget) return '<option value="">—</option>';
+  let html = '<option value="">— не выбрано —</option>';
+  budget.articles.forEach((a, i) => {
+    if (op.direction === 'in' && a.inDeleted) return;
+    html += `<option value="${i}"${i === op.articleIndex ? ' selected' : ''}>${esc(a.name)}</option>`;
+  });
+  return html;
+}
+
+function renderPaymentsPage() {
+  const body = document.getElementById('payments-table-body');
+  if (!body) return;
+  const sorted = bankOps.slice().sort((a, b) => (b.y - a.y) || (b.m - a.m) || (b.d - a.d));
+
+  const total = bankOps.length;
+  const unresolved = bankOps.filter(o => !o.projectId || o.articleIndex == null).length;
+  const summary = document.getElementById('payments-summary');
+  if (summary) summary.textContent = total
+    ? `Всего операций в журнале: ${total}. Требуют разметки: ${unresolved}.`
+    : 'Журнал пуст — загрузите файл выписки (1С-обмен, .txt).';
+
+  body.innerHTML = sorted.map(op => {
+    const dateText = new Date(op.y, op.m, op.d).toLocaleDateString('ru-RU');
+    const dirOptions = `
+      <option value=""${!op.direction ? ' selected' : ''}>— выбрать —</option>
+      <option value="in"${op.direction === 'in' ? ' selected' : ''}>Поступление</option>
+      <option value="out"${op.direction === 'out' ? ' selected' : ''}>Выплата</option>`;
+    let decadeText;
+    if (!op.projectId) decadeText = '<span style="color:#a33020">нет проекта</span>';
+    else if (op.di == null) decadeText = '<span style="color:#a33020">вне периода</span>';
+    else decadeText = `мес ${Math.floor(op.di / 3) + 1}, дек ${op.di % 3 + 1}`;
+    const rowStyle = (!op.direction || !op.projectId || op.articleIndex == null || op.di == null) ? 'background:#fff8f6' : '';
+    return `<tr style="${rowStyle}">
+      <td style="padding:4px 6px;white-space:nowrap">${dateText}</td>
+      <td style="padding:4px 6px;text-align:right;white-space:nowrap">${fmt(op.amount)}</td>
+      <td style="padding:4px 6px"><select onchange="setPaymentOpDirection('${op.id}',this.value)">${dirOptions}</select></td>
+      <td style="padding:4px 6px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(op.purpose)}">${esc(op.purpose)}</td>
+      <td style="padding:4px 6px"><select onchange="setPaymentOpProject('${op.id}',this.value)">${paymentsProjectOptionsHtml(op.projectId)}</select></td>
+      <td style="padding:4px 6px"><select onchange="setPaymentOpArticle('${op.id}',this.value)" ${op.projectId ? '' : 'disabled'}>${paymentsArticleOptionsHtml(op)}</select></td>
+      <td style="padding:4px 6px;font-size:11px;white-space:nowrap">${decadeText}</td>
+      <td style="padding:4px 6px;text-align:center"><button onclick="deletePaymentOp('${op.id}')" title="Удалить операцию" style="border:none;background:none;color:#a33020;cursor:pointer;font-size:14px">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function setPaymentOpProject(id, val) {
+  const op = bankOps.find(o => o.id === id);
+  if (!op) return;
+  const oldTarget = computeOpTarget(op);
+  op.projectId = val || null;
+  op.articleIndex = null;
+  op.articleName = null;
+  op.li = null;
+  op.lineName = null;
+  if (op.projectId) {
+    const project = projects.find(p => p.id === op.projectId);
+    op.di = decadeIndexForDate(project, new Date(op.y, op.m, op.d));
+  } else {
+    op.di = null;
+  }
+  applyOpWrite(op, oldTarget);
+  saveData();
+  renderPaymentsPage();
+  renderBudget();
+  renderTotals();
+}
+
+function setPaymentOpArticle(id, val) {
+  const op = bankOps.find(o => o.id === id);
+  if (!op || !op.projectId) return;
+  const oldTarget = computeOpTarget(op);
+  const budget = budgets[op.projectId];
+  op.articleIndex = val === '' ? null : parseInt(val, 10);
+  op.articleName = (op.articleIndex != null && budget.articles[op.articleIndex]) ? budget.articles[op.articleIndex].name : null;
+  op.li = null; // ручной выбор статьи — на уровне статьи, без выбора конкретной подстроки
+  op.lineName = null;
+  if (op.articleIndex != null && op.direction) {
+    const project = projects.find(p => p.id === op.projectId);
+    const pattern = normalizePurpose(op.purpose);
+    if (pattern) {
+      const existing = matchRules.find(r => r.pattern === pattern && r.direction === op.direction);
+      if (existing) { existing.projectId = op.projectId; existing.projectName = project.name; existing.articleName = op.articleName; }
+      else matchRules.push({ pattern, direction: op.direction, projectId: op.projectId, projectName: project.name, articleName: op.articleName });
+    }
+  }
+  op.manuallyEdited = true;
+  applyOpWrite(op, oldTarget);
+  saveData();
+  renderPaymentsPage();
+  renderBudget();
+  renderTotals();
+}
+
+function setPaymentOpDirection(id, val) {
+  const op = bankOps.find(o => o.id === id);
+  if (!op) return;
+  const oldTarget = computeOpTarget(op);
+  op.direction = val || null;
+  op.articleIndex = null;
+  op.articleName = null;
+  op.li = null;
+  op.lineName = null;
+  applyOpWrite(op, oldTarget);
+  saveData();
+  renderPaymentsPage();
+  renderBudget();
+  renderTotals();
+}
+
+function deletePaymentOp(id) {
+  const idx = bankOps.findIndex(o => o.id === id);
+  if (idx < 0) return;
+  if (!confirm('Удалить операцию из журнала?')) return;
+  const oldTarget = computeOpTarget(bankOps[idx]);
+  bankOps.splice(idx, 1);
+  recomputeTarget(oldTarget);
+  saveData();
+  renderPaymentsPage();
+  renderBudget();
+  renderTotals();
+}
+
 /* Show toast warning */
 function showToast(msg) {
   const t = document.createElement('div');
@@ -3771,6 +4241,48 @@ function setSublineVat(ai, section, li, val) {
   line.vat = parseInt(val, 10) || 0;
   saveData();
   renderTotals(); // обновить итоговые строки НДС
+}
+
+/* Ключевые слова подстроки — для авто-сопоставления банковских платежей (см. matchProjectAndArticle) */
+let keywordsPopoverState = null;
+function toggleKeywordsPopover(event, ai, section, li) {
+  event.stopPropagation();
+  const rect = event.currentTarget.getBoundingClientRect(); // снимок до возможного renderBudget() ниже
+  const pop = document.getElementById('keywords-popover');
+  if (keywordsPopoverState && !pop.classList.contains('hidden')) {
+    const same = keywordsPopoverState.ai === ai && keywordsPopoverState.section === section && keywordsPopoverState.li === li;
+    saveKeywordsPopover();
+    closeKeywordsPopover();
+    if (same) return; // повторный клик по той же строке — просто закрыть
+  }
+  const line = getBudget().articles[ai][section+'Lines'][li];
+  if (!line) return;
+  keywordsPopoverState = { ai, section, li };
+  document.getElementById('keywords-popover-input').value = (line.keywords || []).join(', ');
+  pop.style.top = (rect.bottom + 4) + 'px';
+  pop.style.left = Math.max(4, rect.left) + 'px';
+  pop.classList.remove('hidden');
+  setTimeout(() => document.getElementById('keywords-popover-input').focus(), 30);
+  document.addEventListener('click', closeKeywordsPopoverOnOutsideClick);
+}
+function closeKeywordsPopover() {
+  document.getElementById('keywords-popover').classList.add('hidden');
+  document.removeEventListener('click', closeKeywordsPopoverOnOutsideClick);
+  keywordsPopoverState = null;
+}
+function closeKeywordsPopoverOnOutsideClick() {
+  saveKeywordsPopover();
+  closeKeywordsPopover();
+}
+function saveKeywordsPopover() {
+  if (!keywordsPopoverState) return;
+  const { ai, section, li } = keywordsPopoverState;
+  const line = getBudget().articles[ai] && getBudget().articles[ai][section+'Lines'][li];
+  if (!line) return;
+  const raw = document.getElementById('keywords-popover-input').value;
+  line.keywords = raw.split(',').map(s => s.trim()).filter(Boolean);
+  saveData();
+  renderBudget();
 }
 /* НДС статьи без подстрок (прямой ввод): хранится в art.inVat / art.outVat */
 function articleVat(art, section) {
@@ -4250,6 +4762,8 @@ function handleDemo() {
         projects = d.projects;
         budgets = d.budgets || {};
         currentProject = Math.max(0, Math.min(d.currentProject || 0, projects.length - 1));
+        bankOps = d.bankOps || [];
+        matchRules = d.matchRules || [];
         if (window.assignProjectIds)    window.assignProjectIds();
         if (window.migrateBudgetsToIds) window.migrateBudgetsToIds();
         if (window.migrateData)         window.migrateData();
@@ -4303,7 +4817,7 @@ function handleLogin() {
       hideLoginError();
       window.firebaseUid = window.auth.currentUser.uid;
       // Сбрасываем данные предыдущего пользователя из памяти и старый кэш
-      projects = []; budgets = {}; currentProject = 0;
+      projects = []; budgets = {}; currentProject = 0; bankOps = []; matchRules = [];
       try { localStorage.removeItem('bdds_cache'); } catch(e) {}
       _setLoginBusy(true, 'Загрузка данных…');
       return window.loadData().then(() => {
