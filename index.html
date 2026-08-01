@@ -861,7 +861,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
             <colgroup>
               <col style="width:76px">
               <col style="width:104px">
-              <col style="width:100px">
+              <col style="width:150px">
               <col>
               <col style="width:130px">
               <col style="width:120px">
@@ -869,7 +869,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
               <col style="width:28px">
             </colgroup>
             <thead><tr style="background:#f5f5f3">
-              <th style="padding:6px">Дата</th><th>Сумма</th><th>Напр.</th>
+              <th style="padding:6px">Дата</th><th>Сумма</th><th>Контрагент</th>
               <th>Назначение платежа</th><th>Проект</th><th>Статья</th><th>Подстатья</th><th></th>
             </tr></thead>
             <tbody id="payments-table-body"></tbody>
@@ -4060,16 +4060,17 @@ function renderPaymentsPage() {
 
   body.innerHTML = sorted.map(op => {
     const dateText = new Date(op.y, op.m, op.d).toLocaleDateString('ru-RU');
-    const dirOptions = `
-      <option value=""${!op.direction ? ' selected' : ''}>— выбрать —</option>
-      <option value="in"${op.direction === 'in' ? ' selected' : ''}>Поступление</option>
-      <option value="out"${op.direction === 'out' ? ' selected' : ''}>Выплата</option>`;
     const lines = paymentsArticleLines(op);
-    const rowStyle = (!op.direction || !op.projectId || op.articleIndex == null || op.di == null) ? 'background:#fff8f6' : '';
+    const incomplete = (!op.direction || !op.projectId || op.articleIndex == null || op.di == null);
+    const isIn = op.direction === 'in';
+    const rowStyle = (incomplete ? 'background:#fff8f6;' : '') + (isIn ? 'color:#0a6e4e' : '');
+    const arrow = op.direction === 'out' ? '▲' : op.direction === 'in' ? '▼' : '?';
     return `<tr style="${rowStyle}">
       <td style="padding:4px 6px;white-space:nowrap">${dateText}</td>
-      <td style="padding:4px 6px;text-align:right;white-space:nowrap">${fmt(op.amount)}</td>
-      <td style="padding:4px 6px"><select onchange="setPaymentOpDirection('${op.id}',this.value)">${dirOptions}</select></td>
+      <td style="padding:4px 6px;text-align:right;white-space:nowrap;cursor:pointer" onclick="togglePaymentOpDirection('${op.id}')" title="Нажмите, чтобы изменить направление: ▲ выплата / ▼ поступление">
+        <span style="display:inline-block;width:12px">${arrow}</span>${fmt(op.amount)}
+      </td>
+      <td style="padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(op.counterpartyName || '')}">${esc(op.counterpartyName || '—')}</td>
       <td style="padding:4px 6px;white-space:normal;word-break:break-word" title="${esc(op.purpose)}">${esc(op.purpose)}</td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpProject('${op.id}',this.value)">${paymentsProjectOptionsHtml(op.projectId)}</select></td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpArticle('${op.id}',this.value)" ${op.projectId ? '' : 'disabled'}>${paymentsArticleOptionsHtml(op)}</select></td>
@@ -4145,6 +4146,12 @@ function setPaymentOpLine(id, val) {
   renderTotals();
 }
 
+/* Клик по стрелке рядом с суммой — переключить направление платежа (▲ выплата ↔ ▼ поступление) */
+function togglePaymentOpDirection(id) {
+  const op = bankOps.find(o => o.id === id);
+  if (!op) return;
+  setPaymentOpDirection(id, op.direction === 'out' ? 'in' : 'out');
+}
 function setPaymentOpDirection(id, val) {
   const op = bankOps.find(o => o.id === id);
   if (!op) return;
