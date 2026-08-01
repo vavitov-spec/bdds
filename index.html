@@ -859,8 +859,8 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         <div class="table-wrap">
           <table id="payments-table" style="width:100%;font-size:12px;border-collapse:collapse">
             <thead><tr style="background:#f5f5f3">
-              <th style="padding:6px">Дата</th><th>Сумма</th><th>Напр.</th>
-              <th>Назначение платежа</th><th>Проект</th><th>Статья</th><th>Декада</th><th></th>
+              <th style="padding:6px;width:64px">Дата</th><th>Сумма</th><th>Напр.</th>
+              <th>Назначение платежа</th><th>Проект</th><th>Статья</th><th>Подстатья</th><th></th>
             </tr></thead>
             <tbody id="payments-table-body"></tbody>
           </table>
@@ -4018,6 +4018,24 @@ function paymentsArticleOptionsHtml(op) {
   return html;
 }
 
+/* Есть ли у текущей статьи операции подстроки (раскрыта на несколько строк) */
+function paymentsArticleLines(op) {
+  if (!op.projectId || op.articleIndex == null) return null;
+  const budget = budgets[op.projectId];
+  const art = budget && budget.articles[op.articleIndex];
+  if (!art) return null;
+  const hasLines = art[op.direction + 'Direct'] === false && (art[op.direction + 'Lines'] || []).length > 0;
+  return hasLines ? art[op.direction + 'Lines'] : null;
+}
+
+function paymentsLineOptionsHtml(op, lines) {
+  let html = '<option value="">(любая)</option>';
+  lines.forEach((line, li) => {
+    html += `<option value="${li}"${li === op.li ? ' selected' : ''}>${esc(line.name || ('Подстрока ' + (li + 1)))}</option>`;
+  });
+  return html;
+}
+
 function renderPaymentsPage() {
   const body = document.getElementById('payments-table-body');
   if (!body) return;
@@ -4036,19 +4054,16 @@ function renderPaymentsPage() {
       <option value=""${!op.direction ? ' selected' : ''}>— выбрать —</option>
       <option value="in"${op.direction === 'in' ? ' selected' : ''}>Поступление</option>
       <option value="out"${op.direction === 'out' ? ' selected' : ''}>Выплата</option>`;
-    let decadeText;
-    if (!op.projectId) decadeText = '<span style="color:#a33020">нет проекта</span>';
-    else if (op.di == null) decadeText = '<span style="color:#a33020">вне периода</span>';
-    else decadeText = `мес ${Math.floor(op.di / 3) + 1}, дек ${op.di % 3 + 1}`;
+    const lines = paymentsArticleLines(op);
     const rowStyle = (!op.direction || !op.projectId || op.articleIndex == null || op.di == null) ? 'background:#fff8f6' : '';
     return `<tr style="${rowStyle}">
-      <td style="padding:4px 6px;white-space:nowrap">${dateText}</td>
+      <td style="padding:4px 6px;white-space:nowrap;width:64px">${dateText}</td>
       <td style="padding:4px 6px;text-align:right;white-space:nowrap">${fmt(op.amount)}</td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpDirection('${op.id}',this.value)">${dirOptions}</select></td>
-      <td style="padding:4px 6px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(op.purpose)}">${esc(op.purpose)}</td>
+      <td style="padding:4px 6px;white-space:normal;word-break:break-word" title="${esc(op.purpose)}">${esc(op.purpose)}</td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpProject('${op.id}',this.value)">${paymentsProjectOptionsHtml(op.projectId)}</select></td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpArticle('${op.id}',this.value)" ${op.projectId ? '' : 'disabled'}>${paymentsArticleOptionsHtml(op)}</select></td>
-      <td style="padding:4px 6px;font-size:11px;white-space:nowrap">${decadeText}</td>
+      <td style="padding:4px 6px"><select onchange="setPaymentOpLine('${op.id}',this.value)" ${lines ? '' : 'disabled'}>${lines ? paymentsLineOptionsHtml(op, lines) : '<option value="">—</option>'}</select></td>
       <td style="padding:4px 6px;text-align:center"><button onclick="deletePaymentOp('${op.id}')" title="Удалить операцию" style="border:none;background:none;color:#a33020;cursor:pointer;font-size:14px">✕</button></td>
     </tr>`;
   }).join('');
@@ -4095,6 +4110,24 @@ function setPaymentOpArticle(id, val) {
     }
   }
   op.manuallyEdited = true;
+  applyOpWrite(op, oldTarget);
+  saveData();
+  renderPaymentsPage();
+  renderBudget();
+  renderTotals();
+}
+
+function setPaymentOpLine(id, val) {
+  const op = bankOps.find(o => o.id === id);
+  if (!op || !op.projectId || op.articleIndex == null) return;
+  const oldTarget = computeOpTarget(op);
+  const lines = paymentsArticleLines(op);
+  if (val === '' || !lines) { op.li = null; op.lineName = null; }
+  else {
+    const li = parseInt(val, 10);
+    op.li = li;
+    op.lineName = lines[li] ? lines[li].name : null;
+  }
   applyOpWrite(op, oldTarget);
   saveData();
   renderPaymentsPage();
