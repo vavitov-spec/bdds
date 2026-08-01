@@ -857,9 +857,19 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         </div>
         <div id="payments-summary" style="font-size:13px;color:#666;margin-bottom:10px"></div>
         <div class="table-wrap">
-          <table id="payments-table" style="width:100%;font-size:12px;border-collapse:collapse">
+          <table id="payments-table" style="width:100%;font-size:12px;border-collapse:collapse;table-layout:fixed">
+            <colgroup>
+              <col style="width:76px">
+              <col style="width:104px">
+              <col style="width:100px">
+              <col>
+              <col style="width:130px">
+              <col style="width:120px">
+              <col style="width:120px">
+              <col style="width:28px">
+            </colgroup>
             <thead><tr style="background:#f5f5f3">
-              <th style="padding:6px;width:64px">Дата</th><th>Сумма</th><th>Напр.</th>
+              <th style="padding:6px">Дата</th><th>Сумма</th><th>Напр.</th>
               <th>Назначение платежа</th><th>Проект</th><th>Статья</th><th>Подстатья</th><th></th>
             </tr></thead>
             <tbody id="payments-table-body"></tbody>
@@ -4057,14 +4067,14 @@ function renderPaymentsPage() {
     const lines = paymentsArticleLines(op);
     const rowStyle = (!op.direction || !op.projectId || op.articleIndex == null || op.di == null) ? 'background:#fff8f6' : '';
     return `<tr style="${rowStyle}">
-      <td style="padding:4px 6px;white-space:nowrap;width:64px">${dateText}</td>
+      <td style="padding:4px 6px;white-space:nowrap">${dateText}</td>
       <td style="padding:4px 6px;text-align:right;white-space:nowrap">${fmt(op.amount)}</td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpDirection('${op.id}',this.value)">${dirOptions}</select></td>
       <td style="padding:4px 6px;white-space:normal;word-break:break-word" title="${esc(op.purpose)}">${esc(op.purpose)}</td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpProject('${op.id}',this.value)">${paymentsProjectOptionsHtml(op.projectId)}</select></td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpArticle('${op.id}',this.value)" ${op.projectId ? '' : 'disabled'}>${paymentsArticleOptionsHtml(op)}</select></td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpLine('${op.id}',this.value)" ${lines ? '' : 'disabled'}>${lines ? paymentsLineOptionsHtml(op, lines) : '<option value="">—</option>'}</select></td>
-      <td style="padding:4px 6px;text-align:center"><button onclick="deletePaymentOp('${op.id}')" title="Удалить операцию" style="border:none;background:none;color:#a33020;cursor:pointer;font-size:14px">✕</button></td>
+      <td style="padding:4px 2px;text-align:center"><button onclick="deletePaymentOp('${op.id}')" title="Удалить операцию" style="border:none;background:none;color:#a33020;cursor:pointer;font-size:14px;padding:0">✕</button></td>
     </tr>`;
   }).join('');
 }
