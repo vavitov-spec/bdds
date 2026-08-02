@@ -4064,7 +4064,7 @@ function renderPaymentsPage() {
     const lines = paymentsArticleLines(op);
     const incomplete = (!op.direction || !op.projectId || op.articleIndex == null || op.di == null);
     const isIn = op.direction === 'in';
-    const rowStyle = (incomplete ? 'background:#fff8f6;' : '') + (isIn ? 'color:#0a6e4e' : '');
+    const rowStyle = (incomplete ? 'background:#fff8f6;' : '') + (isIn ? 'color:#089156' : '');
     const arrow = op.direction === 'out' ? '▲' : op.direction === 'in' ? '▼' : '?';
     return `<tr style="${rowStyle}">
       <td style="padding:4px 6px;white-space:nowrap">${dateText}</td>
