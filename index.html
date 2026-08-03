@@ -2878,13 +2878,17 @@ function renderBudget() {
   const colsPerMonth = viewDecade ? 3 * visPerDec : visPerDec;
 
   let row1 = '', row2 = '', row3 = '';
+  const _today = new Date();
+  const todayY = _today.getFullYear(), todayM = _today.getMonth();
+  const todayDecLocal = _today.getDate() <= 10 ? 0 : _today.getDate() <= 20 ? 1 : 2;
 
   months.forEach(({y, m}) => {
     const colspan = viewDecade ? visPerDec * 3 : visPerDec;
     if (viewDecade) {
       row1 += `<th class="month-group" colspan="${colspan}">${MONTH_NAMES[m]} <small style="font-weight:400;font-size:10px;color:#aaa">${y}</small></th>`;
-      DEC_LABELS.forEach(lbl => {
-        row2 += `<th class="decade-group" colspan="${visPerDec}" style="text-align:center">${lbl}</th>`;
+      DEC_LABELS.forEach((lbl, dIdx) => {
+        const isToday = (y === todayY && m === todayM && dIdx === todayDecLocal);
+        row2 += `<th class="decade-group"${isToday ? ' id="today-decade-th"' : ''} colspan="${visPerDec}" style="text-align:center">${lbl}</th>`;
       });
       row3 += ((viewPlan     ? `<th class="decade-sub-head month-plan-head">бдж</th>` : '') +
                (viewForecast ? `<th class="decade-sub-head month-forecast-head">пл</th>` : '') +
@@ -5306,10 +5310,32 @@ function toggleDashDecadeView(which) {
 }
 
 function toggleDecadeView(which) {
+  const switchingToDecade = (which === 'decade') && !viewDecade;
   viewDecade = (which === 'decade');
   document.getElementById('view-btn-month').classList.toggle('active', !viewDecade);
   document.getElementById('view-btn-decade').classList.toggle('active', viewDecade);
   renderBudget();
+  if (switchingToDecade) {
+    // Автопрокрутка к текущей декаде — только при переключении в декадный режим,
+    // чтобы не сбивать позицию просмотра при обычной перерисовке таблицы.
+    // scrollIntoView() тут не подходит: слева от декадных колонок «прилипшие»
+    // (position:sticky) колонки Статья/Итого — центрировать нужно относительно
+    // реально видимой области ПОСЛЕ них, а не всей ширины контейнера.
+    requestAnimationFrame(() => {
+      const el = document.getElementById('today-decade-th');
+      const wrap = document.querySelector('#page-project .table-wrap');
+      if (!el || !wrap) return;
+      const wrapRect = wrap.getBoundingClientRect();
+      let stickyRight = wrapRect.left;
+      wrap.querySelectorAll('#main-thead th[class*="sticky-"]').forEach(s => {
+        if (s.offsetParent !== null) stickyRight = Math.max(stickyRight, s.getBoundingClientRect().right);
+      });
+      const elRect = el.getBoundingClientRect();
+      const visibleWidth = wrapRect.right - stickyRight;
+      const desiredLeft = stickyRight + Math.max(0, (visibleWidth - elRect.width) / 2);
+      wrap.scrollLeft += (elRect.left - desiredLeft);
+    });
+  }
 }
 
 function toggleView(which) {
