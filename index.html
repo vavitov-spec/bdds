@@ -1298,6 +1298,10 @@ function initFirebase() {
         (a.outLines || []).forEach(function(l) { delete l.plan; delete l.forecast; delete l.fact; });
       });
     });
+    // Платежи, уже размеченные по проекту/статье, могли не попасть в факт,
+    // если на момент разметки дата попадала вне тогдашнего периода проекта
+    // (например, проект потом расширили на более ранние месяцы) — досчитываем.
+    if (typeof resyncAllOpTargets === 'function') resyncAllOpTargets();
   };
 
   // ── Стабильные ID проектов + перенос бюджетов на ключи-ID (вместо индексов) ──
@@ -3983,22 +3987,39 @@ function bankOpKey(op) {
   return [op.y, op.m, op.d, op.amount, op.direction, op.docNumber || '', normalizePurpose(op.purpose)].join('|');
 }
 
-/* Куда именно (проект/раздел/статья/подстрока/декада) сейчас должна писаться операция */
+/* Куда именно (проект/раздел/статья/подстрока/декада) сейчас должна писаться операция.
+   di считается заново от текущих дат проекта (а не берётся из кэша op.di) —
+   иначе после переноса даты начала проекта уже размеченные платежи молча
+   переставали попадать в факт. */
 function computeOpTarget(op) {
-  if (op.projectId == null || op.articleIndex == null || !op.direction || op.di == null) return null;
+  if (op.projectId == null || op.articleIndex == null || !op.direction) return null;
+  const project = projects.find(p => p.id === op.projectId);
+  const di = project ? decadeIndexForDate(project, new Date(op.y, op.m, op.d)) : null;
+  if (di == null) return null;
   const budget = budgets[op.projectId];
   const art = budget && budget.articles[op.articleIndex];
   if (!art) return null;
   const lines = art[op.direction + 'Lines'] || [];
   const hasLines = art[op.direction + 'Direct'] === false && lines.length > 0;
-  if (!hasLines) return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li: null, di: op.di };
+  if (!hasLines) return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li: null, di };
   // Резолвим конкретную подстроку по имени (устойчиво к перестановкам/переименованиям), иначе — первая
   let li = 0;
   if (op.lineName) {
     const idx = lines.findIndex(l => l.name === op.lineName);
     if (idx >= 0) li = idx;
   }
-  return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li, di: op.di };
+  return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li, di };
+}
+/* Полный пересчёт всех декадных ячеек факта от bankOps — вызывать после
+   изменения дат проекта или загрузки данных, т.к. попадание платежа в период
+   проекта зависит от текущих start/end и должно пересчитываться заново. */
+function resyncAllOpTargets() {
+  const targets = new Map();
+  bankOps.forEach(op => {
+    const t = computeOpTarget(op);
+    if (t) targets.set(targetKey(t), t);
+  });
+  targets.forEach(t => recomputeTarget(t));
 }
 function targetKey(t) {
   return t ? [t.projectId, t.section, t.articleIndex, t.li == null ? 'd' : t.li, t.di].join('|') : null;
@@ -4136,7 +4157,7 @@ function renderPaymentsPage() {
   body.innerHTML = sorted.map(op => {
     const dateText = new Date(op.y, op.m, op.d).toLocaleDateString('ru-RU');
     const lines = paymentsArticleLines(op);
-    const incomplete = (!op.direction || !op.projectId || op.articleIndex == null || op.di == null);
+    const incomplete = (!op.direction || !op.projectId || op.articleIndex == null || computeOpTarget(op) == null);
     const isIn = op.direction === 'in';
     const rowStyle = (incomplete ? 'background:#fff8f6;' : '') + (isIn ? 'color:#089156' : '');
     const arrow = op.direction === 'out' ? '▲' : op.direction === 'in' ? '▼' : '?';
@@ -4807,6 +4828,9 @@ function confirmProjectModal() {
     if (deltaMonths && proj.id && budgets[proj.id]) {
       shiftProjectMonths(budgets[proj.id], deltaMonths);
     }
+    // Даты периода изменились — платежи, размеченные по этому проекту, могли
+    // попасть в период или выпасть из него, пересчитываем факт из bankOps.
+    resyncAllOpTargets();
     closeModal();
     saveData();
     renderSidebarProjects();
