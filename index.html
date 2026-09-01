@@ -835,6 +835,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           </div>
           <button id="kp-to-project-btn" onclick="kpToProject()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit">→ Создать проект</button>
           <button id="kp-v1-to-v2-btn" onclick="kpV1toV2()" style="display:none;font-size:12px;padding:4px 12px;background:#eaf4ff;border:1px solid #7ab8e8;border-radius:7px;color:#1a5fa3;cursor:pointer;font-family:inherit" title="Скопировать данные Версии 1 в Версию 2">В1 → В2</button>
+          <button id="fact-to-plan-btn" onclick="factToPlan()" style="display:none;font-size:12px;padding:4px 12px;background:#e8f5ee;border:1px solid #9dd4b8;border-radius:7px;color:#0a6e4e;cursor:pointer;font-family:inherit" title="Скопировать Факт в План за прошлые месяцы (текущий и будущие месяцы не меняются)">Факт → План</button>
           <button id="plan-to-budget-btn" onclick="planToBudget()" style="display:none;font-size:12px;padding:4px 12px;background:#fff8e8;border:1px solid #e8c96e;border-radius:7px;color:#7a5500;cursor:pointer;font-family:inherit" title="Скопировать данные Плана в Бюджет">План → Бюджет</button>
         </div>
         <div id="budget-lock-banner" class="budget-lock-banner" style="display:none">🔒 Бюджет скрыт паролем. Нажмите 🙈 в шапке, чтобы показать.</div>
@@ -2804,6 +2805,7 @@ function applyKpModeUI() {
   show('kp-to-project-btn',  kpMode);
   show('kp-v1-to-v2-btn',    kpMode);
   show('plan-to-budget-btn', !kpMode);
+  show('fact-to-plan-btn',   !kpMode);
   show('project-edit-btn',   !kpMode);
   show('project-lock-btn',  !kpMode);
   if (kpMode) {
@@ -2880,6 +2882,35 @@ function kpV1toV2() {
     art.outDforecast     = ensureDec(art.outDplan).slice();
     (art.inLines  || []).forEach(l => { l.dforecast = ensureDec(l.dplan).slice(); });
     (art.outLines || []).forEach(l => { l.dforecast = ensureDec(l.dplan).slice(); });
+  });
+  saveData();
+  renderBudget();
+}
+
+// Копирует Факт в План только за месяцы до текущего (позиция месяца — в рамках
+// периода проекта); текущий и будущие месяцы не трогаем.
+function factToPlan() {
+  const p = projects[currentProject]; if (!p) return;
+  if (!confirm('Скопировать Факт в План за прошлые месяцы? Данные Плана за эти месяцы будут перезаписаны, текущий и будущие месяцы не изменятся.')) return;
+  const months = getProjectMonths();
+  const now = new Date();
+  const curKey = now.getFullYear() * 12 + now.getMonth();
+  let cutoffMi = months.findIndex(({y, m}) => y * 12 + m >= curKey);
+  if (cutoffMi === -1) cutoffMi = months.length; // весь период — в прошлом
+  const cutoffDi = cutoffMi * 3;
+  if (cutoffDi <= 0) { showToast('Нет прошлых месяцев для переноса'); return; }
+  const copyPast = (factArr, forecastArr) => {
+    const f  = ensureDec(factArr);
+    const pl = ensureDec(forecastArr).slice();
+    for (let i = 0; i < cutoffDi; i++) pl[i] = f[i] || 0;
+    return pl;
+  };
+  const b = getBudget();
+  b.articles.forEach(art => {
+    art.inDforecast  = copyPast(art.inDfact,  art.inDforecast);
+    art.outDforecast = copyPast(art.outDfact, art.outDforecast);
+    (art.inLines  || []).forEach(l => { l.dforecast = copyPast(l.dfact, l.dforecast); });
+    (art.outLines || []).forEach(l => { l.dforecast = copyPast(l.dfact, l.dforecast); });
   });
   saveData();
   renderBudget();
