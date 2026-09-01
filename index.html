@@ -857,6 +857,23 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           <button id="payments-unresolved-btn" onclick="togglePaymentsUnresolvedFilter()" style="font-size:12px;padding:4px 12px;background:#fff8f6;border:1px solid #e8a68e;border-radius:7px;color:#a33020;cursor:pointer;font-family:inherit" title="Показать только платежи без проекта/статьи или вне периода проекта">Нераспределённые платежи</button>
           <span id="payments-file-error" style="color:#a33020;font-size:13px"></span>
         </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <input type="text" id="pf-counterparty" placeholder="Контрагент…" oninput="updatePaymentsFilters()"
+            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:150px">
+          <input type="text" id="pf-keyword" placeholder="Ключевое слово в назначении…" oninput="updatePaymentsFilters()"
+            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:190px">
+          <span style="font-size:12px;color:#888">Сумма:</span>
+          <input type="number" id="pf-amount-min" placeholder="от" oninput="updatePaymentsFilters()"
+            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:90px">
+          <input type="number" id="pf-amount-max" placeholder="до" oninput="updatePaymentsFilters()"
+            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:90px">
+          <span style="font-size:12px;color:#888">Период:</span>
+          <input type="date" id="pf-date-from" oninput="updatePaymentsFilters()"
+            style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-family:inherit">
+          <input type="date" id="pf-date-to" oninput="updatePaymentsFilters()"
+            style="font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-family:inherit">
+          <button onclick="resetPaymentsFilters()" style="font-size:12px;padding:5px 10px;background:#f5f5f3;border:1px solid #ddd;border-radius:6px;color:#666;cursor:pointer;font-family:inherit">Сбросить фильтры</button>
+        </div>
         <div id="payments-summary" style="font-size:13px;color:#666;margin-bottom:10px"></div>
         <div class="table-wrap">
           <table id="payments-table" style="width:100%;font-size:12px;border-collapse:collapse;table-layout:fixed">
@@ -4216,16 +4233,54 @@ function togglePaymentsUnresolvedFilter() {
   renderPaymentsPage();
 }
 
+// Фильтры журнала платежей (контрагент/ключевое слово/сумма/период)
+let paymentsFilters = { counterparty: '', keyword: '', amountMin: null, amountMax: null, dateFrom: null, dateTo: null };
+function updatePaymentsFilters() {
+  const val  = id => (document.getElementById(id) || {}).value || '';
+  const num  = id => { const v = val(id); return v === '' ? null : parseFloat(v); };
+  paymentsFilters = {
+    counterparty: normalizePurpose(val('pf-counterparty')),
+    keyword:      normalizePurpose(val('pf-keyword')),
+    amountMin:    num('pf-amount-min'),
+    amountMax:    num('pf-amount-max'),
+    dateFrom:     val('pf-date-from') || null,
+    dateTo:       val('pf-date-to')   || null
+  };
+  renderPaymentsPage();
+}
+function resetPaymentsFilters() {
+  ['pf-counterparty','pf-keyword','pf-amount-min','pf-amount-max','pf-date-from','pf-date-to'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  paymentsFilters = { counterparty: '', keyword: '', amountMin: null, amountMax: null, dateFrom: null, dateTo: null };
+  renderPaymentsPage();
+}
+function opMatchesFilters(op) {
+  const f = paymentsFilters;
+  if (f.counterparty && !normalizePurpose(op.counterpartyName).includes(f.counterparty)) return false;
+  if (f.keyword && !normalizePurpose(op.purpose).includes(f.keyword)) return false;
+  if (f.amountMin != null && op.amount < f.amountMin) return false;
+  if (f.amountMax != null && op.amount > f.amountMax) return false;
+  const opDateStr = new Date(op.y, op.m, op.d).toISOString().slice(0, 10);
+  if (f.dateFrom && opDateStr < f.dateFrom) return false;
+  if (f.dateTo   && opDateStr > f.dateTo)   return false;
+  return true;
+}
+
 function renderPaymentsPage() {
   const body = document.getElementById('payments-table-body');
   if (!body) return;
   let sorted = bankOps.slice().sort((a, b) => (b.y - a.y) || (b.m - a.m) || (b.d - a.d));
+  sorted = sorted.filter(opMatchesFilters);
 
   const total = bankOps.length;
   const unresolved = bankOps.filter(isOpUnresolved).length;
+  const filtersActive = sorted.length !== total;
   const summary = document.getElementById('payments-summary');
   if (summary) summary.textContent = total
-    ? `Всего операций в журнале: ${total}. Требуют разметки: ${unresolved}.` + (paymentsShowUnresolvedOnly ? ' Показаны только нераспределённые.' : '')
+    ? `Всего операций в журнале: ${total}. Требуют разметки: ${unresolved}.`
+      + (paymentsShowUnresolvedOnly ? ' Показаны только нераспределённые.' : '')
+      + (filtersActive ? ` По фильтрам: ${sorted.length}.` : '')
     : 'Журнал пуст — загрузите файл выписки (1С-обмен, .txt).';
 
   const btn = document.getElementById('payments-unresolved-btn');
