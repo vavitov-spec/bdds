@@ -856,6 +856,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           <label for="payments-file-input" style="font-size:12px;padding:4px 12px;background:#eef4ff;border:1px solid #9ec3e8;border-radius:7px;color:#1a4d8f;cursor:pointer;font-family:inherit" title="Импортировать банковскую выписку (1С-обмен)">📄 Загрузить выписку</label>
           <input type="file" id="payments-file-input" accept=".txt" onchange="handlePaymentsFileChange(event)" style="display:none">
           <button id="payments-unresolved-btn" onclick="togglePaymentsUnresolvedFilter()" style="font-size:12px;padding:4px 12px;background:#fff8f6;border:1px solid #e8a68e;border-radius:7px;color:#a33020;cursor:pointer;font-family:inherit" title="Показать только платежи без проекта/статьи или вне периода проекта">Нераспределённые платежи</button>
+          <span id="payments-summary" style="font-size:12px;color:#666"></span>
           <span id="payments-file-error" style="color:#a33020;font-size:13px"></span>
           <button onclick="resetPaymentsFilters()" style="margin-left:auto;font-size:12px;padding:4px 12px;background:#f5f5f3;border:1px solid #ddd;border-radius:7px;color:#666;cursor:pointer;font-family:inherit">Сбросить фильтры</button>
         </div>
@@ -871,7 +872,6 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
           <input type="date" id="pf-date-to" oninput="updatePaymentsFilters()" title="Период по"
             style="font-size:12px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-family:inherit">
         </div>
-        <div id="payments-summary" style="font-size:13px;color:#666;margin-bottom:10px"></div>
         <div class="table-wrap">
           <table id="payments-table" style="width:100%;font-size:12px;border-collapse:collapse;table-layout:fixed">
             <colgroup>
