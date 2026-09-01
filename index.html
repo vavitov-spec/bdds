@@ -3982,6 +3982,36 @@ function matchProjectAndArticle(tx) {
   };
 }
 
+/* Автосопоставление (правила/ключевые слова/имя статьи) выполняется только при
+   загрузке файла выписки — при добавлении ключевого слова позже уже загруженные
+   операции сами не пересматриваются. Пересматриваем неразмеченные и те, что не
+   правились вручную (manuallyEdited), чтобы не затирать осознанный выбор пользователя. */
+function rematchUnresolvedOps() {
+  let matched = 0;
+  bankOps.forEach(op => {
+    if (op.manuallyEdited) return;
+    if (op.projectId != null && op.articleIndex != null) return;
+    const match = matchProjectAndArticle({
+      purpose: op.purpose, counterpartyName: op.counterpartyName,
+      docNumber: op.docNumber, direction: op.direction
+    });
+    if (!match.projectId) return;
+    const oldTarget = computeOpTarget(op);
+    op.projectId    = match.projectId;
+    op.articleIndex = match.articleIndex;
+    op.articleName  = match.articleName;
+    op.li           = match.li;
+    op.lineName     = match.lineName;
+    if (op.projectId) {
+      const project = projects.find(p => p.id === op.projectId);
+      op.di = decadeIndexForDate(project, new Date(op.y, op.m, op.d));
+    }
+    applyOpWrite(op, oldTarget);
+    matched++;
+  });
+  return matched;
+}
+
 /* Ключ операции для дедупликации при повторной/пересекающейся загрузке выписки */
 function bankOpKey(op) {
   return [op.y, op.m, op.d, op.amount, op.direction, op.docNumber || '', normalizePurpose(op.purpose)].join('|');
@@ -4426,8 +4456,11 @@ function saveKeywordsPopover() {
   if (!line) return;
   const raw = document.getElementById('keywords-popover-input').value;
   line.keywords = raw.split(',').map(s => s.trim()).filter(Boolean);
+  // Новое ключевое слово могло совпасть с уже загруженными, но не размеченными платежами
+  rematchUnresolvedOps();
   saveData();
   renderBudget();
+  renderPaymentsPage();
 }
 /* НДС статьи без подстрок (прямой ввод): хранится в art.inVat / art.outVat */
 function articleVat(art, section) {
