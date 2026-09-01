@@ -2582,6 +2582,62 @@ function _allMonths() {
   return Array.from({length: 12}, (_,m) => ({y, m}));
 }
 
+// При изменении даты начала проекта декадные массивы данных (индексируются
+// по позиции месяца в проекте, а не по календарной дате) нужно сдвинуть,
+// иначе значения "уедут" на другие месяцы. deltaMonths > 0 — старт сдвинут
+// раньше (месяц добавлен в начало), < 0 — старт сдвинут позже.
+function shiftProjectMonths(budget, deltaMonths) {
+  if (!budget || !deltaMonths) return;
+  const deltaDec = deltaMonths * 3;
+  const shiftDecArr = (arr) => {
+    const src = ensureDec(arr);
+    const out = Array(DEC_COUNT).fill(0);
+    for (let i = 0; i < src.length; i++) {
+      const ni = i + deltaDec;
+      if (ni >= 0 && ni < DEC_COUNT) out[ni] = src[i] || 0;
+    }
+    return out;
+  };
+  (budget.articles || []).forEach(a => {
+    ['inDplan','inDforecast','inDfact','outDplan','outDforecast','outDfact'].forEach(k => {
+      if (a[k]) a[k] = shiftDecArr(a[k]);
+    });
+    ['inLines','outLines'].forEach(key => {
+      (a[key] || []).forEach(l => {
+        ['dplan','dforecast','dfact'].forEach(f => {
+          if (l[f]) l[f] = shiftDecArr(l[f]);
+        });
+      });
+    });
+  });
+  // Заметки и формулы привязаны к ячейкам через ключ, кодирующий позиционный
+  // индекс месяца/декады (см. cellKey/onblur) — переносим их на новые ключи.
+  const remapStore = (store) => {
+    if (!store) return store;
+    const next = {};
+    Object.keys(store).forEach(key => {
+      const isDec = key.startsWith('decDirectBlur_') || key.startsWith('decSublineBlur_');
+      const isMon = key.startsWith('directBlur_') || key.startsWith('sublineBlur_');
+      if (!isDec && !isMon) { next[key] = store[key]; return; }
+      // cellKey оставляет завершающий "_" (мангленная закрывающая скобка),
+      // поэтому числовой индекс — предпоследний элемент, а не последний.
+      const parts = key.split('_');
+      const idxPos = parts[parts.length - 1] === '' ? parts.length - 2 : parts.length - 1;
+      const idx = parseInt(parts[idxPos], 10);
+      if (isNaN(idx)) { next[key] = store[key]; return; }
+      const delta = isDec ? deltaDec : deltaMonths;
+      const maxIdx = isDec ? DEC_COUNT : MONTHS_COUNT;
+      const newIdx = idx + delta;
+      if (newIdx < 0 || newIdx >= maxIdx) return; // сдвинуто за пределы проекта
+      parts[idxPos] = String(newIdx);
+      next[parts.join('_')] = store[key];
+    });
+    return next;
+  };
+  budget._notes    = remapStore(budget._notes);
+  budget._formulas = remapStore(budget._formulas);
+}
+
 /* ---- SHARED TOTALS COMPUTATION ---- */
 function computeGrandTotals(articles) {
   const months = getProjectMonths();
@@ -4722,7 +4778,13 @@ function confirmProjectModal() {
     end:   pickerState.end.month   != null ? {y:pickerState.end.year,   m:pickerState.end.month}   : null
   };
   if (modalMode === 'edit' && modalEditIndex !== null) {
-    Object.assign(projects[modalEditIndex], newData);
+    const proj = projects[modalEditIndex];
+    const oldStart = proj.start;
+    Object.assign(proj, newData);
+    if (oldStart && oldStart.m != null && newData.start && newData.start.m != null && proj.id && budgets[proj.id]) {
+      const deltaMonths = (oldStart.y * 12 + oldStart.m) - (newData.start.y * 12 + newData.start.m);
+      shiftProjectMonths(budgets[proj.id], deltaMonths);
+    }
     closeModal();
     saveData();
     renderSidebarProjects();
