@@ -2638,6 +2638,20 @@ function shiftProjectMonths(budget, deltaMonths) {
   budget._formulas = remapStore(budget._formulas);
 }
 
+// true, если сдвиг даты начала на deltaMonths (< 0 — старт стал позже, месяцы
+// в начале проекта выпадают из периода) безвозвратно удалит ненулевые данные.
+function projectMonthsWillLoseData(budget, deltaMonths) {
+  if (!budget || deltaMonths >= 0) return false;
+  const cutoff = -deltaMonths * 3; // позиции [0, cutoff) будут отброшены
+  const arrHasData = (arr) => Array.isArray(arr) && arr.slice(0, cutoff).some(v => v);
+  return (budget.articles || []).some(a =>
+    ['inDplan','inDforecast','inDfact','outDplan','outDforecast','outDfact'].some(k => arrHasData(a[k])) ||
+    ['inLines','outLines'].some(key => (a[key] || []).some(l =>
+      ['dplan','dforecast','dfact'].some(f => arrHasData(l[f]))
+    ))
+  );
+}
+
 /* ---- SHARED TOTALS COMPUTATION ---- */
 function computeGrandTotals(articles) {
   const months = getProjectMonths();
@@ -4780,9 +4794,17 @@ function confirmProjectModal() {
   if (modalMode === 'edit' && modalEditIndex !== null) {
     const proj = projects[modalEditIndex];
     const oldStart = proj.start;
+    let deltaMonths = 0;
+    if (oldStart && oldStart.m != null && newData.start && newData.start.m != null) {
+      deltaMonths = (oldStart.y * 12 + oldStart.m) - (newData.start.y * 12 + newData.start.m);
+      if (deltaMonths < 0 && proj.id && budgets[proj.id] &&
+          projectMonthsWillLoseData(budgets[proj.id], deltaMonths)) {
+        const ok = confirm('Новая дата начала позже прежней — данные за месяцы до неё будут удалены безвозвратно. Продолжить?');
+        if (!ok) return;
+      }
+    }
     Object.assign(proj, newData);
-    if (oldStart && oldStart.m != null && newData.start && newData.start.m != null && proj.id && budgets[proj.id]) {
-      const deltaMonths = (oldStart.y * 12 + oldStart.m) - (newData.start.y * 12 + newData.start.m);
+    if (deltaMonths && proj.id && budgets[proj.id]) {
       shiftProjectMonths(budgets[proj.id], deltaMonths);
     }
     closeModal();
