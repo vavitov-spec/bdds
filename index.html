@@ -4038,7 +4038,9 @@ function rematchUnresolvedOps() {
   let matched = 0;
   bankOps.forEach(op => {
     if (op.manuallyEdited) return;
-    if (op.projectId != null && op.articleIndex != null) return;
+    // Статья без выбранной подстатьи — тоже повод пересмотреть: ключевые слова
+    // задаются на подстатьях и могут уточнить разнесение.
+    if (op.projectId != null && op.articleIndex != null && !opNeedsLine(op)) return;
     const match = matchProjectAndArticle({
       purpose: op.purpose, counterpartyName: op.counterpartyName,
       docNumber: op.docNumber, direction: op.direction
@@ -4080,24 +4082,54 @@ function computeOpTarget(op) {
   const lines = art[op.direction + 'Lines'] || [];
   const hasLines = art[op.direction + 'Direct'] === false && lines.length > 0;
   if (!hasLines) return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li: null, di };
-  // Резолвим конкретную подстроку по имени (устойчиво к перестановкам/переименованиям), иначе — первая
-  let li = 0;
+  // У статьи есть подстатьи — выбор подстатьи обязателен. Раньше здесь стоял
+  // фолбэк li=0: платёж молча падал в первую подстатью и считался разнесённым.
+  const li = resolveOpLine(op, lines);
+  if (li == null) return null;
+  return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li, di };
+}
+/* У статьи операции есть подстатьи, но ни одна не выбрана */
+function opNeedsLine(op) {
+  const lines = paymentsArticleLines(op);
+  return !!lines && resolveOpLine(op, lines) == null;
+}
+/* Индекс выбранной подстатьи: по имени (устойчиво к перестановкам/переименованиям),
+   иначе по сохранённому индексу. null — подстатья не выбрана. */
+function resolveOpLine(op, lines) {
   if (op.lineName) {
     const idx = lines.findIndex(l => l.name === op.lineName);
-    if (idx >= 0) li = idx;
+    if (idx >= 0) return idx;
   }
-  return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li, di };
+  if (op.li != null && lines[op.li]) return op.li;
+  return null;
 }
 /* Полный пересчёт всех декадных ячеек факта от bankOps — вызывать после
    изменения дат проекта или загрузки данных, т.к. попадание платежа в период
    проекта зависит от текущих start/end и должно пересчитываться заново. */
 function resyncAllOpTargets() {
   const targets = new Map();
+  const add = t => { if (t) targets.set(targetKey(t), t); };
   bankOps.forEach(op => {
-    const t = computeOpTarget(op);
-    if (t) targets.set(targetKey(t), t);
+    add(computeOpTarget(op));
+    // Ячейка, куда операция попадала по старому правилу (фолбэк на первую
+    // подстатью) — пересчитываем и её, иначе там останется «висящая» сумма.
+    add(legacyOpTarget(op));
   });
   targets.forEach(t => recomputeTarget(t));
+}
+/* Цель по прежнему правилу: статья с подстатьями без явного выбора → первая подстатья */
+function legacyOpTarget(op) {
+  if (op.projectId == null || op.articleIndex == null || !op.direction) return null;
+  const project = projects.find(p => p.id === op.projectId);
+  const di = project ? decadeIndexForDate(project, new Date(op.y, op.m, op.d)) : null;
+  if (di == null) return null;
+  const budget = budgets[op.projectId];
+  const art = budget && budget.articles[op.articleIndex];
+  if (!art) return null;
+  const lines = art[op.direction + 'Lines'] || [];
+  if (!(art[op.direction + 'Direct'] === false && lines.length > 0)) return null;
+  if (resolveOpLine(op, lines) != null) return null; // подстатья выбрана — старой цели не было
+  return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li: 0, di };
 }
 function targetKey(t) {
   return t ? [t.projectId, t.section, t.articleIndex, t.li == null ? 'd' : t.li, t.di].join('|') : null;
@@ -4213,15 +4245,16 @@ function paymentsArticleLines(op) {
 }
 
 function paymentsLineOptionsHtml(op, lines) {
-  let html = '<option value="">(любая)</option>';
+  let html = '<option value="">— не выбрано —</option>';
   lines.forEach((line, li) => {
     html += `<option value="${li}"${li === op.li ? ' selected' : ''}>${esc(line.name || ('Подстрока ' + (li + 1)))}</option>`;
   });
   return html;
 }
 
-// Платёж считается нераспределённым, если не задан проект/статья, либо (несмотря
-// на разметку) он не попадает в текущий период проекта и поэтому не учтён в факте.
+// Платёж считается нераспределённым, если не задан проект/статья, не выбрана
+// подстатья (когда она есть у статьи), либо он не попадает в текущий период
+// проекта и поэтому не учтён в факте.
 function isOpUnresolved(op) {
   return !op.direction || !op.projectId || op.articleIndex == null || computeOpTarget(op) == null;
 }
@@ -4295,6 +4328,7 @@ function renderPaymentsPage() {
     const dateText = new Date(op.y, op.m, op.d).toLocaleDateString('ru-RU');
     const lines = paymentsArticleLines(op);
     const incomplete = isOpUnresolved(op);
+    const needsLine = opNeedsLine(op);
     const isIn = op.direction === 'in';
     const rowStyle = (incomplete ? 'background:#fff8f6;' : '') + (isIn ? 'color:#089156' : '');
     const arrow = op.direction === 'out' ? '▲' : op.direction === 'in' ? '▼' : '?';
@@ -4306,7 +4340,9 @@ function renderPaymentsPage() {
       <td style="padding:4px 6px;white-space:normal;word-break:break-word" title="${esc(op.purpose)}">${esc(op.purpose)}</td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpProject('${op.id}',this.value)">${paymentsProjectOptionsHtml(op.projectId)}</select></td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpArticle('${op.id}',this.value)" ${op.projectId ? '' : 'disabled'}>${paymentsArticleOptionsHtml(op)}</select></td>
-      <td style="padding:4px 6px"><select onchange="setPaymentOpLine('${op.id}',this.value)" ${lines ? '' : 'disabled'}>${lines ? paymentsLineOptionsHtml(op, lines) : '<option value="">—</option>'}</select></td>
+      <td style="padding:4px 6px"><select onchange="setPaymentOpLine('${op.id}',this.value)" ${lines ? '' : 'disabled'}
+        style="${needsLine ? 'border:1px solid #e8a68e;background:#fff4f0' : ''}"
+        ${needsLine ? 'title="Выберите подстатью — без неё платёж не попадёт в факт"' : ''}>${lines ? paymentsLineOptionsHtml(op, lines) : '<option value="">—</option>'}</select></td>
       <td style="padding:4px 2px;text-align:center"><button onclick="deletePaymentOp('${op.id}')" title="Удалить операцию" style="border:none;background:none;color:#a33020;cursor:pointer;font-size:14px;padding:0">✕</button></td>
     </tr>`;
   }).join('');
