@@ -861,13 +861,15 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">
           <input type="text" id="pf-search" placeholder="Поиск: контрагент или назначение…" oninput="updatePaymentsFilters()"
-            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:210px">
+            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:260px">
           <input type="number" id="pf-amount-min" placeholder="Сумма от" oninput="updatePaymentsFilters()"
-            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:72px">
+            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:95px">
           <input type="number" id="pf-amount-max" placeholder="до" oninput="updatePaymentsFilters()"
-            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:72px">
+            style="font-size:12px;padding:5px 9px;border:1px solid #ddd;border-radius:6px;font-family:inherit;width:95px">
+          <span style="font-size:12px;color:#888">Дата от</span>
           <input type="date" id="pf-date-from" oninput="updatePaymentsFilters()" title="Период с"
             style="font-size:12px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-family:inherit">
+          <span style="font-size:12px;color:#888">до</span>
           <input type="date" id="pf-date-to" oninput="updatePaymentsFilters()" title="Период по"
             style="font-size:12px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-family:inherit">
           <button onclick="resetPaymentsFilters()" style="font-size:12px;padding:5px 10px;background:#f5f5f3;border:1px solid #ddd;border-radius:6px;color:#666;cursor:pointer;font-family:inherit">Сбросить</button>
