@@ -1273,6 +1273,8 @@ function initFirebase() {
         if (a.inOpen    === undefined) a.inOpen    = true;
         if (a.outOpen   === undefined) a.outOpen   = true;
         if (a.inDeleted === undefined) a.inDeleted = false;
+        if (!Array.isArray(a.inKeywords))  a.inKeywords  = [];
+        if (!Array.isArray(a.outKeywords)) a.outKeywords = [];
         // Расширяем декадные массивы до DEC_COUNT
         a.inDplan      = ensureDec(a.inDplan);
         a.inDforecast  = ensureDec(a.inDforecast);
@@ -1369,6 +1371,8 @@ function newArticle(name) {
     inDeleted: false,
     inDplan:  Array(DEC_COUNT).fill(0),   inDforecast:  Array(DEC_COUNT).fill(0),   inDfact:  Array(DEC_COUNT).fill(0),
     outDplan: Array(DEC_COUNT).fill(0),   outDforecast: Array(DEC_COUNT).fill(0),   outDfact: Array(DEC_COUNT).fill(0),
+    // ключевые слова секции — для статей без подстатей (прямой ввод)
+    inKeywords: [], outKeywords: [],
     inLines:  [],
     outLines: []
   };
@@ -3154,6 +3158,7 @@ function renderBudget() {
         html += `<tr class="${subCls}" data-art-child="${ai}">
           <td class="left sticky-name sub-label">
             <span class="sub-type-tag ${tagCls}">${tagTxt}</span>
+            <button class="hashtag-btn${(art[section+'Keywords']&&art[section+'Keywords'].length)?' has-keywords':''}" onclick="toggleKeywordsPopover(event,${ai},'${section}',null)" title="Ключевые слова для авто-сопоставления платежей">#</button>
             ${isIn ? '<button class="delete-btn" style="margin-left:6px" onclick="deleteInRow(' + ai + ')" title="Удалить поступления">✕</button>' : ''}
             <button class="add-subline-btn add-subline-btn--right add-subline-btn--vat" onclick="addSubline(${ai},'${section}')" title="Разбить на строки"><span class="add-txt">+ строка</span></button>
             <select class="subline-vat" title="Ставка НДС" onchange="setArticleVat(${ai},'${section}',this.value)">
@@ -3983,23 +3988,26 @@ function matchProjectAndArticle(tx) {
     }
   }
 
-  // 2) Ключевые слова подстрок (название компании, номер договора, ИНН и т.п.) — заданы вручную заранее
+  // 2) Ключевые слова (название компании, номер договора, ИНН и т.п.) — заданы вручную
+  //    заранее на подстатье либо на самой секции статьи (прямой ввод, без подстатей)
   let bestKw = null, bestKwLen = 0;
   projects.forEach(p => {
     const budget = getBudgetFor(projects.indexOf(p));
     budget.articles.forEach((a, ai) => {
       ['in', 'out'].forEach(section => {
         if (tx.direction && section !== tx.direction) return;
-        (a[section + 'Lines'] || []).forEach((line, li) => {
-          (line.keywords || []).forEach(kw => {
+        const tryKeywords = (keywords, li, lineName) => {
+          (keywords || []).forEach(kw => {
             const nk = normalizePurpose(kw);
             if (nk.length < 2) return;
             if (normFull.includes(nk) && nk.length > bestKwLen) {
-              bestKw = { projectId: p.id, articleIndex: ai, articleName: a.name, li, lineName: line.name };
+              bestKw = { projectId: p.id, articleIndex: ai, articleName: a.name, li, lineName };
               bestKwLen = nk.length;
             }
           });
-        });
+        };
+        tryKeywords(a[section + 'Keywords'], null, null);
+        (a[section + 'Lines'] || []).forEach((line, li) => tryKeywords(line.keywords, li, line.name));
       });
     });
   });
@@ -4487,6 +4495,9 @@ function addSubline(ai, section) {
     firstLine.dplan     = ensureDec(art[section + 'Dplan']).slice();
     firstLine.dforecast = ensureDec(art[section + 'Dforecast']).slice();
     firstLine.dfact     = ensureDec(art[section + 'Dfact']).slice();
+    // ключевые слова секции переезжают в первую подстроку вместе с данными
+    firstLine.keywords  = (art[section + 'Keywords'] || []).slice();
+    art[section + 'Keywords'] = [];
     art[section + 'Lines']    = [firstLine];
     art[section + 'Dplan']    = Array(DEC_COUNT).fill(0);
     art[section + 'Dforecast']= Array(DEC_COUNT).fill(0);
@@ -4519,6 +4530,7 @@ function deleteSubline(ai, section, li) {
       art[section + 'Dplan']    = ensureDec(art[key][0].dplan).slice();
       art[section + 'Dforecast']= ensureDec(art[key][0].dforecast).slice();
       art[section + 'Dfact']    = ensureDec(art[key][0].dfact).slice();
+      art[section + 'Keywords'] = (art[key][0].keywords || []).slice();
       art[section + 'Lines'] = [];
       art[section + 'Direct'] = true;
       saveData();
@@ -4573,10 +4585,11 @@ function toggleKeywordsPopover(event, ai, section, li) {
     closeKeywordsPopover();
     if (same) return; // повторный клик по той же строке — просто закрыть
   }
-  const line = getBudget().articles[ai][section+'Lines'][li];
-  if (!line) return;
+  // li === null — ключевые слова самой секции статьи (прямой ввод, без подстатей)
+  const target = keywordsTargetFor(ai, section, li);
+  if (!target) return;
   keywordsPopoverState = { ai, section, li };
-  document.getElementById('keywords-popover-input').value = (line.keywords || []).join(', ');
+  document.getElementById('keywords-popover-input').value = (target.keywords || []).join(', ');
   pop.style.top = (rect.bottom + 4) + 'px';
   pop.style.left = Math.max(4, rect.left) + 'px';
   pop.classList.remove('hidden');
@@ -4592,13 +4605,25 @@ function closeKeywordsPopoverOnOutsideClick() {
   saveKeywordsPopover();
   closeKeywordsPopover();
 }
+/* Объект, на котором живут ключевые слова: подстатья (li задан) либо сама
+   секция статьи (li === null) — тогда это art.inKeywords / art.outKeywords. */
+function keywordsTargetFor(ai, section, li) {
+  const art = getBudget().articles[ai];
+  if (!art) return null;
+  if (li == null) {
+    if (!Array.isArray(art[section + 'Keywords'])) art[section + 'Keywords'] = [];
+    return { get keywords() { return art[section + 'Keywords']; },
+             set keywords(v) { art[section + 'Keywords'] = v; } };
+  }
+  return (art[section + 'Lines'] || [])[li] || null;
+}
 function saveKeywordsPopover() {
   if (!keywordsPopoverState) return;
   const { ai, section, li } = keywordsPopoverState;
-  const line = getBudget().articles[ai] && getBudget().articles[ai][section+'Lines'][li];
-  if (!line) return;
+  const target = keywordsTargetFor(ai, section, li);
+  if (!target) return;
   const raw = document.getElementById('keywords-popover-input').value;
-  line.keywords = raw.split(',').map(s => s.trim()).filter(Boolean);
+  target.keywords = raw.split(',').map(s => s.trim()).filter(Boolean);
   // Новое ключевое слово могло совпасть с уже загруженными, но не размеченными платежами
   rematchUnresolvedOps();
   saveData();
