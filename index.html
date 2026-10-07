@@ -809,6 +809,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
       <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
         <div id="project-page-title" style="font-size:15px;font-weight:600"></div>
         <div id="project-page-meta" style="font-size:12px;color:#aaa"></div>
+        <button id="project-undo-btn" onclick="undoLast()" disabled title="Отменять пока нечего" style="background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 7px;cursor:default;font-size:13px;color:#555;line-height:1;flex-shrink:0;opacity:.35;transition:all .15s" onmouseover="if(!this.disabled){this.style.borderColor='#999';this.style.background='#f5f5f3'}" onmouseout="this.style.borderColor='#e0e0d8';this.style.background='none'">↶</button>
         <button id="project-edit-btn" onclick="openEditModal()" title="Редактировать проект" style="background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.color='#555';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.color='#aaa';this.style.background='none'">✏️</button>
         <button id="project-lock-btn" onclick="toggleLock()" title="Скрыть бюджет паролем" style="background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.background='none'">🙈</button>
         <button id="project-pw-btn" onclick="changeLockPassword()" title="Сменить пароль / снять защиту" style="display:none;background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.background='none'">🔑</button>
@@ -1230,6 +1231,7 @@ function initFirebase() {
     window.persistDataNow();
   };
   window.saveData = function() {
+    undoRecord(); // снимок «до правки» в историю отмены текущего бюджета
     // Немедленно пишем в localStorage, чтобы не потерять при быстром обновлении
     var payload = { projects: projects, budgets: budgets, currentProject: currentProject, bankOps: bankOps, matchRules: matchRules, updatedAt: Date.now() };
     try {
@@ -1453,6 +1455,98 @@ function getBudgetFor(idx) {
   return budgets[p.id];
 }
 function getBudget() { return getBudgetFor(currentProject); }
+
+/* ── Отмена действий в бюджете проекта/КП ────────────────────────────────────
+   Отдельная история на каждый проект (по id), только в памяти вкладки.
+   Снимок = бюджет + поля проекта (даты двигают бюджет), без полей защиты —
+   иначе отмена снимала бы пароль. Запись идёт из saveData: если состояние
+   открытого бюджета отличается от последнего запомненного, прежнее уходит в стек.
+   Правки с других страниц (Платежи) в историю не пишутся; факт из выписок
+   после отмены пересчитывается от bankOps, чтобы не разойтись с журналом. */
+const UNDO_LIMIT = 30;
+let undoStacks = {};    // projectId → [снимок-строка, ...]
+let undoBaseline = {};  // projectId → последнее запомненное состояние
+let _undoApplying = false;
+
+// Свёрнутость статей (inOpen/outOpen) — вид, а не данные: не шаг отмены
+const _UNDO_SKIP_KEYS = new Set(['inOpen', 'outOpen']);
+function _undoSnapshot(p) {
+  const { locked, lockHash, ...meta } = p;
+  return JSON.stringify({ p: meta, b: budgets[p.id] || null },
+    (k, v) => _UNDO_SKIP_KEYS.has(k) ? undefined : v);
+}
+function _undoActiveProject() {
+  const page = document.getElementById('page-project');
+  if (!page || !page.classList.contains('active')) return null;
+  return projects[currentProject] || null;
+}
+function undoRecord() {
+  const p = _undoActiveProject();
+  if (!p || !p.id || _undoApplying) return;
+  const snap = _undoSnapshot(p);
+  const prev = undoBaseline[p.id];
+  undoBaseline[p.id] = snap;
+  if (prev == null || prev === snap) return;
+  const st = undoStacks[p.id] || (undoStacks[p.id] = []);
+  st.push(prev);
+  if (st.length > UNDO_LIMIT) st.shift();
+  updateUndoButton();
+}
+/* Запомнить текущее состояние как исходное — при открытии бюджета */
+function undoResetBaseline() {
+  const p = projects[currentProject];
+  if (p && p.id) undoBaseline[p.id] = _undoSnapshot(p);
+  updateUndoButton();
+}
+function undoClearAll() { undoStacks = {}; undoBaseline = {}; }
+function updateUndoButton() {
+  const btn = document.getElementById('project-undo-btn');
+  if (!btn) return;
+  const p = projects[currentProject];
+  const n = (p && p.id && undoStacks[p.id]) ? undoStacks[p.id].length : 0;
+  const can = n > 0 && !(p && p.locked);
+  btn.disabled = !can;
+  btn.style.opacity = can ? '1' : '.35';
+  btn.style.cursor = can ? 'pointer' : 'default';
+  btn.title = n ? `Отменить последнее действие (Ctrl+Z) — доступно шагов: ${n}` : 'Отменять пока нечего';
+}
+function undoLast() {
+  const p = _undoActiveProject();
+  if (!p || !p.id || p.locked) return;
+  // Значение в ячейке, которую сейчас редактируют, сначала фиксируем через её onblur
+  const ae = document.activeElement;
+  if (ae && ae.classList && ae.classList.contains('month-input')) ae.blur();
+  const st = undoStacks[p.id];
+  if (!st || !st.length) return;
+  const snap = st.pop();
+  const data = JSON.parse(snap);
+  Object.keys(p).forEach(k => { if (k !== 'locked' && k !== 'lockHash') delete p[k]; });
+  Object.assign(p, data.p);
+  const curArts = (budgets[p.id] && budgets[p.id].articles) || [];
+  if (data.b) {
+    (data.b.articles || []).forEach((a, i) => {
+      if (curArts[i]) { a.inOpen = curArts[i].inOpen; a.outOpen = curArts[i].outOpen; }
+    });
+    budgets[p.id] = data.b;
+  } else delete budgets[p.id];
+  resyncAllOpTargets();
+  undoBaseline[p.id] = _undoSnapshot(p);
+  _undoApplying = true;
+  try { saveData(); } finally { _undoApplying = false; }
+  renderSidebarProjects();
+  renderBudget();
+  updateUndoButton();
+  showToast(st.length ? `Действие отменено. Осталось шагов: ${st.length}` : 'Действие отменено');
+}
+document.addEventListener('keydown', function(e) {
+  if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.code !== 'KeyZ') return;
+  const t = e.target;
+  // В поле ввода Ctrl+Z — родная отмена набора текста браузером
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (!_undoActiveProject()) return;
+  e.preventDefault();
+  undoLast();
+});
 
 /* ---- SIDEBAR ---- */
 function renderSidebarProjects() {
@@ -2566,6 +2660,7 @@ function showPage(name) {
     applyKpModeUI();
     renderKpSidebar();
     renderBudget();
+    undoResetBaseline(); // правки с других страниц (Платежи) — уже не «шаги» бюджета
   } else {
     kpMode = false;
     kpMenuOpen = false;
@@ -2581,6 +2676,7 @@ function showPage(name) {
     applyKpModeUI();
     renderSidebarProjects();
     renderBudget();
+    undoResetBaseline(); // правки с других страниц (Платежи) — уже не «шаги» бюджета
   }
   closeSidebarIfOpen();
 }
@@ -2986,6 +3082,7 @@ function renderBudget() {
     return;
   }
   document.getElementById('project-page-title').textContent = p.name;
+  if (p.id && undoBaseline[p.id] == null) undoResetBaseline(); else updateUndoButton();
   let meta = '';
   if (p.type) meta += p.type;
   if (p.start && p.end) meta += (meta ? ' · ' : '') + `${MONTH_NAMES_FULL[p.start.m]} ${p.start.y} — ${MONTH_NAMES_FULL[p.end.m]} ${p.end.y}`;
@@ -5378,6 +5475,7 @@ function handleLogout() {
     projects = [];
     budgets = {};
     currentProject = 0;
+    undoClearAll();
     if (!window.demoMode) { try { localStorage.removeItem('bdds_cache'); } catch(e) {} }
     window.demoMode = false;
     const badge = document.getElementById('demo-badge');
