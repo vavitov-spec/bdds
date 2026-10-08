@@ -4311,7 +4311,7 @@ function bankOpKey(op) {
    di считается заново от текущих дат проекта (а не берётся из кэша op.di) —
    иначе после переноса даты начала проекта уже размеченные платежи молча
    переставали попадать в факт. */
-function computeOpTarget(op) {
+function computeOwnOpTarget(op) {
   if (op.projectId == null || op.articleIndex == null || !op.direction) return null;
   const project = projects.find(p => p.id === op.projectId);
   const di = project ? decadeIndexForDate(project, new Date(op.y, op.m, op.d)) : null;
@@ -4328,6 +4328,79 @@ function computeOpTarget(op) {
   if (li == null) return null;
   return { projectId: op.projectId, section: op.direction, articleIndex: op.articleIndex, li, di };
 }
+/* ── «Нераспределённое»: корзина для неразнесённых платежей ──────────────────
+   Платёж, который сам никуда не попадает (нет проекта/статьи/подстатьи или дата
+   вне периода проекта), считается в факт подстатьи «Нераспределённое» статьи
+   «Разное» проекта «АХР» — чтобы накопленный факт сходился с остатком в банке.
+   Сам платёж при этом остаётся нераспределённым (фильтр его показывает), а после
+   разметки его сумма сама переезжает из корзины в выбранную статью. */
+const UNALLOC_LINE = 'Нераспределённое';
+const _normName = s => String(s || '').toLowerCase().replace(/ё/g, 'е').trim();
+function findUnallocArticle() {
+  const p = projects.find(pr => !pr.isKp && /(^|[^а-яё])ахр([^а-яё]|$)/i.test(pr.name || ''));
+  const b = p && budgets[p.id];
+  if (!b || !b.articles) return null;
+  const ai = b.articles.findIndex(a => _normName(a.name) === 'разное');
+  return ai < 0 ? null : { project: p, budget: b, ai, art: b.articles[ai] };
+}
+function unallocLineIndex(art, section) {
+  if (art[section + 'Direct'] !== false) return -1;
+  return (art[section + 'Lines'] || []).findIndex(l => _normName(l.name) === _normName(UNALLOC_LINE));
+}
+/* Завести подстатьи «Нераспределённое» в поступлениях и выплатах АХР / Разное.
+   Если раздел был без подстатей — его данные переезжают в подстатью «Разное»,
+   а платежи, разнесённые на статью целиком, переводятся на неё же. */
+function ensureUnallocLines() {
+  const t = findUnallocArticle();
+  if (!t) return false;
+  const art = t.art;
+  ['in', 'out'].forEach(section => {
+    if (section === 'in') art.inDeleted = false; // приходам тоже нужно место
+    if (unallocLineIndex(art, section) >= 0) return;
+    if (art[section + 'Direct'] !== false) {
+      const hasData = ['Dplan', 'Dforecast', 'Dfact'].some(k => (art[section + k] || []).some(v => v))
+        || (art[section + 'Keywords'] || []).length > 0;
+      const lines = [];
+      if (hasData) {
+        const first = newLine(art.name || 'Разное');
+        first.vat       = articleVat(art, section);
+        first.dplan     = ensureDec(art[section + 'Dplan']).slice();
+        first.dforecast = ensureDec(art[section + 'Dforecast']).slice();
+        first.dfact     = ensureDec(art[section + 'Dfact']).slice();
+        first.keywords  = (art[section + 'Keywords'] || []).slice();
+        lines.push(first);
+        bankOps.forEach(op => {
+          if (op.projectId === t.project.id && op.articleIndex === t.ai && op.direction === section) {
+            op.li = 0; op.lineName = first.name;
+          }
+        });
+      }
+      art[section + 'Keywords']  = [];
+      art[section + 'Lines']     = lines;
+      art[section + 'Dplan']     = Array(DEC_COUNT).fill(0);
+      art[section + 'Dforecast'] = Array(DEC_COUNT).fill(0);
+      art[section + 'Dfact']     = Array(DEC_COUNT).fill(0);
+      art[section + 'Direct']    = false;
+    }
+    art[section + 'Lines'].push(newLine(UNALLOC_LINE));
+  });
+  return true;
+}
+function computeUnallocTarget(op) {
+  if (!op.direction) return null;
+  const t = findUnallocArticle();
+  if (!t) return null;
+  const li = unallocLineIndex(t.art, op.direction);
+  if (li < 0) return null;
+  const di = decadeIndexForDate(t.project, new Date(op.y, op.m, op.d));
+  if (di == null) return null;
+  return { projectId: t.project.id, section: op.direction, articleIndex: t.ai, li, di };
+}
+/* Куда операция фактически пишется: своя цель, иначе — «Нераспределённое» */
+function computeOpTarget(op) {
+  return computeOwnOpTarget(op) || computeUnallocTarget(op);
+}
+
 /* У статьи операции есть подстатьи, но ни одна не выбрана */
 function opNeedsLine(op) {
   const lines = paymentsArticleLines(op);
@@ -4347,7 +4420,15 @@ function resolveOpLine(op, lines) {
    изменения дат проекта или загрузки данных, т.к. попадание платежа в период
    проекта зависит от текущих start/end и должно пересчитываться заново. */
 function resyncAllOpTargets() {
+  ensureUnallocLines();
   const targets = new Map();
+  // Корзина пересчитывается целиком: в ней не должно остаться сумм платежей,
+  // которые с тех пор разнесли (или удалили)
+  const ua = findUnallocArticle();
+  if (ua) ['in', 'out'].forEach(section => {
+    const li = unallocLineIndex(ua.art, section);
+    if (li >= 0) ua.art[section + 'Lines'][li].dfact = Array(DEC_COUNT).fill(0);
+  });
   const add = t => { if (t) targets.set(targetKey(t), t); };
   bankOps.forEach(op => {
     add(computeOpTarget(op));
@@ -4443,6 +4524,7 @@ async function handlePaymentsFileChange(event) {
       added++;
     });
     event.target.value = '';
+    resyncAllOpTargets(); // корзина «Нераспределённое» могла появиться/сместиться
     saveData();
     renderPaymentsPage();
     renderBudget();
@@ -4496,7 +4578,7 @@ function paymentsLineOptionsHtml(op, lines) {
 // подстатья (когда она есть у статьи), либо он не попадает в текущий период
 // проекта и поэтому не учтён в факте.
 function isOpUnresolved(op) {
-  return !op.direction || !op.projectId || op.articleIndex == null || computeOpTarget(op) == null;
+  return !op.direction || !op.projectId || op.articleIndex == null || computeOwnOpTarget(op) == null;
 }
 
 let paymentsShowUnresolvedOnly = false;
@@ -4549,8 +4631,12 @@ function renderPaymentsPage() {
   const unresolved = bankOps.filter(isOpUnresolved).length;
   const filtersActive = sorted.length !== total;
   const summary = document.getElementById('payments-summary');
+  const ua = findUnallocArticle();
+  const unallocNote = !unresolved ? ''
+    : ua ? ` Их суммы учтены в «${ua.project.name} / ${ua.art.name} / ${UNALLOC_LINE}».`
+         : ' Их суммы не попадают в факт — заведите проект «АХР» со статьёй «Разное».';
   if (summary) summary.textContent = total
-    ? `Всего операций в журнале: ${total}. Требуют разметки: ${unresolved}.`
+    ? `Всего операций в журнале: ${total}. Требуют разметки: ${unresolved}.` + unallocNote
       + (paymentsShowUnresolvedOnly ? ' Показаны только нераспределённые.' : '')
       + (filtersActive ? ` По фильтрам: ${sorted.length}.` : '')
     : 'Журнал пуст — загрузите файл выписки (1С-обмен, .txt).';
