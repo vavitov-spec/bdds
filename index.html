@@ -388,6 +388,10 @@ table.hide-fact td.cell-dfact { display:none }
 #dashboard-table tr.dash-total td.dash-sticky.left, #dashboard-table tr.dash-cumul td.dash-sticky.left { padding-left:42px; }
 
 /* DASHBOARD TABLE */
+.oop-badge { font-size:10px; font-weight:600; color:#a33020; background:#fff1ec; border:1px solid #f0b8a6; border-radius:8px; padding:0 5px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+.oop-badge:hover { background:#ffe2d8; }
+#project-oop-warning { display:none; font-size:12px; color:#a33020; background:#fff4f0; border:1px solid #f0b8a6; border-radius:7px; padding:5px 10px; margin-bottom:10px; cursor:pointer; }
+#project-oop-warning:hover { background:#ffe9e1; }
 #dash-scroll-wrap { overflow-x:auto; overflow-y:visible; overscroll-behavior-x:contain; }
 .dash-year-arrow { background:none; border:none; cursor:pointer; color:#999; font-size:16px; line-height:1; padding:0 4px; border-radius:4px; font-family:inherit; }
 .dash-year-arrow:hover { color:#1a4d8f; background:#eef4ff; }
@@ -820,6 +824,7 @@ td.decade-agg { font-size:11px; color:#555; background:#f2f2ee !important; text-
         <button id="project-pw-btn" onclick="changeLockPassword()" title="Сменить пароль / снять защиту" style="display:none;background:none;border:1px solid #e0e0d8;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:12px;color:#aaa;line-height:1;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='#999';this.style.background='#f5f5f3'" onmouseout="this.style.borderColor='#e0e0d8';this.style.background='none'">🔑</button>
         <div id="save-indicator" style="font-size:11px;margin-left:auto;transition:color .3s"></div>
       </div>
+      <div id="project-oop-warning" onclick="showOutOfPeriodPayments(projects[currentProject].id)"></div>
       <div class="section">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
           <!-- Панель проектов -->
@@ -1562,6 +1567,7 @@ function renderSidebarProjects() {
       <span class="proj-drag-handle" title="Перетащить проект">⠿</span>
       <span class="dot"></span>
       <span style="flex:1">${esc(p.name)}</span>
+      ${(st => st ? `<span class="oop-badge" title="${esc(outOfPeriodText(st))} — не попадают в факт. Нажмите, чтобы посмотреть" onclick="event.stopPropagation();showOutOfPeriodPayments('${esc(p.id)}')">⚠ ${st.count}</span>` : '')(outOfPeriodStats(p.id))}
       ${p.type ? `<span class="proj-type-badge">${esc(p.type)}</span>` : ''}
       <button class="delete-btn" onclick="event.stopPropagation();deleteProject(${i})">✕</button>
     </div>`).join('');
@@ -3293,6 +3299,18 @@ function renderBudget() {
 
   // ── Защита бюджета паролем (ретушь + блокировка правок) ──
   applyLockState(p);
+  // Предупреждение: платежи проекта, выпавшие из его периода
+  const oopEl = document.getElementById('project-oop-warning');
+  if (oopEl) {
+    const st = !kpMode && outOfPeriodStats(p.id);
+    oopEl.style.display = st ? 'block' : 'none';
+    if (st) {
+      const ua = findUnallocArticle();
+      oopEl.textContent = '⚠ ' + outOfPeriodText(st) + ' — в факт проекта не попадают' +
+        (ua ? ` (учтены в «${ua.project.name} / ${UNALLOC_LINE}»)` : '') +
+        '. Расширьте период проекта (✏️) или исправьте разметку. Показать платежи →';
+    }
+  }
 
   let html = '';
 
@@ -4187,6 +4205,40 @@ function decadeIndexForDate(project, date) {
   return mi * 3 + d;
 }
 
+/* ── Платежи вне периода проекта ─────────────────────────────────────────────
+   Платёж размечен на проект, но его дата не попадает в сроки проекта — в факт
+   проекта он не идёт. Показываем предупреждение в списке проектов, в шапке
+   бюджета и на странице «Платежи». */
+function isOpOutOfPeriod(op) {
+  if (!op.projectId || !op.direction) return false;
+  const project = projects.find(p => p.id === op.projectId);
+  return !!project && decadeIndexForDate(project, new Date(op.y, op.m, op.d)) == null;
+}
+function outOfPeriodStats(projectId) {
+  const ops = bankOps.filter(o => o.projectId === projectId && isOpOutOfPeriod(o));
+  if (!ops.length) return null;
+  const dates = ops.map(o => new Date(o.y, o.m, o.d)).sort((a, b) => a - b);
+  return { count: ops.length, sum: ops.reduce((s, o) => s + o.amount, 0), from: dates[0], to: dates[dates.length - 1] };
+}
+function plural(n, one, few, many) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return one;
+  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return few;
+  return many;
+}
+function outOfPeriodText(st) {
+  const d = x => x.toLocaleDateString('ru-RU');
+  return `${st.count} ${plural(st.count, 'платёж', 'платежа', 'платежей')} вне периода проекта на ${fmt(st.sum)} ₽` +
+    ` (${st.from.getTime() === st.to.getTime() ? d(st.from) : d(st.from) + ' — ' + d(st.to)})`;
+}
+let paymentsOopProject = null; // фильтр «Платежей»: только вне периода этого проекта
+function showOutOfPeriodPayments(projectId) {
+  paymentsOopProject = projectId;
+  paymentsShowUnresolvedOnly = false;
+  showPage('payments');
+}
+function clearOutOfPeriodFilter() { paymentsOopProject = null; renderPaymentsPage(); }
+
 function normalizePurpose(s) {
   return String(s || '')
     .toLowerCase()
@@ -4606,6 +4658,7 @@ function resetPaymentsFilters() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   paymentsFilters = { search: '', amountMin: null, amountMax: null, dateFrom: null, dateTo: null };
+  paymentsOopProject = null;
   renderPaymentsPage();
 }
 function opMatchesFilters(op) {
@@ -4626,20 +4679,25 @@ function renderPaymentsPage() {
   if (!body) return;
   let sorted = bankOps.slice().sort((a, b) => (b.y - a.y) || (b.m - a.m) || (b.d - a.d));
   sorted = sorted.filter(opMatchesFilters);
+  if (paymentsOopProject) sorted = sorted.filter(o => o.projectId === paymentsOopProject && isOpOutOfPeriod(o));
 
   const total = bankOps.length;
   const unresolved = bankOps.filter(isOpUnresolved).length;
-  const filtersActive = sorted.length !== total;
+  const filtersActive = sorted.length !== total && !paymentsOopProject;
   const summary = document.getElementById('payments-summary');
   const ua = findUnallocArticle();
   const unallocNote = !unresolved ? ''
     : ua ? ` Их суммы учтены в «${ua.project.name} / ${ua.art.name} / ${UNALLOC_LINE}».`
          : ' Их суммы не попадают в факт — заведите проект «АХР» со статьёй «Разное».';
-  if (summary) summary.textContent = total
-    ? `Всего операций в журнале: ${total}. Требуют разметки: ${unresolved}.` + unallocNote
+  const oopAll = bankOps.filter(isOpOutOfPeriod).length;
+  const oopNote = oopAll ? ` Вне периода проекта: ${oopAll}.` : '';
+  const oopProj = paymentsOopProject && projects.find(p => p.id === paymentsOopProject);
+  if (summary) summary.innerHTML = esc(total
+    ? `Всего операций в журнале: ${total}. Требуют разметки: ${unresolved}.` + oopNote + unallocNote
       + (paymentsShowUnresolvedOnly ? ' Показаны только нераспределённые.' : '')
       + (filtersActive ? ` По фильтрам: ${sorted.length}.` : '')
-    : 'Журнал пуст — загрузите файл выписки (1С-обмен, .txt).';
+    : 'Журнал пуст — загрузите файл выписки (1С-обмен, .txt).')
+    + (oopProj ? ` <span class="oop-badge" onclick="clearOutOfPeriodFilter()" title="Снять фильтр">Вне периода «${esc(oopProj.name)}» ✕</span>` : '');
 
   const btn = document.getElementById('payments-unresolved-btn');
   if (btn) {
@@ -4664,14 +4722,14 @@ function renderPaymentsPage() {
       <td style="padding:4px 2px;text-align:center;cursor:pointer" onclick="togglePaymentOpDirection('${op.id}')" title="Нажмите, чтобы изменить направление: ▲ выплата / ▼ поступление">${arrow}</td>
       <td style="padding:4px 6px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(op.counterpartyName || '')}">${esc(op.counterpartyName || '—')}</td>
       <td style="padding:4px 6px;white-space:normal;word-break:break-word" title="${esc(op.purpose)}">${esc(op.purpose)}</td>
-      <td style="padding:4px 6px"><select onchange="setPaymentOpProject('${op.id}',this.value)">${paymentsProjectOptionsHtml(op.projectId)}</select></td>
+      <td style="padding:4px 6px"><select onchange="setPaymentOpProject('${op.id}',this.value)">${paymentsProjectOptionsHtml(op.projectId)}</select>${isOpOutOfPeriod(op) ? '<div style="font-size:10px;color:#a33020;margin-top:2px" title="Дата платежа не попадает в период проекта — в факт проекта не идёт">⚠ вне периода проекта</div>' : ''}</td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpArticle('${op.id}',this.value)" ${op.projectId ? '' : 'disabled'}>${paymentsArticleOptionsHtml(op)}</select></td>
       <td style="padding:4px 6px"><select onchange="setPaymentOpLine('${op.id}',this.value)" ${lines ? '' : 'disabled'}
         style="${needsLine ? 'border:1px solid #e8a68e;background:#fff4f0' : ''}"
         ${needsLine ? 'title="Выберите подстатью — без неё платёж не попадёт в факт"' : ''}>${lines ? paymentsLineOptionsHtml(op, lines) : '<option value="">—</option>'}</select></td>
       <td style="padding:4px 2px;text-align:center"><button onclick="deletePaymentOp('${op.id}')" title="Удалить операцию" style="border:none;background:none;color:#a33020;cursor:pointer;font-size:14px;padding:0">✕</button></td>
     </tr>`;
-  }).join('');
+  }).join('');  renderSidebarProjects(); // значки «вне периода» у проектов
 }
 
 function setPaymentOpProject(id, val) {
