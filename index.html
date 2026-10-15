@@ -1106,9 +1106,9 @@ function initFirebase() {
   // loadData reads from Firestore for the currently signed-in user.
   // Uses auth.currentUser directly — no listener accumulation.
   window.loadData = function() {
+    var user = window.auth.currentUser;
+    if (!user) return Promise.resolve(false);
     return new Promise(function(resolve) {
-      var user = window.auth.currentUser;
-      if (!user) { resolve(false); return; }
       window.firebaseUid = user.uid;
 
       // Локальный кэш читаем сразу — мгновенно и работает офлайн.
@@ -1131,6 +1131,7 @@ function initFirebase() {
         currentProject = Math.max(0, Math.min(d.currentProject || 0, d.projects.length - 1));
         bankOps        = d.bankOps || [];
         matchRules     = d.matchRules || [];
+        _lastSyncedAt  = d.updatedAt || 0;
         window.assignProjectIds();
         window.migrateBudgetsToIds();
         window.migrateData();
@@ -1185,7 +1186,7 @@ function initFirebase() {
           resolve(apply(lsData));
         });
 
-    });
+    }).then(function(ok) { _syncedJson = _dataJson(); _startLiveSync(user.uid); return ok; });
   };
   // One-time auth state listener for the initial page load only.
   // Firebase Compat SDK не поддерживает {once:true} — отписываемся вручную.
@@ -1226,10 +1227,22 @@ function initFirebase() {
   }
 
   window.persistDataNow = function() {
+    _saveTimer = null;
+    // Пока шла правка, данные изменили в другом месте (Claude, вторая вкладка) —
+    // не затираем их своей устаревшей копией: берём свежую версию, правку просим повторить.
+    if (_pendingRemote) {
+      var fresh = _pendingRemote;
+      _pendingRemote = null;
+      var lostEdit = _dataJson() !== _syncedJson;
+      _applyRemote(fresh, lostEdit ? 'Данные изменились в другом месте — загружена свежая версия. Последнюю правку повторите.' : null);
+      return;
+    }
     var payload = { projects: projects, budgets: budgets, currentProject: currentProject, bankOps: bankOps, matchRules: matchRules, updatedAt: Date.now() };
     // Всегда пишем в localStorage немедленно как резервная копия
     try { localStorage.setItem(_lsKey(), JSON.stringify(payload)); } catch(e) {}
     if (!window.firebaseUid) return;
+    _lastSyncedAt = payload.updatedAt;
+    _syncedJson = _dataJson();
     _setSaveIndicator('saving');
     window.db.doc('bdds/' + window.firebaseUid).set(payload)
       .then(function() { _setSaveIndicator('saved'); })
@@ -1253,6 +1266,92 @@ function initFirebase() {
     _saveTimer = setTimeout(window.persistDataNow, 500);
   };
   window.addEventListener('beforeunload', function() { window.flushSaveData(); });
+
+  // ── Живая синхронизация ─────────────────────────────────────────────────
+  // Документ bdds/<uid> могут изменить вне этой вкладки (вторая вкладка, Claude
+  // через коннектор). Подписываемся на него и применяем более свежую версию.
+  // Пока поле в фокусе или ждёт сохранения — откладываем, решаем в persistDataNow.
+  var _lastSyncedAt = 0;      // updatedAt версии, которая сейчас в памяти
+  var _pendingRemote = null;  // свежая версия, отложенная до конца правки
+  var _syncedJson = '';       // данные на момент последней синхронизации — понять, была ли своя правка
+  var _unsubLive = null;
+
+  function _dataJson() {
+    return JSON.stringify([projects, budgets, bankOps, matchRules]);
+  }
+
+  function _isEditing() {
+    var ae = document.activeElement;
+    if (!ae || ae === document.body) return false;
+    var editable = ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable;
+    return editable && document.getElementById('main-layout').contains(ae);
+  }
+
+  function _applyRemote(d, msg) {
+    var curId = projects[currentProject] && projects[currentProject].id;
+    // Историю отмены у изменённых бюджетов сбрасываем — иначе отмена вернула бы чужую правку
+    var oldBudgets = {};
+    projects.forEach(function(p) { oldBudgets[p.id] = JSON.stringify(budgets[p.id] || null); });
+    projects   = d.projects;
+    budgets    = d.budgets || {};
+    bankOps    = d.bankOps || [];
+    matchRules = d.matchRules || [];
+    _lastSyncedAt = d.updatedAt || 0;
+    window.assignProjectIds();
+    window.migrateBudgetsToIds();
+    window.migrateData();
+    var idx = projects.findIndex(function(p) { return p.id === curId; });
+    currentProject = idx >= 0 ? idx : Math.max(0, Math.min(currentProject, projects.length - 1));
+    projects.forEach(function(p) {
+      if (oldBudgets[p.id] !== JSON.stringify(budgets[p.id] || null)) delete undoStacks[p.id];
+    });
+    _syncedJson = _dataJson();
+    try { localStorage.setItem(_lsKey(), JSON.stringify(d)); } catch(e) {}
+
+    var wrap = document.querySelector('#page-project .table-wrap');
+    var scroll = wrap ? [wrap.scrollLeft, wrap.scrollTop] : null;
+    var active = document.querySelector('.page.active');
+    var page = active ? active.id : '';
+    window.renderSidebarProjects();
+    if (page === 'page-dashboard') renderDashboard();
+    else if (page === 'page-payments') renderPaymentsPage();
+    else if (page === 'page-project') {
+      if (kpMode) renderKpSidebar();
+      renderBudget();
+      undoResetBaseline();
+    }
+    if (wrap && scroll) { wrap.scrollLeft = scroll[0]; wrap.scrollTop = scroll[1]; }
+    showToast(msg || 'Данные обновлены');
+  }
+
+  function _startLiveSync(uid) {
+    window.stopLiveSync();
+    if (!uid || window.demoMode) return;
+    _unsubLive = window.db.doc('bdds/' + uid).onSnapshot(function(snap) {
+      // Эхо собственных записей и кэш — пропускаем
+      if (snap.metadata.hasPendingWrites || snap.metadata.fromCache || !snap.exists) return;
+      var d = snap.data();
+      if (!d || !Array.isArray(d.projects) || !d.projects.length) return;
+      if (!((d.updatedAt || 0) > _lastSyncedAt)) return;
+      if (_saveTimer || _isEditing()) { _pendingRemote = d; return; }
+      _pendingRemote = null;
+      _applyRemote(d);
+    }, function(e) { console.warn('[liveSync]', e); });
+  }
+  window.stopLiveSync = function() {
+    if (_unsubLive) { _unsubLive(); _unsubLive = null; }
+    _pendingRemote = null;
+  };
+  // Фокус ушёл с поля без правки — применяем отложенную версию
+  document.addEventListener('focusout', function() {
+    setTimeout(function() {
+      if (_pendingRemote && !_saveTimer && !_isEditing()) {
+        var d = _pendingRemote;
+        _pendingRemote = null;
+        _applyRemote(d);
+      }
+    }, 0);
+  });
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   // Одноразовая миграция: если месячные данные есть, а декадные нет —
@@ -5746,6 +5845,7 @@ function handleRegister() {
 function handleLogout() {
   if (!confirm('Вы уверены что хотите выйти?')) return;
   window.flushSaveData();
+  if (window.stopLiveSync) window.stopLiveSync();
   const finish = () => {
     window.firebaseUid = null;
     // Чистим данные из памяти, чтобы следующий пользователь не увидел чужие.
